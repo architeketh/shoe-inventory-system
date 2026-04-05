@@ -487,10 +487,10 @@
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 150px minmax(260px, 1.8fr) 160px 170px 110px;
+      grid-template-columns: 130px minmax(240px, 1.8fr) 230px 170px 90px;
       gap: 14px;
       align-items: center;
-      min-width: 920px;
+      min-width: 860px;
     }
 
     .inventory-cell {
@@ -499,7 +499,7 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 150px minmax(260px, 1.8fr) 160px 170px 110px;
+      grid-template-columns: 130px minmax(240px, 1.8fr) 230px 170px 90px;
       gap: 14px;
       align-items: center;
       padding: 0 16px 10px;
@@ -550,9 +550,10 @@
 
     .inventory-actions {
       display: flex;
-      flex-wrap: nowrap;
+      flex-direction: column;
       gap: 8px;
       justify-content: flex-start;
+      align-items: flex-start;
     }
 
     .sort-select {
@@ -730,7 +731,7 @@
         display: none;
       }
 
-      .inventory-line { min-width: 920px; }
+      .inventory-line { min-width: 860px; }
 
       .photo-strip {
         justify-content: flex-start;
@@ -1365,7 +1366,7 @@
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Details</div>
-                <p>${escapeHtml(`Size ${item.size || '-'} | ${currency(item.price)} | ${item.has_box ? 'Box' : 'No box'} | ${item.notes || 'No notes'}`)}</p>
+                <p>${escapeHtml(`Size ${item.size || '-'} | ${item.has_box ? 'Box' : 'No box'} | ${item.notes || 'No notes'}`)}</p>
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Attachments</div>
@@ -1378,6 +1379,7 @@
                 </div>
               </div>
               <div class="inventory-cell">
+                <div class="mini-label">Price</div>
                 <div class="price">${currency(item.price)}</div>
               </div>
             </div>
