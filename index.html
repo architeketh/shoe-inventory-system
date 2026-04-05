@@ -487,10 +487,10 @@
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 130px minmax(240px, 1.8fr) 230px 170px 90px;
+      grid-template-columns: 150px minmax(220px, 1.6fr) 50px 240px 100px 170px 90px;
       gap: 14px;
       align-items: center;
-      min-width: 860px;
+      min-width: 1040px;
     }
 
     .inventory-cell {
@@ -499,7 +499,7 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 130px minmax(240px, 1.8fr) 230px 170px 90px;
+      grid-template-columns: 150px minmax(220px, 1.6fr) 50px 240px 100px 170px 90px;
       gap: 14px;
       align-items: center;
       padding: 0 16px 10px;
@@ -731,7 +731,7 @@
         display: none;
       }
 
-      .inventory-line { min-width: 860px; }
+      .inventory-line { min-width: 1040px; }
 
       .photo-strip {
         justify-content: flex-start;
@@ -913,9 +913,9 @@
       <div class="inventory-head">
         <div>Status</div>
         <div>Shoe</div>
-        <div>Size</div>
+        <div>Cat</div>
+        <div>Details</div>
         <div>Price</div>
-        <div>Notes</div>
         <div>Attachments</div>
         <div>Actions</div>
       </div>
@@ -1349,6 +1349,7 @@
           item.gender ? `<span class="inventory-tag ${item.gender}">${item.gender === 'womens' ? 'Womens' : 'Mens'}</span>` : '',
           `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'}">${item.has_box ? 'Box' : 'No box'}</span>`
         ].join('');
+        const categoryShort = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : '-';
 
         const photoStrip = photos.length
           ? `<div class="photo-strip">${photos.map((url, index) => `<button class="photo-thumb" type="button" data-photo-url="${url}"><img src="${url}" alt="Saved photo ${index + 1}"></button>`).join('')}</div>`
@@ -1365,8 +1366,16 @@
                 <div class="inventory-meta">${escapeHtml(item.description || 'No description')}</div>
               </div>
               <div class="inventory-cell">
+                <div class="mini-label">Cat</div>
+                <p>${escapeHtml(categoryShort)}</p>
+              </div>
+              <div class="inventory-cell">
                 <div class="mini-label">Details</div>
                 <p>${escapeHtml(`Size ${item.size || '-'} | ${item.has_box ? 'Box' : 'No box'} | ${item.notes || 'No notes'}`)}</p>
+              </div>
+              <div class="inventory-cell">
+                <div class="mini-label">Price</div>
+                <div class="price">${currency(item.price)}</div>
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Attachments</div>
@@ -1377,10 +1386,6 @@
                   <button class="mini-button" type="button" data-edit-id="${item.id}">Edit</button>
                   <button class="mini-button" type="button" data-delete-id="${item.id}">Delete</button>
                 </div>
-              </div>
-              <div class="inventory-cell">
-                <div class="mini-label">Price</div>
-                <div class="price">${currency(item.price)}</div>
               </div>
             </div>
           </article>
