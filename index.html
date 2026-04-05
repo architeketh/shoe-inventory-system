@@ -1618,7 +1618,7 @@
         return;
       }
       const rows = state.inventory.map((item) => {
-        const thumbs = (item.photo_urls || []).map((url) => `<img src="${url}" style="width:88px;height:88px;object-fit:cover;border-radius:10px;border:1px solid #ddd;margin:0 8px 8px 0;" />`).join('');
+        const thumbs = (item.photo_urls || []).map((url) => `<img src="${url}" style="width:100%;aspect-ratio:1 / 1;object-fit:cover;border-radius:10px;border:1px solid #ddd;display:block;" />`).join('');
         return `
           <section style="page-break-inside:avoid;border:1px solid #ddd;border-radius:16px;padding:16px;margin-bottom:16px;">
             <div style="display:flex;justify-content:space-between;gap:24px;align-items:flex-start;">
@@ -1630,7 +1630,11 @@
                   <div><strong>Category:</strong> ${escapeHtml(item.gender ? (item.gender === 'womens' ? 'Womens' : 'Mens') : 'Unspecified')}</div>
                 </div>
               </div>
-              <div style="width:300px;display:flex;flex-wrap:wrap;justify-content:flex-end;align-content:flex-start;">${thumbs || '<div style="color:#666;font:14px Arial,sans-serif;">No thumbnails available.</div>'}</div>
+              <div style="width:360px;">
+                ${thumbs
+                  ? `<div style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:8px;align-items:start;">${thumbs}</div>`
+                  : '<div style="color:#666;font:14px Arial,sans-serif;">No thumbnails available.</div>'}
+              </div>
             </div>
           </section>
         `;
