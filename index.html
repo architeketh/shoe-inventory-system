@@ -139,8 +139,7 @@
     .stat-grid,
     .flow-grid,
     .config-grid,
-    .detail-grid,
-    .inventory-grid {
+    .detail-grid {
       display: grid;
       gap: 16px;
     }
@@ -387,32 +386,50 @@
 
     .inventory-list {
       display: grid;
-      gap: 14px;
+      gap: 12px;
     }
 
     .inventory-card {
-      padding: 18px;
+      padding: 14px 16px;
+      overflow-x: auto;
     }
 
     .inventory-card h3 {
-      font-size: 1.2rem;
+      font-size: 1rem;
       letter-spacing: -0.03em;
     }
 
     .inventory-meta {
-      margin-top: 4px;
-      font-size: 0.94rem;
+      margin-top: 2px;
+      font-size: 0.9rem;
     }
 
-    .summary-row {
-      margin-top: 12px;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: start;
+    .inventory-line {
+      display: grid;
+      grid-template-columns: 120px minmax(220px, 1.8fr) 120px 120px 120px 170px;
+      gap: 14px;
+      align-items: center;
+      min-width: 860px;
+    }
+
+    .inventory-cell {
+      min-width: 0;
+    }
+
+    .inventory-head {
+      display: grid;
+      grid-template-columns: 120px minmax(220px, 1.8fr) 120px 120px 120px 170px;
+      gap: 14px;
+      align-items: center;
+      padding: 0 16px 10px;
+      color: var(--muted);
+      font: 700 0.72rem/1.2 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
 
     .price {
-      font-size: 1.5rem;
+      font-size: 1.15rem;
       font-weight: 800;
       letter-spacing: -0.04em;
       color: var(--sage);
@@ -420,27 +437,82 @@
 
     .photo-strip {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 10px;
-      margin-top: 14px;
+      justify-content: flex-end;
     }
 
-    .photo-strip a {
+    .photo-thumb {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 76px;
-      height: 76px;
-      border-radius: 16px;
+      width: 56px;
+      height: 56px;
+      padding: 0;
+      cursor: pointer;
+      border-radius: 14px;
       overflow: hidden;
       border: 1px solid var(--line);
       background: #fff;
     }
 
-    .photo-strip img {
+    .photo-thumb img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+
+    .attachments-empty {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(20, 12, 6, 0.72);
+      z-index: 1000;
+    }
+
+    .modal.hidden {
+      display: none !important;
+    }
+
+    .modal-card {
+      position: relative;
+      width: min(100%, 760px);
+      max-height: calc(100vh - 36px);
+      padding: 14px;
+      border-radius: 24px;
+      background: rgba(255, 252, 247, 0.98);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+    }
+
+    .modal-image {
+      width: 100%;
+      max-height: calc(100vh - 120px);
+      object-fit: contain;
+      display: block;
+      border-radius: 18px;
+      background: #f2ece4;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      border: 0;
+      background: rgba(36, 23, 15, 0.84);
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
     }
 
     .empty-state {
@@ -504,14 +576,31 @@
 
       .button-row,
       .toggle-row,
-      .inventory-toolbar,
-      .summary-row {
+      .inventory-toolbar {
         flex-direction: column;
         align-items: stretch;
       }
 
       .photo-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .inventory-head {
+        display: none;
+      }
+
+      .inventory-card {
+        overflow: visible;
+      }
+
+      .inventory-line {
+        min-width: 0;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .photo-strip {
+        justify-content: flex-start;
       }
     }
   </style>
@@ -661,8 +750,23 @@
           <button class="button secondary" type="button" id="refresh-button">Refresh</button>
         </div>
       </div>
+      <div class="inventory-head">
+        <div>Status</div>
+        <div>Shoe</div>
+        <div>Size</div>
+        <div>Price</div>
+        <div>Saved</div>
+        <div>Attachments</div>
+      </div>
       <div id="inventory-list" class="inventory-list"></div>
     </section>
+  </div>
+
+  <div class="modal hidden" id="photo-modal" aria-hidden="true">
+    <div class="modal-card">
+      <button class="modal-close" type="button" id="modal-close" aria-label="Close photo preview">x</button>
+      <img class="modal-image" id="modal-image" alt="Shoe attachment preview">
+    </div>
   </div>
 
   <script>
@@ -704,7 +808,10 @@
       saveButton: document.getElementById('save-button'),
       inventoryList: document.getElementById('inventory-list'),
       inventoryStatus: document.getElementById('inventory-status'),
-      refreshButton: document.getElementById('refresh-button')
+      refreshButton: document.getElementById('refresh-button'),
+      photoModal: document.getElementById('photo-modal'),
+      modalImage: document.getElementById('modal-image'),
+      modalClose: document.getElementById('modal-close')
     };
 
     const SUPABASE_READY = !APP_CONFIG.supabaseUrl.includes('YOUR_PROJECT') && !APP_CONFIG.supabaseAnonKey.includes('YOUR_SUPABASE');
@@ -733,6 +840,18 @@
     function showBanner(type, title, body) {
       elements.connectionBanner.className = `status-banner ${type}`;
       elements.connectionBanner.innerHTML = `<strong>${escapeHtml(title)}</strong><p>${escapeHtml(body)}</p>`;
+    }
+
+    function openPhotoModal(url) {
+      elements.modalImage.src = url;
+      elements.photoModal.classList.remove('hidden');
+      elements.photoModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closePhotoModal() {
+      elements.photoModal.classList.add('hidden');
+      elements.photoModal.setAttribute('aria-hidden', 'true');
+      elements.modalImage.removeAttribute('src');
     }
 
     function updateModeCopy() {
@@ -852,6 +971,7 @@
         if (response.error) throw response.error;
 
         const suggestion = response.data || {};
+        if (suggestion.error) throw new Error(suggestion.error);
         if (suggestion.brand) elements.brand.value = suggestion.brand;
         if (suggestion.size) elements.size.value = suggestion.size;
         if (suggestion.description) elements.description.value = suggestion.description;
@@ -859,7 +979,8 @@
         state.aiUsedForCurrentDraft = true;
         alert('AI filled the available fields. Review them, enter the price, and save.');
       } catch (error) {
-        alert(`AI lookup failed: ${error.message || error}`);
+        const message = error?.message || String(error);
+        alert(`AI lookup failed: ${message}. If this is the first attempt, the Supabase Edge Function may not be deployed yet or may be missing the OPENAI_API_KEY secret.`);
       } finally {
         state.isAiRunning = false;
         elements.aiFillButton.disabled = false;
@@ -945,35 +1066,37 @@
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
         const tags = [
           `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'}">${item.has_box ? 'Box' : 'No box'}</span>`,
-          `<span class="inventory-tag">Size ${escapeHtml(item.size || '-')}</span>`,
           item.ai_assisted ? '<span class="inventory-tag ai">AI assisted</span>' : ''
         ].join('');
 
         const photoStrip = photos.length
-          ? `<div class="photo-strip">${photos.map((url, index) => `<a href="${url}" target="_blank" rel="noreferrer"><img src="${url}" alt="Saved photo ${index + 1}"></a>`).join('')}</div>`
-          : '';
+          ? `<div class="photo-strip">${photos.map((url, index) => `<button class="photo-thumb" type="button" data-photo-url="${url}"><img src="${url}" alt="Saved photo ${index + 1}"></button>`).join('')}</div>`
+          : '<div class="attachments-empty">No photos</div>';
 
         return `
           <article class="inventory-card">
-            <div class="inventory-grid">
-              <div>
+            <div class="inventory-line">
+              <div class="inventory-cell">
                 <div class="pill-row">${tags}</div>
-                <div class="summary-row">
-                  <div>
-                    <h3>${escapeHtml(item.brand || 'Unknown brand')}</h3>
-                    <div class="inventory-meta">${escapeHtml(item.description || 'No description')}</div>
-                  </div>
-                  <div class="price">${currency(item.price)}</div>
-                </div>
               </div>
-              <div>
+              <div class="inventory-cell">
+                <h3>${escapeHtml(item.brand || 'Unknown brand')}</h3>
+                <div class="inventory-meta">${escapeHtml(item.description || 'No description')}</div>
+              </div>
+              <div class="inventory-cell">
+                <div class="mini-label">Size</div>
+                <p>${escapeHtml(item.size || '-')}</p>
+              </div>
+              <div class="inventory-cell">
+                <div class="mini-label">Price</div>
+                <div class="price">${currency(item.price)}</div>
+              </div>
+              <div class="inventory-cell">
                 <div class="mini-label">Saved</div>
                 <p>${escapeHtml(formatDate(item.created_at))}</p>
-                <div class="mini-label" style="margin-top:10px;">Notes</div>
-                <p>${escapeHtml(item.notes || 'None')}</p>
               </div>
+              <div class="inventory-cell">${photoStrip}</div>
             </div>
-            ${photoStrip}
           </article>
         `;
       }).join('');
@@ -1016,6 +1139,18 @@
     elements.resetButton.addEventListener('click', resetDraft);
     elements.form.addEventListener('submit', saveInventoryItem);
     elements.refreshButton.addEventListener('click', loadInventory);
+    elements.inventoryList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-photo-url]');
+      if (!button) return;
+      openPhotoModal(button.dataset.photoUrl);
+    });
+    elements.modalClose.addEventListener('click', closePhotoModal);
+    elements.photoModal.addEventListener('click', (event) => {
+      if (event.target === elements.photoModal) closePhotoModal();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !elements.photoModal.classList.contains('hidden')) closePhotoModal();
+    });
 
     if (SUPABASE_READY) {
       showBanner('success', 'Supabase connected', 'The app is ready to upload photos to Storage and save shoe records into your inventory table.');
