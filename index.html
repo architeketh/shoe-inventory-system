@@ -671,18 +671,35 @@
       background: #f2ece4;
     }
 
-    .modal-close {
+    .viewer-arrow {
       position: absolute;
-      top: 10px;
-      right: 10px;
-      width: 42px;
-      height: 42px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px;
+      height: 44px;
       border-radius: 999px;
       border: 0;
-      background: rgba(36, 23, 15, 0.84);
+      background: rgba(36, 23, 15, 0.78);
       color: #fff;
-      font-size: 1.2rem;
+      font-size: 1.35rem;
       cursor: pointer;
+      display: none;
+    }
+
+    .viewer-arrow.prev {
+      left: 12px;
+    }
+
+    .viewer-arrow.next {
+      right: 12px;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .viewer-arrow {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
     }
 
     .edit-modal-card {
@@ -1012,8 +1029,9 @@
 
   <div class="modal hidden" id="photo-modal" aria-hidden="true">
     <div class="modal-card">
-      <button class="modal-close" type="button" id="modal-close" aria-label="Close photo preview">x</button>
+      <button class="viewer-arrow prev" type="button" id="modal-prev" aria-label="Previous photo">&#8249;</button>
       <img class="modal-image" id="modal-image" alt="Shoe attachment preview">
+      <button class="viewer-arrow next" type="button" id="modal-next" aria-label="Next photo">&#8250;</button>
     </div>
   </div>
 
@@ -1082,6 +1100,9 @@
       editingId: null,
       editHasBox: true,
       sortValue: 'created_at_desc',
+      galleryUrls: [],
+      galleryIndex: 0,
+      touchStartX: 0,
       isSaving: false,
       isAiRunning: false,
       aiUsedForCurrentDraft: false
@@ -1123,7 +1144,8 @@
       formStatus: document.getElementById('form-status'),
       photoModal: document.getElementById('photo-modal'),
       modalImage: document.getElementById('modal-image'),
-      modalClose: document.getElementById('modal-close'),
+      modalPrev: document.getElementById('modal-prev'),
+      modalNext: document.getElementById('modal-next'),
       editModal: document.getElementById('edit-modal'),
       editClose: document.getElementById('edit-close'),
       editForm: document.getElementById('edit-form'),
@@ -1176,16 +1198,37 @@
       elements.formStatus.textContent = message;
     }
 
-    function openPhotoModal(url) {
-      elements.modalImage.src = url;
+    function renderGalleryImage() {
+      if (!state.galleryUrls.length) return;
+      elements.modalImage.src = state.galleryUrls[state.galleryIndex];
+    }
+
+    function openPhotoModal(urls, index = 0) {
+      state.galleryUrls = Array.isArray(urls) ? urls : [urls];
+      state.galleryIndex = Math.max(0, Math.min(index, state.galleryUrls.length - 1));
+      renderGalleryImage();
       elements.photoModal.classList.remove('hidden');
       elements.photoModal.setAttribute('aria-hidden', 'false');
     }
 
     function closePhotoModal() {
+      state.galleryUrls = [];
+      state.galleryIndex = 0;
       elements.photoModal.classList.add('hidden');
       elements.photoModal.setAttribute('aria-hidden', 'true');
       elements.modalImage.removeAttribute('src');
+    }
+
+    function showPrevPhoto() {
+      if (!state.galleryUrls.length) return;
+      state.galleryIndex = (state.galleryIndex - 1 + state.galleryUrls.length) % state.galleryUrls.length;
+      renderGalleryImage();
+    }
+
+    function showNextPhoto() {
+      if (!state.galleryUrls.length) return;
+      state.galleryIndex = (state.galleryIndex + 1) % state.galleryUrls.length;
+      renderGalleryImage();
     }
 
     function updateModeCopy() {
@@ -1447,9 +1490,9 @@
         const categoryPill = item.gender ? `<span class="gender-pill ${item.gender}">${categoryShort}</span>` : categoryShort;
         const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : '';
 
-        const photoStrip = photos.length
-          ? `<div class="photo-strip">${photos.map((url, index) => `<button class="photo-thumb" type="button" data-photo-url="${url}"><img src="${url}" alt="Saved photo ${index + 1}"></button>`).join('')}</div>`
-          : '<div class="attachments-empty">No photos</div>';
+          const photoStrip = photos.length
+            ? `<div class="photo-strip">${photos.map((url, index) => `<button class="photo-thumb" type="button" data-photo-item="${item.id}" data-photo-index="${index}"><img src="${url}" alt="Saved photo ${index + 1}"></button>`).join('')}</div>`
+            : '<div class="attachments-empty">No photos</div>';
 
         return `
           <article class="inventory-card ${cardClass}">
@@ -1546,17 +1589,33 @@
         deleteItem(deleteButton.dataset.deleteId);
         return;
       }
-      const button = event.target.closest('[data-photo-url]');
+      const button = event.target.closest('[data-photo-item][data-photo-index]');
       if (!button) return;
-      openPhotoModal(button.dataset.photoUrl);
+      const item = state.inventory.find((entry) => entry.id === button.dataset.photoItem);
+      if (!item || !Array.isArray(item.photo_urls) || !item.photo_urls.length) return;
+      openPhotoModal(item.photo_urls, Number(button.dataset.photoIndex || 0));
     });
     elements.cancelEditButton.addEventListener('click', resetDraft);
-    elements.modalClose.addEventListener('click', closePhotoModal);
+    elements.modalPrev.addEventListener('click', showPrevPhoto);
+    elements.modalNext.addEventListener('click', showNextPhoto);
     elements.photoModal.addEventListener('click', (event) => {
       if (event.target === elements.photoModal) closePhotoModal();
     });
+    elements.photoModal.addEventListener('touchstart', (event) => {
+      state.touchStartX = event.changedTouches[0]?.clientX || 0;
+    }, { passive: true });
+    elements.photoModal.addEventListener('touchend', (event) => {
+      const endX = event.changedTouches[0]?.clientX || 0;
+      const delta = endX - state.touchStartX;
+      if (Math.abs(delta) < 40) return;
+      if (delta > 0) showPrevPhoto();
+      else showNextPhoto();
+    }, { passive: true });
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !elements.photoModal.classList.contains('hidden')) closePhotoModal();
+      if (elements.photoModal.classList.contains('hidden')) return;
+      if (event.key === 'Escape') closePhotoModal();
+      if (event.key === 'ArrowLeft') showPrevPhoto();
+      if (event.key === 'ArrowRight') showNextPhoto();
     });
     window.addEventListener('resize', syncResponsiveLabels);
 
