@@ -263,6 +263,18 @@
       background: rgba(255, 247, 237, 0.95);
     }
 
+    .inventory-tag.gender-womens {
+      color: #a84c79;
+      background: rgba(253, 242, 248, 0.98);
+      border-color: rgba(236, 72, 153, 0.14);
+    }
+
+    .inventory-tag.gender-mens {
+      color: #336b98;
+      background: rgba(239, 246, 255, 0.98);
+      border-color: rgba(59, 130, 246, 0.14);
+    }
+
     .inventory-tag.ai {
       color: var(--sage);
       background: rgba(239, 248, 243, 0.96);
@@ -508,6 +520,16 @@
     .inventory-card {
       padding: 14px 16px;
       overflow-x: auto;
+    }
+
+    .inventory-card.gender-womens {
+      background: linear-gradient(180deg, rgba(253, 242, 248, 0.92) 0%, rgba(255, 255, 255, 0.88) 100%);
+      border-color: rgba(236, 72, 153, 0.14);
+    }
+
+    .inventory-card.gender-mens {
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.92) 0%, rgba(255, 255, 255, 0.88) 100%);
+      border-color: rgba(59, 130, 246, 0.14);
     }
 
     .inventory-card h3 {
@@ -1419,17 +1441,18 @@
         elements.inventoryList.innerHTML = sortedInventory().map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
         const tags = [
-          `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'}">${item.has_box ? 'Box' : 'No box'}</span>`
+          `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'} ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">${item.has_box ? 'Box' : 'No box'}</span>`
         ].join('');
         const categoryShort = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : '-';
         const categoryPill = item.gender ? `<span class="gender-pill ${item.gender}">${categoryShort}</span>` : categoryShort;
+        const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : '';
 
         const photoStrip = photos.length
           ? `<div class="photo-strip">${photos.map((url, index) => `<button class="photo-thumb" type="button" data-photo-url="${url}"><img src="${url}" alt="Saved photo ${index + 1}"></button>`).join('')}</div>`
           : '<div class="attachments-empty">No photos</div>';
 
         return `
-          <article class="inventory-card">
+          <article class="inventory-card ${cardClass}">
             <div class="inventory-line">
               <div class="inventory-cell">
                 <div class="pill-row">${tags}</div>
