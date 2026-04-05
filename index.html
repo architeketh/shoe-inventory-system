@@ -278,6 +278,27 @@
       background: rgba(219, 234, 254, 0.96);
     }
 
+    .gender-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      border-radius: 999px;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      font: 700 0.72rem/1 var(--mono);
+    }
+
+    .gender-pill.womens {
+      color: #9d3d6c;
+      background: rgba(252, 231, 243, 0.96);
+    }
+
+    .gender-pill.mens {
+      color: #215b8f;
+      background: rgba(219, 234, 254, 0.96);
+    }
+
     .toggle-pill {
       cursor: pointer;
       transition: 0.18s ease;
@@ -501,10 +522,10 @@
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 150px minmax(220px, 1.6fr) 50px 240px 100px 170px 90px;
+      grid-template-columns: 90px minmax(220px, 1.75fr) 44px 210px 90px 150px 78px;
       gap: 14px;
       align-items: center;
-      min-width: 1040px;
+      min-width: 900px;
     }
 
     .inventory-cell {
@@ -513,7 +534,7 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 150px minmax(220px, 1.6fr) 50px 240px 100px 170px 90px;
+      grid-template-columns: 90px minmax(220px, 1.75fr) 44px 210px 90px 150px 78px;
       gap: 14px;
       align-items: center;
       padding: 0 16px 10px;
@@ -766,7 +787,7 @@
         display: none;
       }
 
-      .inventory-line { min-width: 1040px; }
+      .inventory-line { min-width: 900px; }
 
       .photo-strip {
         justify-content: flex-start;
@@ -932,6 +953,8 @@
             <option value="created_at_desc">Newest first</option>
             <option value="brand_asc">Brand A-Z</option>
             <option value="brand_desc">Brand Z-A</option>
+            <option value="gender_asc">Category M-W</option>
+            <option value="gender_desc">Category W-M</option>
             <option value="size_asc">Size low-high</option>
             <option value="size_desc">Size high-low</option>
             <option value="price_asc">Price low-high</option>
@@ -941,7 +964,7 @@
         <div class="toolbar-compact">
           <span class="toolbar-label">Export</span>
           <button class="button ghost" type="button" id="report-button">PDF</button>
-          <button class="button ghost" type="button" id="xls-button">XLS</button>
+          <button class="button ghost" type="button" id="xls-button">CSV</button>
         </div>
         <button class="button secondary" type="button" id="refresh-button">Refresh</button>
       </div>
@@ -1370,6 +1393,10 @@
           return items.sort((a, b) => String(a.brand || '').localeCompare(String(b.brand || ''), undefined, { sensitivity: 'base' }));
         case 'brand_desc':
           return items.sort((a, b) => String(b.brand || '').localeCompare(String(a.brand || ''), undefined, { sensitivity: 'base' }));
+        case 'gender_asc':
+          return items.sort((a, b) => String(a.gender || '').localeCompare(String(b.gender || ''), undefined, { sensitivity: 'base' }));
+        case 'gender_desc':
+          return items.sort((a, b) => String(b.gender || '').localeCompare(String(a.gender || ''), undefined, { sensitivity: 'base' }));
         case 'size_asc':
           return items.sort((a, b) => String(a.size || '').localeCompare(String(b.size || ''), undefined, { numeric: true, sensitivity: 'base' }));
         case 'size_desc':
@@ -1392,10 +1419,10 @@
         elements.inventoryList.innerHTML = sortedInventory().map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
         const tags = [
-          item.gender ? `<span class="inventory-tag ${item.gender}">${item.gender === 'womens' ? 'Womens' : 'Mens'}</span>` : '',
           `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'}">${item.has_box ? 'Box' : 'No box'}</span>`
         ].join('');
         const categoryShort = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : '-';
+        const categoryPill = item.gender ? `<span class="gender-pill ${item.gender}">${categoryShort}</span>` : categoryShort;
 
         const photoStrip = photos.length
           ? `<div class="photo-strip">${photos.map((url, index) => `<button class="photo-thumb" type="button" data-photo-url="${url}"><img src="${url}" alt="Saved photo ${index + 1}"></button>`).join('')}</div>`
@@ -1413,7 +1440,7 @@
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Cat</div>
-                <p>${escapeHtml(categoryShort)}</p>
+                <div>${categoryPill}</div>
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Details</div>
@@ -1630,43 +1657,25 @@
     }
 
     function exportXlsReport() {
-      const rows = state.inventory.map((item) => `
-        <tr>
-          <td>${escapeHtml(item.brand || '')}</td>
-          <td>${escapeHtml(item.description || '')}</td>
-          <td>${escapeHtml(item.size || '')}</td>
-          <td>${escapeHtml(item.gender || '')}</td>
-          <td>${escapeHtml(String(item.price ?? ''))}</td>
-          <td>${item.has_box ? 'Yes' : 'No'}</td>
-          <td>${escapeHtml(item.notes || '')}</td>
-          <td>${escapeHtml(formatDate(item.created_at))}</td>
-        </tr>
-      `).join('');
-      const html = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-          <head><meta charset="UTF-8"></head>
-          <body>
-            <table border="1">
-              <tr>
-                <th>Brand</th>
-                <th>Description</th>
-                <th>Size</th>
-                <th>Category</th>
-                <th>Price</th>
-                <th>Box</th>
-                <th>Notes</th>
-                <th>Saved</th>
-              </tr>
-              ${rows}
-            </table>
-          </body>
-        </html>
-      `;
-      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const lines = [
+        ['Brand', 'Description', 'Size', 'Category', 'Price', 'Box', 'Notes', 'Saved'],
+        ...state.inventory.map((item) => [
+          item.brand || '',
+          item.description || '',
+          item.size || '',
+          item.gender || '',
+          String(item.price ?? ''),
+          item.has_box ? 'Yes' : 'No',
+          item.notes || '',
+          formatDate(item.created_at)
+        ])
+      ];
+      const csv = lines.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `shoe-inventory-report-${new Date().toISOString().slice(0, 10)}.xls`;
+      link.download = `shoe-inventory-report-${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(link);
       link.click();
       link.remove();
