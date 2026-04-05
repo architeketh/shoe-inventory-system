@@ -254,6 +254,16 @@
       background: rgba(239, 248, 243, 0.96);
     }
 
+    .inventory-tag.womens {
+      color: #9d3d6c;
+      background: rgba(252, 231, 243, 0.96);
+    }
+
+    .inventory-tag.mens {
+      color: #215b8f;
+      background: rgba(219, 234, 254, 0.96);
+    }
+
     .toggle-pill {
       cursor: pointer;
       transition: 0.18s ease;
@@ -477,10 +487,10 @@
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 120px minmax(220px, 1.6fr) 110px 110px 160px 170px 130px;
+      grid-template-columns: 150px minmax(260px, 1.8fr) 160px 170px 110px;
       gap: 14px;
       align-items: center;
-      min-width: 1100px;
+      min-width: 920px;
     }
 
     .inventory-cell {
@@ -489,7 +499,7 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 120px minmax(220px, 1.6fr) 110px 110px 160px 170px 130px;
+      grid-template-columns: 150px minmax(260px, 1.8fr) 160px 170px 110px;
       gap: 14px;
       align-items: center;
       padding: 0 16px 10px;
@@ -540,9 +550,9 @@
 
     .inventory-actions {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 8px;
-      justify-content: flex-end;
+      justify-content: flex-start;
     }
 
     .sort-select {
@@ -720,7 +730,7 @@
         display: none;
       }
 
-      .inventory-line { min-width: 1100px; }
+      .inventory-line { min-width: 920px; }
 
       .photo-strip {
         justify-content: flex-start;
@@ -836,6 +846,15 @@
             <input id="size" name="size" type="text" placeholder="10.5, 7Y, EU 42...">
           </div>
 
+          <div class="field">
+            <label for="gender">Category</label>
+            <select id="gender" name="gender">
+              <option value="">Select</option>
+              <option value="mens">Mens</option>
+              <option value="womens">Womens</option>
+            </select>
+          </div>
+
           <div class="field-stack">
             <label for="description">Description</label>
             <textarea id="description" name="description" placeholder="Air Jordan 1 Retro High OG Chicago, red white black..."></textarea>
@@ -929,6 +948,14 @@
             <label for="edit-size">Size</label>
             <input id="edit-size" type="text">
           </div>
+          <div class="field">
+            <label for="edit-gender">Category</label>
+            <select id="edit-gender">
+              <option value="">Select</option>
+              <option value="mens">Mens</option>
+              <option value="womens">Womens</option>
+            </select>
+          </div>
           <div class="field" style="grid-column:1/-1;">
             <label for="edit-description">Description</label>
             <textarea id="edit-description"></textarea>
@@ -989,6 +1016,7 @@
       brand: document.getElementById('brand'),
       size: document.getElementById('size'),
       description: document.getElementById('description'),
+      gender: document.getElementById('gender'),
       price: document.getElementById('price'),
       notes: document.getElementById('notes'),
       choosePhotosButton: document.getElementById('choose-photos-button'),
@@ -1013,6 +1041,7 @@
       editForm: document.getElementById('edit-form'),
       editBrand: document.getElementById('edit-brand'),
       editSize: document.getElementById('edit-size'),
+      editGender: document.getElementById('edit-gender'),
       editDescription: document.getElementById('edit-description'),
       editPrice: document.getElementById('edit-price'),
       editNotes: document.getElementById('edit-notes'),
@@ -1133,6 +1162,7 @@
       return {
         brand: elements.brand.value.trim(),
         size: elements.size.value.trim(),
+        gender: elements.gender.value.trim(),
         description: elements.description.value.trim(),
         price: Number(elements.price.value || 0),
         notes: elements.notes.value.trim()
@@ -1248,6 +1278,7 @@
           brand: draft.brand,
           description: draft.description,
           size: draft.size,
+          gender: draft.gender || null,
           price: draft.price,
           notes: draft.notes || null,
           has_box: state.hasBox,
@@ -1314,6 +1345,7 @@
         elements.inventoryList.innerHTML = sortedInventory().map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
         const tags = [
+          item.gender ? `<span class="inventory-tag ${item.gender}">${item.gender === 'womens' ? 'Womens' : 'Mens'}</span>` : '',
           `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'}">${item.has_box ? 'Box' : 'No box'}</span>`
         ].join('');
 
@@ -1332,24 +1364,21 @@
                 <div class="inventory-meta">${escapeHtml(item.description || 'No description')}</div>
               </div>
               <div class="inventory-cell">
-                <div class="mini-label">Size</div>
-                <p>${escapeHtml(item.size || '-')}</p>
+                <div class="mini-label">Details</div>
+                <p>${escapeHtml(`Size ${item.size || '-'} | ${currency(item.price)} | ${item.has_box ? 'Box' : 'No box'} | ${item.notes || 'No notes'}`)}</p>
               </div>
               <div class="inventory-cell">
-                <div class="mini-label">Price</div>
-                <div class="price">${currency(item.price)}</div>
+                <div class="mini-label">Attachments</div>
+                ${photoStrip}
               </div>
-              <div class="inventory-cell">
-                <div class="mini-label">Notes</div>
-                <p>${escapeHtml(item.notes || 'None')}</p>
-              </div>
-              <div class="inventory-cell">${photoStrip}</div>
               <div class="inventory-cell">
                 <div class="inventory-actions">
                   <button class="mini-button" type="button" data-edit-id="${item.id}">Edit</button>
                   <button class="mini-button" type="button" data-delete-id="${item.id}">Delete</button>
                 </div>
-                <div class="mini-label" style="margin-top:8px;">Saved ${escapeHtml(formatDate(item.created_at))}</div>
+              </div>
+              <div class="inventory-cell">
+                <div class="price">${currency(item.price)}</div>
               </div>
             </div>
           </article>
@@ -1370,7 +1399,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,price,notes,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,brand,description,size,gender,price,notes,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -1438,6 +1467,7 @@
       setEditBoxMode(Boolean(item.has_box));
       elements.editBrand.value = item.brand || '';
       elements.editSize.value = item.size || '';
+      elements.editGender.value = item.gender || '';
       elements.editDescription.value = item.description || '';
       elements.editPrice.value = item.price ?? '';
       elements.editNotes.value = item.notes || '';
@@ -1464,6 +1494,7 @@
         const payload = {
           brand: elements.editBrand.value.trim(),
           size: elements.editSize.value.trim(),
+          gender: elements.editGender.value.trim() || null,
           description: elements.editDescription.value.trim(),
           price: Number(elements.editPrice.value || 0),
           notes: elements.editNotes.value.trim() || null,
@@ -1514,10 +1545,8 @@
                 <h2 style="margin:0 0 8px;font:700 20px Arial,sans-serif;">${escapeHtml(item.brand)} - ${escapeHtml(item.description)}</h2>
                 <div style="font:14px Arial,sans-serif;line-height:1.6;color:#444;">
                   <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
-                  <div><strong>Price:</strong> ${escapeHtml(currency(item.price))}</div>
-                  <div><strong>Box:</strong> ${item.has_box ? 'Yes' : 'No'}</div>
-                  <div><strong>Notes:</strong> ${escapeHtml(item.notes || 'None')}</div>
-                  <div><strong>Saved:</strong> ${escapeHtml(formatDate(item.created_at))}</div>
+                  <div><strong>Details:</strong> ${escapeHtml(`${currency(item.price)} | ${item.has_box ? 'Box' : 'No box'} | ${item.notes || 'No notes'}`)}</div>
+                  <div><strong>Category:</strong> ${escapeHtml(item.gender ? (item.gender === 'womens' ? 'Womens' : 'Mens') : 'Unspecified')}</div>
                 </div>
               </div>
               <div style="width:300px;display:flex;flex-wrap:wrap;justify-content:flex-end;align-content:flex-start;">${thumbs || '<div style="color:#666;font:14px Arial,sans-serif;">No thumbnails available.</div>'}</div>
@@ -1552,11 +1581,11 @@
           <td>${escapeHtml(item.brand || '')}</td>
           <td>${escapeHtml(item.description || '')}</td>
           <td>${escapeHtml(item.size || '')}</td>
+          <td>${escapeHtml(item.gender || '')}</td>
           <td>${escapeHtml(String(item.price ?? ''))}</td>
           <td>${item.has_box ? 'Yes' : 'No'}</td>
           <td>${escapeHtml(item.notes || '')}</td>
           <td>${escapeHtml(formatDate(item.created_at))}</td>
-          <td>${escapeHtml((item.photo_urls || []).join('\n'))}</td>
         </tr>
       `).join('');
       const html = `
@@ -1568,11 +1597,11 @@
                 <th>Brand</th>
                 <th>Description</th>
                 <th>Size</th>
+                <th>Category</th>
                 <th>Price</th>
                 <th>Box</th>
                 <th>Notes</th>
                 <th>Saved</th>
-                <th>Photo URLs</th>
               </tr>
               ${rows}
             </table>
