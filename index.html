@@ -227,6 +227,20 @@
       align-items: center;
     }
 
+    .toolbar-compact {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .toolbar-label {
+      color: var(--muted);
+      font: 700 0.72rem/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
     .pill,
     .toggle-pill,
     .inventory-tag {
@@ -697,11 +711,15 @@
       }
 
       .stat-chip {
-        padding: 12px;
+        padding: 10px;
       }
 
       .stat-value {
-        font-size: 1.2rem;
+        font-size: 1.05rem;
+      }
+
+      .stat-label {
+        font-size: 0.62rem;
       }
 
       .button,
@@ -721,6 +739,23 @@
       .inventory-toolbar {
         display: grid;
         grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .toolbar-compact {
+        display: grid;
+        grid-template-columns: auto 1fr 1fr;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .toolbar-compact .button {
+        width: 100%;
+      }
+
+      .sort-select {
+        min-width: 0;
+        width: 100%;
       }
 
       .photo-grid {
@@ -758,7 +793,7 @@
         </div>
         <div class="stat-grid">
           <article class="stat-chip">
-            <div class="stat-label">Pairs saved</div>
+            <div class="stat-label" id="saved-label">Pairs saved</div>
             <div class="stat-value" id="total-pairs">0</div>
           </article>
           <article class="stat-chip">
@@ -889,13 +924,10 @@
     </details>
 
     <section class="panel">
-      <div class="section-head">
-        <div>
-          <div class="eyebrow">Inventory</div>
-          <h2>Saved pairs</h2>
-        </div>
-        <div class="inventory-toolbar">
-          <span class="pill" id="inventory-status">Loading inventory...</span>
+      <div class="eyebrow">Inventory</div>
+      <div class="inventory-toolbar" style="margin-bottom:12px;">
+        <div class="toolbar-compact">
+          <span class="toolbar-label">Sort</span>
           <select class="sort-select" id="sort-select" aria-label="Sort inventory">
             <option value="created_at_desc">Newest first</option>
             <option value="brand_asc">Brand A-Z</option>
@@ -905,10 +937,19 @@
             <option value="price_asc">Price low-high</option>
             <option value="price_desc">Price high-low</option>
           </select>
-          <button class="button ghost" type="button" id="report-button">Export PDF report</button>
-          <button class="button ghost" type="button" id="xls-button">Export Excel file</button>
-          <button class="button secondary" type="button" id="refresh-button">Refresh</button>
         </div>
+        <div class="toolbar-compact">
+          <span class="toolbar-label">Export</span>
+          <button class="button ghost" type="button" id="report-button">PDF</button>
+          <button class="button ghost" type="button" id="xls-button">XLS</button>
+        </div>
+        <button class="button secondary" type="button" id="refresh-button">Refresh</button>
+      </div>
+      <div class="section-head">
+        <div>
+          <h2>Saved pairs</h2>
+        </div>
+        <span class="pill" id="inventory-status">Loading inventory...</span>
       </div>
       <div class="inventory-head">
         <div>Status</div>
@@ -1003,6 +1044,7 @@
 
     const elements = {
       connectionBanner: document.getElementById('connection-banner'),
+      savedLabel: document.getElementById('saved-label'),
       totalPairs: document.getElementById('total-pairs'),
       boxedCount: document.getElementById('boxed-count'),
       averagePrice: document.getElementById('average-price'),
@@ -1078,6 +1120,10 @@
     function showBanner(type, title, body) {
       elements.connectionBanner.className = `status-banner ${type}`;
       elements.connectionBanner.innerHTML = `<strong>${escapeHtml(title)}</strong><p>${escapeHtml(body)}</p>`;
+    }
+
+    function syncResponsiveLabels() {
+      elements.savedLabel.textContent = window.innerWidth <= 640 ? 'Saved' : 'Pairs saved';
     }
 
     function showFormStatus(type, message) {
@@ -1462,6 +1508,7 @@
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !elements.photoModal.classList.contains('hidden')) closePhotoModal();
     });
+    window.addEventListener('resize', syncResponsiveLabels);
 
     if (SUPABASE_READY) {
       showBanner('success', 'Supabase connected', 'The app is ready to upload photos to Storage and save shoe records into your inventory table.');
@@ -1642,6 +1689,7 @@
     elements.editModal.addEventListener('click', (event) => {
       if (event.target === elements.editModal) closeEditModal();
     });
+    syncResponsiveLabels();
     updateModeCopy();
     loadInventory();
   </script>
