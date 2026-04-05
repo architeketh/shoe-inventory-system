@@ -706,7 +706,7 @@
         </article>
         <article class="config-box">
           <strong>AI prompt behavior</strong>
-          <p id="ai-mode-copy">Box mode is active, so AI will try to read brand, size, and description from the box photos before you save.</p>
+          <p id="ai-mode-copy">AI lookup is currently disabled. Use the box label or shoe photos as a reference, then enter brand, size, and description manually.</p>
         </article>
       </div>
 
@@ -754,11 +754,10 @@
 
         <div class="prompt-box" id="required-copy">
           <strong>Current requirement</strong>
-          <p>If there is no box, brand, size, and description must be entered manually or filled by AI lookup from the shoe photos. Price is still required either way.</p>
+          <p>Enter brand, size, and description manually. If there is no box, use the shoe photos as your reference. Price is still required either way.</p>
         </div>
 
         <div class="button-row">
-          <button class="button ghost" type="button" id="ai-fill-button">Read box details with AI</button>
           <button class="button secondary" type="button" id="reset-button">Clear form</button>
           <button class="button primary" type="submit" id="save-button">Save to Supabase</button>
         </div>
@@ -834,7 +833,6 @@
       choosePhotosButton: document.getElementById('choose-photos-button'),
       useCameraButton: document.getElementById('use-camera-button'),
       browseFilesButton: document.getElementById('browse-files-button'),
-      aiFillButton: document.getElementById('ai-fill-button'),
       resetButton: document.getElementById('reset-button'),
       saveButton: document.getElementById('save-button'),
       inventoryList: document.getElementById('inventory-list'),
@@ -887,13 +885,11 @@
 
     function updateModeCopy() {
       if (state.hasBox) {
-        elements.aiModeCopy.textContent = 'Box mode is active, so AI will try to read brand, size, and description from the box photos before you save.';
-        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>With box selected, you can read the label with AI or type the fields manually. Price is still required before saving.</p>';
-        elements.aiFillButton.textContent = 'Read box details with AI';
+        elements.aiModeCopy.textContent = 'Box mode is active. Use the box label photo to manually enter brand, size, and description before saving.';
+        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>With box selected, use the box label as a reference and enter the fields manually. Price is still required before saving.</p>';
       } else {
-        elements.aiModeCopy.textContent = 'No-box mode is active, so AI will infer brand, size, and description from the shoe photos if you choose the lookup action.';
-        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>If there is no box, brand, size, and description must be entered manually or filled by AI lookup from the shoe photos. Price is still required either way.</p>';
-        elements.aiFillButton.textContent = 'Lookup shoe details with AI';
+        elements.aiModeCopy.textContent = 'No-box mode is active. Use the shoe photos to manually enter brand, size, and description before saving.';
+        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>If there is no box, use the shoe photos as your reference and enter brand, size, and description manually. Price is still required either way.</p>';
       }
     }
 
@@ -977,63 +973,6 @@
         uploads.push({ path, url: data.publicUrl });
       }
       return uploads;
-    }
-
-    async function runAiLookup() {
-      if (!SUPABASE_READY) {
-        alert('Add your Supabase URL and anon key first, then AI lookup can call your Edge Function.');
-        return;
-      }
-      if (!state.photoFiles.length) {
-        alert('Add at least one photo before using AI lookup.');
-        return;
-      }
-
-      state.isAiRunning = true;
-      elements.aiFillButton.disabled = true;
-      elements.aiFillButton.textContent = state.hasBox ? 'Reading box...' : 'Looking up shoes...';
-
-      try {
-        const imagePayload = await Promise.all(state.photoFiles.map((file) => fileToBase64(file)));
-        const response = await supabaseClient.functions.invoke(APP_CONFIG.aiFunctionName, {
-          body: {
-            hasBox: state.hasBox,
-            photos: imagePayload,
-            draft: getDraftValues()
-          }
-        });
-
-        if (response.error) throw response.error;
-
-        const suggestion = response.data || {};
-        if (suggestion.error) throw new Error(suggestion.error);
-        if (suggestion.brand) elements.brand.value = suggestion.brand;
-        if (suggestion.size) elements.size.value = suggestion.size;
-        if (suggestion.description) elements.description.value = suggestion.description;
-        if (suggestion.notes && !elements.notes.value.trim()) elements.notes.value = suggestion.notes;
-        state.aiUsedForCurrentDraft = true;
-        alert('AI filled the available fields. Review them, enter the price, and save.');
-      } catch (error) {
-        const message = error?.message || String(error);
-        alert(`AI lookup failed: ${message}. If this is the first attempt, the Supabase Edge Function may not be deployed yet or may be missing the OPENAI_API_KEY secret.`);
-      } finally {
-        state.isAiRunning = false;
-        elements.aiFillButton.disabled = false;
-        updateModeCopy();
-      }
-    }
-
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve({
-          name: file.name,
-          type: file.type,
-          dataUrl: String(reader.result || '')
-        });
-        reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
-        reader.readAsDataURL(file);
-      });
     }
 
     async function saveInventoryItem(event) {
@@ -1175,7 +1114,6 @@
     elements.photoInput.addEventListener('change', (event) => handlePhotoSelection(event.target.files));
     elements.cameraInput.addEventListener('change', (event) => handlePhotoSelection(event.target.files));
     elements.fileBrowserInput.addEventListener('change', (event) => handlePhotoSelection(event.target.files));
-    elements.aiFillButton.addEventListener('click', runAiLookup);
     elements.resetButton.addEventListener('click', resetDraft);
     elements.form.addEventListener('submit', saveInventoryItem);
     elements.refreshButton.addEventListener('click', loadInventory);
