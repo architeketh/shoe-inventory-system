@@ -145,7 +145,7 @@
     }
 
     .stat-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .stat-value {
@@ -184,6 +184,36 @@
     .section-head h2 {
       font-size: clamp(1.8rem, 4vw, 2.8rem);
       letter-spacing: -0.05em;
+    }
+
+    .collapsible {
+      overflow: hidden;
+    }
+
+    .collapsible summary {
+      list-style: none;
+      cursor: pointer;
+    }
+
+    .collapsible summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .summary-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.86);
+      border-radius: 999px;
+      padding: 14px 18px;
+      font: 700 0.82rem/1 var(--mono);
+      color: var(--accent-deep);
+    }
+
+    .summary-pill span:last-child {
+      font-size: 1rem;
     }
 
     .pill-row,
@@ -515,6 +545,13 @@
       justify-content: flex-end;
     }
 
+    .sort-select {
+      width: auto;
+      min-width: 168px;
+      padding: 12px 14px;
+      border-radius: 999px;
+    }
+
     .mini-button {
       border: 1px solid var(--line);
       background: #fff;
@@ -580,6 +617,23 @@
       cursor: pointer;
     }
 
+    .edit-modal-card {
+      position: relative;
+      width: min(100%, 760px);
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      padding: 18px;
+      border-radius: 24px;
+      background: rgba(255, 252, 247, 0.98);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+    }
+
+    .edit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
     .empty-state {
       padding: 28px;
       border-radius: var(--radius-lg);
@@ -628,7 +682,15 @@
       }
 
       .stat-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .stat-chip {
+        padding: 12px;
+      }
+
+      .stat-value {
+        font-size: 1.2rem;
       }
 
       .button,
@@ -640,10 +702,14 @@
       }
 
       .button-row,
-      .toggle-row,
-      .inventory-toolbar {
+      .toggle-row {
         flex-direction: column;
         align-items: stretch;
+      }
+
+      .inventory-toolbar {
+        display: grid;
+        grid-template-columns: 1fr;
       }
 
       .photo-grid {
@@ -658,6 +724,10 @@
 
       .photo-strip {
         justify-content: flex-start;
+      }
+
+      .edit-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -685,10 +755,6 @@
             <div class="stat-value" id="boxed-count">0</div>
           </article>
           <article class="stat-chip">
-            <div class="stat-label">AI assisted</div>
-            <div class="stat-value" id="ai-count">0</div>
-          </article>
-          <article class="stat-chip">
             <div class="stat-label">Avg price</div>
             <div class="stat-value" id="average-price">$0</div>
           </article>
@@ -696,59 +762,55 @@
       </div>
     </section>
 
-    <section class="panel">
-      <div class="section-head">
-        <div>
-          <div class="eyebrow">Flow</div>
-          <h2>Intake logic</h2>
-        </div>
-        <div class="pill-row">
+    <details class="panel collapsible">
+      <summary class="summary-pill"><span>Intake logic</span><span>+</span></summary>
+      <div style="padding-top:18px;">
+        <div class="pill-row" style="margin-bottom:18px;">
           <span class="pill strong">Shoe Inventory System</span>
           <span class="pill strong">Up to 4 phone photos</span>
           <span class="pill">Price always required</span>
           <span class="pill">Box or no box prompt</span>
         </div>
+        <div class="flow-grid">
+          <article class="flow-card">
+            <h3>1. Capture photos</h3>
+            <p>Use the phone camera or gallery. The app previews up to four images and uploads them to Supabase Storage when you save the pair.</p>
+          </article>
+          <article class="flow-card">
+            <h3>2. Answer box or no box</h3>
+            <p>If the pair has a box, the AI action is geared toward reading the label. If there is no box, you can type the details manually or ask AI to infer them from the shoe photos.</p>
+          </article>
+          <article class="flow-card">
+            <h3>3. Confirm and save</h3>
+            <p>Brand, description, size, and price are stored in Supabase along with the box status and photo URLs.</p>
+          </article>
+        </div>
       </div>
-      <div class="flow-grid">
-        <article class="flow-card">
-          <h3>1. Capture photos</h3>
-          <p>Use the phone camera or gallery. The app previews up to four images and uploads them to Supabase Storage when you save the pair.</p>
-        </article>
-        <article class="flow-card">
-          <h3>2. Answer box or no box</h3>
-          <p>If the pair has a box, the AI action is geared toward reading the label. If there is no box, you can type the details manually or ask AI to infer them from the shoe photos.</p>
-        </article>
-        <article class="flow-card">
-          <h3>3. Confirm and save</h3>
-          <p>Brand, description, size, and price are stored in Supabase along with the box status, photo URLs, and whether the final details came from AI assistance.</p>
-        </article>
-      </div>
-    </section>
+    </details>
 
-    <section class="panel">
-      <div class="section-head">
-        <div>
+    <details class="panel collapsible" id="add-panel">
+      <summary class="summary-pill"><span>Add a pair</span><span>+</span></summary>
+      <div style="padding-top:18px;">
+        <div class="section-head">
           <div class="eyebrow">Intake form</div>
-          <h2>Add a pair</h2>
+          <div class="toggle-row" id="box-toggle">
+            <button class="toggle-pill active" type="button" data-box-value="yes">Box</button>
+            <button class="toggle-pill" type="button" data-box-value="no">No box</button>
+          </div>
         </div>
-        <div class="toggle-row" id="box-toggle">
-          <button class="toggle-pill active" type="button" data-box-value="yes">Box</button>
-          <button class="toggle-pill" type="button" data-box-value="no">No box</button>
+
+        <div class="config-grid" style="margin-bottom:16px;">
+          <article class="config-box">
+            <strong>Photo prompt</strong>
+            <p>Take a clear shot of the box label if there is a box. Without a box, capture side view, top view, outsole, and any tag or insole details you can.</p>
+          </article>
+          <article class="config-box">
+            <strong>AI prompt behavior</strong>
+            <p id="ai-mode-copy">Box mode is active, so AI will try to read brand, size, and description from the box photos before you save.</p>
+          </article>
         </div>
-      </div>
 
-      <div class="config-grid" style="margin-bottom:16px;">
-        <article class="config-box">
-          <strong>Photo prompt</strong>
-          <p>Take a clear shot of the box label if there is a box. Without a box, capture side view, top view, outsole, and any tag or insole details you can.</p>
-        </article>
-        <article class="config-box">
-          <strong>AI prompt behavior</strong>
-          <p id="ai-mode-copy">Box mode is active, so AI will try to read brand, size, and description from the box photos before you save.</p>
-        </article>
-      </div>
-
-      <form id="inventory-form">
+        <form id="inventory-form">
         <div class="form-grid">
           <div class="field-stack">
             <label for="photo-input">Photos</label>
@@ -802,8 +864,9 @@
           <button class="button primary" type="submit" id="save-button">Save to Supabase</button>
         </div>
         <div class="form-status" id="form-status">Ready to save. Add photos, confirm details, then save to Supabase.</div>
-      </form>
-    </section>
+        </form>
+      </div>
+    </details>
 
     <section class="panel">
       <div class="section-head">
@@ -813,6 +876,15 @@
         </div>
         <div class="inventory-toolbar">
           <span class="pill" id="inventory-status">Loading inventory...</span>
+          <select class="sort-select" id="sort-select" aria-label="Sort inventory">
+            <option value="created_at_desc">Newest first</option>
+            <option value="brand_asc">Brand A-Z</option>
+            <option value="brand_desc">Brand Z-A</option>
+            <option value="size_asc">Size low-high</option>
+            <option value="size_desc">Size high-low</option>
+            <option value="price_asc">Price low-high</option>
+            <option value="price_desc">Price high-low</option>
+          </select>
           <button class="button ghost" type="button" id="report-button">Export PDF report</button>
           <button class="button secondary" type="button" id="refresh-button">Refresh</button>
         </div>
@@ -838,6 +910,47 @@
     </div>
   </div>
 
+  <div class="modal hidden" id="edit-modal" aria-hidden="true">
+    <div class="edit-modal-card">
+      <button class="modal-close" type="button" id="edit-close" aria-label="Close edit">x</button>
+      <div class="eyebrow">Edit shoe</div>
+      <form id="edit-form">
+        <div class="toggle-row" id="edit-box-toggle" style="margin-bottom:14px;">
+          <button class="toggle-pill active" type="button" data-edit-box-value="yes">Box</button>
+          <button class="toggle-pill" type="button" data-edit-box-value="no">No box</button>
+        </div>
+        <div class="edit-grid">
+          <div class="field">
+            <label for="edit-brand">Brand</label>
+            <input id="edit-brand" type="text">
+          </div>
+          <div class="field">
+            <label for="edit-size">Size</label>
+            <input id="edit-size" type="text">
+          </div>
+          <div class="field" style="grid-column:1/-1;">
+            <label for="edit-description">Description</label>
+            <textarea id="edit-description"></textarea>
+          </div>
+          <div class="field">
+            <label for="edit-price">Price</label>
+            <input id="edit-price" type="number" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label for="edit-notes">Notes</label>
+            <input id="edit-notes" type="text">
+          </div>
+        </div>
+        <div class="form-status" id="edit-status">Update the fields and save changes.</div>
+        <div class="button-row">
+          <button class="button secondary" type="button" id="delete-button">Delete shoe</button>
+          <button class="button ghost" type="button" id="edit-cancel-button">Cancel</button>
+          <button class="button primary" type="submit" id="edit-save-button">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     const APP_CONFIG = {
       supabaseUrl: 'https://ozyefxmaeltienuagmcq.supabase.co',
@@ -852,6 +965,8 @@
       photoFiles: [],
       inventory: [],
       editingId: null,
+      editHasBox: true,
+      sortValue: 'created_at_desc',
       isSaving: false,
       isAiRunning: false,
       aiUsedForCurrentDraft: false
@@ -861,8 +976,8 @@
       connectionBanner: document.getElementById('connection-banner'),
       totalPairs: document.getElementById('total-pairs'),
       boxedCount: document.getElementById('boxed-count'),
-      aiCount: document.getElementById('ai-count'),
       averagePrice: document.getElementById('average-price'),
+      addPanel: document.getElementById('add-panel'),
       aiModeCopy: document.getElementById('ai-mode-copy'),
       requiredCopy: document.getElementById('required-copy'),
       photoInput: document.getElementById('photo-input'),
@@ -884,12 +999,25 @@
       saveButton: document.getElementById('save-button'),
       inventoryList: document.getElementById('inventory-list'),
       inventoryStatus: document.getElementById('inventory-status'),
+      sortSelect: document.getElementById('sort-select'),
       reportButton: document.getElementById('report-button'),
       refreshButton: document.getElementById('refresh-button'),
       formStatus: document.getElementById('form-status'),
       photoModal: document.getElementById('photo-modal'),
       modalImage: document.getElementById('modal-image'),
-      modalClose: document.getElementById('modal-close')
+      modalClose: document.getElementById('modal-close'),
+      editModal: document.getElementById('edit-modal'),
+      editClose: document.getElementById('edit-close'),
+      editForm: document.getElementById('edit-form'),
+      editBrand: document.getElementById('edit-brand'),
+      editSize: document.getElementById('edit-size'),
+      editDescription: document.getElementById('edit-description'),
+      editPrice: document.getElementById('edit-price'),
+      editNotes: document.getElementById('edit-notes'),
+      editStatus: document.getElementById('edit-status'),
+      editCancelButton: document.getElementById('edit-cancel-button'),
+      editSaveButton: document.getElementById('edit-save-button'),
+      deleteButton: document.getElementById('delete-button')
     };
 
     const SUPABASE_READY = !APP_CONFIG.supabaseUrl.includes('YOUR_PROJECT') && !APP_CONFIG.supabaseAnonKey.includes('YOUR_SUPABASE');
@@ -957,10 +1085,16 @@
       updateModeCopy();
     }
 
+    function setEditBoxMode(hasBox) {
+      state.editHasBox = hasBox;
+      document.querySelectorAll('[data-edit-box-value]').forEach((button) => {
+        button.classList.toggle('active', button.dataset.editBoxValue === (hasBox ? 'yes' : 'no'));
+      });
+    }
+
     function resetDraft() {
       state.photoFiles = [];
       state.aiUsedForCurrentDraft = false;
-      state.editingId = null;
       elements.form.reset();
       elements.photoInput.value = '';
       elements.cameraInput.value = '';
@@ -1005,9 +1139,7 @@
 
     function validateDraft() {
       const draft = getDraftValues();
-      const existingItem = state.inventory.find((item) => item.id === state.editingId);
-      const hasExistingPhotos = Boolean(existingItem && Array.isArray(existingItem.photo_urls) && existingItem.photo_urls.length);
-      if (!state.photoFiles.length && !hasExistingPhotos) {
+      if (!state.photoFiles.length) {
         throw new Error('At least one photo is required.');
       }
       if (!draft.price) {
@@ -1104,15 +1236,12 @@
 
       state.isSaving = true;
       elements.saveButton.disabled = true;
-      elements.saveButton.textContent = state.editingId ? 'Updating...' : 'Saving...';
+      elements.saveButton.textContent = 'Saving...';
       showFormStatus('', 'Saving to Supabase and uploading photos...');
 
       try {
         const draft = validateDraft();
-        const existingItem = state.inventory.find((item) => item.id === state.editingId) || null;
         const photoUploads = state.photoFiles.length ? await uploadPhotos(state.photoFiles) : [];
-        const combinedPhotoUrls = existingItem && !photoUploads.length ? (existingItem.photo_urls || []) : photoUploads.map((entry) => entry.url);
-        const combinedPhotoPaths = existingItem && !photoUploads.length ? (existingItem.photo_paths || []) : photoUploads.map((entry) => entry.path);
         const payload = {
           brand: draft.brand,
           description: draft.description,
@@ -1122,24 +1251,18 @@
           has_box: state.hasBox,
           source_method: state.hasBox ? 'box' : 'no_box',
           ai_assisted: state.aiUsedForCurrentDraft,
-          photo_urls: combinedPhotoUrls,
-          photo_paths: combinedPhotoPaths
+          photo_urls: photoUploads.map((entry) => entry.url),
+          photo_paths: photoUploads.map((entry) => entry.path)
         };
 
-        let error;
-        if (state.editingId) {
-          const result = await supabaseClient.from(APP_CONFIG.inventoryTable).update(payload).eq('id', state.editingId);
-          error = result.error;
-        } else {
-          const result = await supabaseClient.from(APP_CONFIG.inventoryTable).insert(payload);
-          error = result.error;
-        }
+        const { error } = await supabaseClient.from(APP_CONFIG.inventoryTable).insert(payload);
         if (error) throw error;
 
-        showBanner('success', state.editingId ? 'Updated in Supabase' : 'Saved to Supabase', `${draft.brand} ${draft.description} was stored successfully.`);
-        showFormStatus('success', `${draft.brand} ${state.editingId ? 'updated' : 'saved'} successfully. Scroll down to see it in inventory.`);
+        showBanner('success', 'Saved to Supabase', `${draft.brand} ${draft.description} was stored successfully.`);
+        showFormStatus('success', `${draft.brand} saved successfully. Scroll down to see it in inventory.`);
         resetDraft();
         await loadInventory();
+        elements.addPanel.open = false;
         document.getElementById('inventory-list').scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (error) {
         showBanner('error', 'Save failed', error.message || String(error));
@@ -1147,19 +1270,37 @@
       } finally {
         state.isSaving = false;
         elements.saveButton.disabled = false;
-        elements.saveButton.textContent = state.editingId ? 'Update in Supabase' : 'Save to Supabase';
+        elements.saveButton.textContent = 'Save to Supabase';
       }
     }
 
     function renderStats() {
       const total = state.inventory.length;
       const boxed = state.inventory.filter((item) => item.has_box).length;
-      const ai = state.inventory.filter((item) => item.ai_assisted).length;
       const average = total ? state.inventory.reduce((sum, item) => sum + Number(item.price || 0), 0) / total : 0;
       elements.totalPairs.textContent = String(total);
       elements.boxedCount.textContent = String(boxed);
-      elements.aiCount.textContent = String(ai);
       elements.averagePrice.textContent = currency(average);
+    }
+
+    function sortedInventory() {
+      const items = [...state.inventory];
+      switch (state.sortValue) {
+        case 'brand_asc':
+          return items.sort((a, b) => String(a.brand || '').localeCompare(String(b.brand || ''), undefined, { sensitivity: 'base' }));
+        case 'brand_desc':
+          return items.sort((a, b) => String(b.brand || '').localeCompare(String(a.brand || ''), undefined, { sensitivity: 'base' }));
+        case 'size_asc':
+          return items.sort((a, b) => String(a.size || '').localeCompare(String(b.size || ''), undefined, { numeric: true, sensitivity: 'base' }));
+        case 'size_desc':
+          return items.sort((a, b) => String(b.size || '').localeCompare(String(a.size || ''), undefined, { numeric: true, sensitivity: 'base' }));
+        case 'price_asc':
+          return items.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+        case 'price_desc':
+          return items.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+        default:
+          return items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
     }
 
     function renderInventory() {
@@ -1168,11 +1309,10 @@
         return;
       }
 
-        elements.inventoryList.innerHTML = state.inventory.map((item) => {
+        elements.inventoryList.innerHTML = sortedInventory().map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
         const tags = [
-          `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'}">${item.has_box ? 'Box' : 'No box'}</span>`,
-          item.ai_assisted ? '<span class="inventory-tag ai">AI assisted</span>' : ''
+          `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'}">${item.has_box ? 'Box' : 'No box'}</span>`
         ].join('');
 
         const photoStrip = photos.length
@@ -1205,6 +1345,7 @@
               <div class="inventory-cell">
                 <div class="inventory-actions">
                   <button class="mini-button" type="button" data-edit-id="${item.id}">Edit</button>
+                  <button class="mini-button" type="button" data-delete-id="${item.id}">Delete</button>
                 </div>
                 <div class="mini-label" style="margin-top:8px;">Saved ${escapeHtml(formatDate(item.created_at))}</div>
               </div>
@@ -1256,10 +1397,19 @@
     elements.resetButton.addEventListener('click', resetDraft);
     elements.form.addEventListener('submit', saveInventoryItem);
     elements.refreshButton.addEventListener('click', loadInventory);
+    elements.sortSelect.addEventListener('change', (event) => {
+      state.sortValue = event.target.value;
+      renderInventory();
+    });
     elements.inventoryList.addEventListener('click', (event) => {
       const editButton = event.target.closest('[data-edit-id]');
       if (editButton) {
         startEdit(editButton.dataset.editId);
+        return;
+      }
+      const deleteButton = event.target.closest('[data-delete-id]');
+      if (deleteButton) {
+        deleteItem(deleteButton.dataset.deleteId);
         return;
       }
       const button = event.target.closest('[data-photo-url]');
@@ -1283,22 +1433,68 @@
       const item = state.inventory.find((entry) => entry.id === id);
       if (!item) return;
       state.editingId = id;
-      state.photoFiles = [];
-      state.aiUsedForCurrentDraft = Boolean(item.ai_assisted);
-      setBoxMode(Boolean(item.has_box));
-      elements.brand.value = item.brand || '';
-      elements.size.value = item.size || '';
-      elements.description.value = item.description || '';
-      elements.price.value = item.price ?? '';
-      elements.notes.value = item.notes || '';
-      elements.photoInput.value = '';
-      elements.cameraInput.value = '';
-      elements.fileBrowserInput.value = '';
-      elements.photoPreview.innerHTML = '';
-      elements.cancelEditButton.classList.remove('hidden');
-      elements.saveButton.textContent = 'Update in Supabase';
-      showFormStatus('', 'Editing existing item. Add new photos only if you want to replace the current attachments.');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setEditBoxMode(Boolean(item.has_box));
+      elements.editBrand.value = item.brand || '';
+      elements.editSize.value = item.size || '';
+      elements.editDescription.value = item.description || '';
+      elements.editPrice.value = item.price ?? '';
+      elements.editNotes.value = item.notes || '';
+      elements.editStatus.className = 'form-status';
+      elements.editStatus.textContent = 'Update the fields and save changes.';
+      elements.editModal.classList.remove('hidden');
+      elements.editModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeEditModal() {
+      state.editingId = null;
+      elements.editModal.classList.add('hidden');
+      elements.editModal.setAttribute('aria-hidden', 'true');
+      elements.editForm.reset();
+    }
+
+    async function saveEdit(event) {
+      event.preventDefault();
+      if (!state.editingId) return;
+      elements.editSaveButton.disabled = true;
+      elements.editStatus.className = 'form-status';
+      elements.editStatus.textContent = 'Saving changes...';
+      try {
+        const payload = {
+          brand: elements.editBrand.value.trim(),
+          size: elements.editSize.value.trim(),
+          description: elements.editDescription.value.trim(),
+          price: Number(elements.editPrice.value || 0),
+          notes: elements.editNotes.value.trim() || null,
+          has_box: state.editHasBox,
+          source_method: state.editHasBox ? 'box' : 'no_box'
+        };
+        if (!payload.brand || !payload.size || !payload.description || !payload.price) {
+          throw new Error('Brand, size, description, and price are required.');
+        }
+        const { error } = await supabaseClient.from(APP_CONFIG.inventoryTable).update(payload).eq('id', state.editingId);
+        if (error) throw error;
+        await loadInventory();
+        closeEditModal();
+        showBanner('success', 'Updated', 'Shoe entry updated successfully.');
+      } catch (error) {
+        elements.editStatus.className = 'form-status error';
+        elements.editStatus.textContent = error.message || String(error);
+      } finally {
+        elements.editSaveButton.disabled = false;
+      }
+    }
+
+    async function deleteItem(id) {
+      const item = state.inventory.find((entry) => entry.id === id);
+      if (!item) return;
+      if (!window.confirm(`Delete ${item.brand} ${item.description}?`)) return;
+      const { error } = await supabaseClient.from(APP_CONFIG.inventoryTable).delete().eq('id', id);
+      if (error) {
+        showBanner('error', 'Delete failed', error.message || String(error));
+        return;
+      }
+      await loadInventory();
+      showBanner('success', 'Deleted', `${item.brand} ${item.description} was deleted.`);
     }
 
     function exportPdfReport() {
@@ -1346,6 +1542,20 @@
     }
 
     elements.reportButton.addEventListener('click', exportPdfReport);
+    document.getElementById('edit-box-toggle').addEventListener('click', (event) => {
+      const button = event.target.closest('[data-edit-box-value]');
+      if (!button) return;
+      setEditBoxMode(button.dataset.editBoxValue === 'yes');
+    });
+    elements.editForm.addEventListener('submit', saveEdit);
+    elements.editCancelButton.addEventListener('click', closeEditModal);
+    elements.editClose.addEventListener('click', closeEditModal);
+    elements.deleteButton.addEventListener('click', () => {
+      if (state.editingId) deleteItem(state.editingId).then(closeEditModal);
+    });
+    elements.editModal.addEventListener('click', (event) => {
+      if (event.target === elements.editModal) closeEditModal();
+    });
     updateModeCopy();
     loadInventory();
   </script>
