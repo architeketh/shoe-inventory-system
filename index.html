@@ -299,6 +299,25 @@
       margin-top: 12px;
     }
 
+    .upload-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     .button {
       appearance: none;
       border: 0;
@@ -695,8 +714,15 @@
         <div class="form-grid">
           <div class="field-stack">
             <label for="photo-input">Photos</label>
-            <input id="photo-input" name="photos" type="file" accept="image/*" capture="environment" multiple>
-            <div class="helper">Select up to 4 photos. On most phones this opens the camera or photo library.</div>
+            <input class="sr-only" id="photo-input" name="photos" type="file" accept="image/*" multiple>
+            <input class="sr-only" id="camera-input" name="camera-photos" type="file" accept="image/*" capture="environment" multiple>
+            <input class="sr-only" id="file-browser-input" name="file-browser-photos" type="file" accept="image/*" multiple>
+            <div class="upload-actions">
+              <button class="button secondary" type="button" id="choose-photos-button">Choose from photos</button>
+              <button class="button ghost" type="button" id="use-camera-button">Use camera</button>
+              <button class="button secondary" type="button" id="browse-files-button">Choose files</button>
+            </div>
+            <div class="helper">Select up to 4 photos. You can open the photo library, launch the camera, or use a general file picker.</div>
             <div class="photo-grid" id="photo-preview"></div>
           </div>
 
@@ -796,6 +822,8 @@
       aiModeCopy: document.getElementById('ai-mode-copy'),
       requiredCopy: document.getElementById('required-copy'),
       photoInput: document.getElementById('photo-input'),
+      cameraInput: document.getElementById('camera-input'),
+      fileBrowserInput: document.getElementById('file-browser-input'),
       photoPreview: document.getElementById('photo-preview'),
       form: document.getElementById('inventory-form'),
       brand: document.getElementById('brand'),
@@ -803,6 +831,9 @@
       description: document.getElementById('description'),
       price: document.getElementById('price'),
       notes: document.getElementById('notes'),
+      choosePhotosButton: document.getElementById('choose-photos-button'),
+      useCameraButton: document.getElementById('use-camera-button'),
+      browseFilesButton: document.getElementById('browse-files-button'),
       aiFillButton: document.getElementById('ai-fill-button'),
       resetButton: document.getElementById('reset-button'),
       saveButton: document.getElementById('save-button'),
@@ -878,13 +909,17 @@
       state.photoFiles = [];
       state.aiUsedForCurrentDraft = false;
       elements.form.reset();
+      elements.photoInput.value = '';
+      elements.cameraInput.value = '';
+      elements.fileBrowserInput.value = '';
       elements.photoPreview.innerHTML = '';
       setBoxMode(true);
     }
 
     function handlePhotoSelection(files) {
-      state.photoFiles = Array.from(files || []).slice(0, 4);
-      if ((files || []).length > 4) {
+      const merged = state.photoFiles.concat(Array.from(files || []));
+      state.photoFiles = merged.slice(0, 4);
+      if (merged.length > 4) {
         alert('Only 4 photos can be uploaded per pair. The first 4 were kept.');
       }
       renderPhotoPreview();
@@ -1134,7 +1169,12 @@
       setBoxMode(button.dataset.boxValue === 'yes');
     });
 
+    elements.choosePhotosButton.addEventListener('click', () => elements.photoInput.click());
+    elements.useCameraButton.addEventListener('click', () => elements.cameraInput.click());
+    elements.browseFilesButton.addEventListener('click', () => elements.fileBrowserInput.click());
     elements.photoInput.addEventListener('change', (event) => handlePhotoSelection(event.target.files));
+    elements.cameraInput.addEventListener('change', (event) => handlePhotoSelection(event.target.files));
+    elements.fileBrowserInput.addEventListener('change', (event) => handlePhotoSelection(event.target.files));
     elements.aiFillButton.addEventListener('click', runAiLookup);
     elements.resetButton.addEventListener('click', resetDraft);
     elements.form.addEventListener('submit', saveInventoryItem);
