@@ -447,10 +447,10 @@
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 120px minmax(220px, 1.8fr) 120px 120px 120px 170px;
+      grid-template-columns: 120px minmax(220px, 1.6fr) 110px 110px 160px 170px 130px;
       gap: 14px;
       align-items: center;
-      min-width: 860px;
+      min-width: 1100px;
     }
 
     .inventory-cell {
@@ -459,7 +459,7 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 120px minmax(220px, 1.8fr) 120px 120px 120px 170px;
+      grid-template-columns: 120px minmax(220px, 1.6fr) 110px 110px 160px 170px 130px;
       gap: 14px;
       align-items: center;
       padding: 0 16px 10px;
@@ -506,6 +506,30 @@
     .attachments-empty {
       color: var(--muted);
       font-size: 0.88rem;
+    }
+
+    .inventory-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .mini-button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--accent-deep);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font: 700 0.72rem/1 var(--mono);
+      cursor: pointer;
+    }
+
+    .report-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.4;
     }
 
     .modal {
@@ -630,9 +654,7 @@
         display: none;
       }
 
-      .inventory-line {
-        min-width: 860px;
-      }
+      .inventory-line { min-width: 1100px; }
 
       .photo-strip {
         justify-content: flex-start;
@@ -775,6 +797,7 @@
 
         <div class="button-row">
           <button class="button ghost" type="button" id="ai-fill-button">Read box details with AI</button>
+          <button class="button ghost hidden" type="button" id="cancel-edit-button">Cancel edit</button>
           <button class="button secondary" type="button" id="reset-button">Clear form</button>
           <button class="button primary" type="submit" id="save-button">Save to Supabase</button>
         </div>
@@ -790,6 +813,7 @@
         </div>
         <div class="inventory-toolbar">
           <span class="pill" id="inventory-status">Loading inventory...</span>
+          <button class="button ghost" type="button" id="report-button">Export PDF report</button>
           <button class="button secondary" type="button" id="refresh-button">Refresh</button>
         </div>
       </div>
@@ -798,10 +822,12 @@
         <div>Shoe</div>
         <div>Size</div>
         <div>Price</div>
-        <div>Saved</div>
+        <div>Notes</div>
         <div>Attachments</div>
+        <div>Actions</div>
       </div>
       <div id="inventory-list" class="inventory-list"></div>
+      <div class="report-note">PDF export opens a print-ready report with thumbnails. Choose "Save as PDF" in the print dialog on your phone or computer.</div>
     </section>
   </div>
 
@@ -825,6 +851,7 @@
       hasBox: true,
       photoFiles: [],
       inventory: [],
+      editingId: null,
       isSaving: false,
       isAiRunning: false,
       aiUsedForCurrentDraft: false
@@ -852,10 +879,12 @@
       useCameraButton: document.getElementById('use-camera-button'),
       browseFilesButton: document.getElementById('browse-files-button'),
       aiFillButton: document.getElementById('ai-fill-button'),
+      cancelEditButton: document.getElementById('cancel-edit-button'),
       resetButton: document.getElementById('reset-button'),
       saveButton: document.getElementById('save-button'),
       inventoryList: document.getElementById('inventory-list'),
       inventoryStatus: document.getElementById('inventory-status'),
+      reportButton: document.getElementById('report-button'),
       refreshButton: document.getElementById('refresh-button'),
       formStatus: document.getElementById('form-status'),
       photoModal: document.getElementById('photo-modal'),
@@ -931,11 +960,15 @@
     function resetDraft() {
       state.photoFiles = [];
       state.aiUsedForCurrentDraft = false;
+      state.editingId = null;
       elements.form.reset();
       elements.photoInput.value = '';
       elements.cameraInput.value = '';
       elements.fileBrowserInput.value = '';
       elements.photoPreview.innerHTML = '';
+      elements.cancelEditButton.classList.add('hidden');
+      elements.saveButton.textContent = 'Save to Supabase';
+      showFormStatus('', 'Ready to save. Add photos, confirm details, then save to Supabase.');
       setBoxMode(true);
     }
 
@@ -972,7 +1005,9 @@
 
     function validateDraft() {
       const draft = getDraftValues();
-      if (!state.photoFiles.length) {
+      const existingItem = state.inventory.find((item) => item.id === state.editingId);
+      const hasExistingPhotos = Boolean(existingItem && Array.isArray(existingItem.photo_urls) && existingItem.photo_urls.length);
+      if (!state.photoFiles.length && !hasExistingPhotos) {
         throw new Error('At least one photo is required.');
       }
       if (!draft.price) {
@@ -1069,12 +1104,15 @@
 
       state.isSaving = true;
       elements.saveButton.disabled = true;
-      elements.saveButton.textContent = 'Saving...';
+      elements.saveButton.textContent = state.editingId ? 'Updating...' : 'Saving...';
       showFormStatus('', 'Saving to Supabase and uploading photos...');
 
       try {
         const draft = validateDraft();
-        const photoUploads = await uploadPhotos(state.photoFiles);
+        const existingItem = state.inventory.find((item) => item.id === state.editingId) || null;
+        const photoUploads = state.photoFiles.length ? await uploadPhotos(state.photoFiles) : [];
+        const combinedPhotoUrls = existingItem && !photoUploads.length ? (existingItem.photo_urls || []) : photoUploads.map((entry) => entry.url);
+        const combinedPhotoPaths = existingItem && !photoUploads.length ? (existingItem.photo_paths || []) : photoUploads.map((entry) => entry.path);
         const payload = {
           brand: draft.brand,
           description: draft.description,
@@ -1084,16 +1122,22 @@
           has_box: state.hasBox,
           source_method: state.hasBox ? 'box' : 'no_box',
           ai_assisted: state.aiUsedForCurrentDraft,
-          photo_urls: photoUploads.map((entry) => entry.url),
-          photo_paths: photoUploads.map((entry) => entry.path),
-          created_at: new Date().toISOString()
+          photo_urls: combinedPhotoUrls,
+          photo_paths: combinedPhotoPaths
         };
 
-        const { error } = await supabaseClient.from(APP_CONFIG.inventoryTable).insert(payload);
+        let error;
+        if (state.editingId) {
+          const result = await supabaseClient.from(APP_CONFIG.inventoryTable).update(payload).eq('id', state.editingId);
+          error = result.error;
+        } else {
+          const result = await supabaseClient.from(APP_CONFIG.inventoryTable).insert(payload);
+          error = result.error;
+        }
         if (error) throw error;
 
-        showBanner('success', 'Saved to Supabase', `${draft.brand} ${draft.description} was stored successfully.`);
-        showFormStatus('success', `${draft.brand} saved successfully. Scroll down to see it in inventory.`);
+        showBanner('success', state.editingId ? 'Updated in Supabase' : 'Saved to Supabase', `${draft.brand} ${draft.description} was stored successfully.`);
+        showFormStatus('success', `${draft.brand} ${state.editingId ? 'updated' : 'saved'} successfully. Scroll down to see it in inventory.`);
         resetDraft();
         await loadInventory();
         document.getElementById('inventory-list').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1103,7 +1147,7 @@
       } finally {
         state.isSaving = false;
         elements.saveButton.disabled = false;
-        elements.saveButton.textContent = 'Save to Supabase';
+        elements.saveButton.textContent = state.editingId ? 'Update in Supabase' : 'Save to Supabase';
       }
     }
 
@@ -1124,7 +1168,7 @@
         return;
       }
 
-      elements.inventoryList.innerHTML = state.inventory.map((item) => {
+        elements.inventoryList.innerHTML = state.inventory.map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
         const tags = [
           `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'}">${item.has_box ? 'Box' : 'No box'}</span>`,
@@ -1154,10 +1198,16 @@
                 <div class="price">${currency(item.price)}</div>
               </div>
               <div class="inventory-cell">
-                <div class="mini-label">Saved</div>
-                <p>${escapeHtml(formatDate(item.created_at))}</p>
+                <div class="mini-label">Notes</div>
+                <p>${escapeHtml(item.notes || 'None')}</p>
               </div>
               <div class="inventory-cell">${photoStrip}</div>
+              <div class="inventory-cell">
+                <div class="inventory-actions">
+                  <button class="mini-button" type="button" data-edit-id="${item.id}">Edit</button>
+                </div>
+                <div class="mini-label" style="margin-top:8px;">Saved ${escapeHtml(formatDate(item.created_at))}</div>
+              </div>
             </div>
           </article>
         `;
@@ -1177,7 +1227,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,price,notes,has_box,ai_assisted,photo_urls,created_at')
+          .select('id,brand,description,size,price,notes,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -1207,10 +1257,16 @@
     elements.form.addEventListener('submit', saveInventoryItem);
     elements.refreshButton.addEventListener('click', loadInventory);
     elements.inventoryList.addEventListener('click', (event) => {
+      const editButton = event.target.closest('[data-edit-id]');
+      if (editButton) {
+        startEdit(editButton.dataset.editId);
+        return;
+      }
       const button = event.target.closest('[data-photo-url]');
       if (!button) return;
       openPhotoModal(button.dataset.photoUrl);
     });
+    elements.cancelEditButton.addEventListener('click', resetDraft);
     elements.modalClose.addEventListener('click', closePhotoModal);
     elements.photoModal.addEventListener('click', (event) => {
       if (event.target === elements.photoModal) closePhotoModal();
@@ -1223,6 +1279,73 @@
       showBanner('success', 'Supabase connected', 'The app is ready to upload photos to Storage and save shoe records into your inventory table.');
     }
 
+    function startEdit(id) {
+      const item = state.inventory.find((entry) => entry.id === id);
+      if (!item) return;
+      state.editingId = id;
+      state.photoFiles = [];
+      state.aiUsedForCurrentDraft = Boolean(item.ai_assisted);
+      setBoxMode(Boolean(item.has_box));
+      elements.brand.value = item.brand || '';
+      elements.size.value = item.size || '';
+      elements.description.value = item.description || '';
+      elements.price.value = item.price ?? '';
+      elements.notes.value = item.notes || '';
+      elements.photoInput.value = '';
+      elements.cameraInput.value = '';
+      elements.fileBrowserInput.value = '';
+      elements.photoPreview.innerHTML = '';
+      elements.cancelEditButton.classList.remove('hidden');
+      elements.saveButton.textContent = 'Update in Supabase';
+      showFormStatus('', 'Editing existing item. Add new photos only if you want to replace the current attachments.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function exportPdfReport() {
+      const reportWindow = window.open('', '_blank');
+      if (!reportWindow) {
+        alert('Allow pop-ups to open the PDF report preview.');
+        return;
+      }
+      const rows = state.inventory.map((item) => {
+        const thumbs = (item.photo_urls || []).map((url) => `<img src="${url}" style="width:88px;height:88px;object-fit:cover;border-radius:10px;border:1px solid #ddd;margin:0 8px 8px 0;" />`).join('');
+        return `
+          <section style="page-break-inside:avoid;border:1px solid #ddd;border-radius:16px;padding:16px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;">
+              <div>
+                <h2 style="margin:0 0 8px;font:700 20px Arial,sans-serif;">${escapeHtml(item.brand)} - ${escapeHtml(item.description)}</h2>
+                <div style="font:14px Arial,sans-serif;line-height:1.6;color:#444;">
+                  <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
+                  <div><strong>Price:</strong> ${escapeHtml(currency(item.price))}</div>
+                  <div><strong>Box:</strong> ${item.has_box ? 'Yes' : 'No'}</div>
+                  <div><strong>Notes:</strong> ${escapeHtml(item.notes || 'None')}</div>
+                  <div><strong>Saved:</strong> ${escapeHtml(formatDate(item.created_at))}</div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:14px;">${thumbs || '<div style="color:#666;font:14px Arial,sans-serif;">No thumbnails available.</div>'}</div>
+          </section>
+        `;
+      }).join('');
+      reportWindow.document.write(`
+        <html>
+          <head>
+            <title>Shoe Inventory Report</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          </head>
+          <body style="font-family:Arial,sans-serif;padding:24px;color:#222;">
+            <h1 style="margin-top:0;">Shoe Inventory Report</h1>
+            <div style="margin-bottom:20px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))}</div>
+            ${rows || '<p>No inventory available.</p>'}
+          </body>
+        </html>
+      `);
+      reportWindow.document.close();
+      reportWindow.focus();
+      setTimeout(() => reportWindow.print(), 500);
+    }
+
+    elements.reportButton.addEventListener('click', exportPdfReport);
     updateModeCopy();
     loadInventory();
   </script>
