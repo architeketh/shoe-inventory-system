@@ -340,6 +340,11 @@
       background: rgba(219, 234, 254, 0.96);
     }
 
+    .gender-pill.kids {
+      color: #6b4e16;
+      background: rgba(254, 243, 199, 0.96);
+    }
+
     .toggle-pill {
       cursor: pointer;
       transition: 0.18s ease;
@@ -994,6 +999,7 @@
               <option value="">Select</option>
               <option value="mens">Mens</option>
               <option value="womens">Womens</option>
+              <option value="kids">Kids</option>
             </select>
           </div>
 
@@ -1046,8 +1052,8 @@
             <option value="created_at_desc">Newest first</option>
             <option value="brand_asc">Brand A-Z</option>
             <option value="brand_desc">Brand Z-A</option>
-            <option value="gender_asc">Category M-W</option>
-            <option value="gender_desc">Category W-M</option>
+              <option value="gender_asc">Category A-Z</option>
+              <option value="gender_desc">Category Z-A</option>
             <option value="size_asc">Size low-high</option>
             <option value="size_desc">Size high-low</option>
             <option value="price_asc">Price low-high</option>
@@ -1117,6 +1123,7 @@
               <option value="">Select</option>
               <option value="mens">Mens</option>
               <option value="womens">Womens</option>
+              <option value="kids">Kids</option>
             </select>
           </div>
           <div class="field" style="grid-column:1/-1;">
@@ -1529,11 +1536,16 @@
       const variants = new Set([base]);
       const compact = base.replace(/[\s'-]+/g, '');
       variants.add(compact);
+      const words = base.split(/\s+/).filter(Boolean);
+      words.forEach((word) => variants.add(word.replace(/[\s'-]+/g, '')));
       if (base === 'mens' || base === "men's" || base === 'men' || base === 'm') {
         ['mens', "men's", 'men', 'm', 'male'].forEach((value) => variants.add(value));
       }
       if (base === 'womens' || base === "women's" || base === 'women' || base === 'w') {
         ['womens', "women's", 'women', 'w', 'female'].forEach((value) => variants.add(value));
+      }
+      if (base === 'kids' || base === 'kid' || base === 'youth' || base === 'y') {
+        ['kids', 'kid', 'youth', 'y', 'child'].forEach((value) => variants.add(value));
       }
       if (compact === 'nobox') {
         ['no box', 'nobox', 'without box'].forEach((value) => variants.add(value));
@@ -1555,14 +1567,20 @@
       if (state.searchTerm) {
         const terms = normalizedSearchTerms(state.searchTerm);
         items = items.filter((item) => {
+          const genderTerms = item.gender === 'mens'
+            ? ['mens', "men's", 'men', 'm', 'male']
+            : item.gender === 'womens'
+              ? ['womens', "women's", 'women', 'w', 'female']
+              : item.gender === 'kids'
+                ? ['kids', 'kid', 'youth', 'y', 'child']
+              : [];
           const searchValues = [
             item.brand,
             item.description,
             item.notes,
             item.size,
             item.gender,
-            item.gender === 'mens' ? 'm mens men male' : '',
-            item.gender === 'womens' ? 'w womens women female' : '',
+            ...genderTerms,
             item.has_box ? 'box' : 'no box',
             item.sold ? 'sold' : 'for sale',
             String(item.price ?? '')
@@ -1607,7 +1625,7 @@
             ? `<span class="inventory-tag boxed ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">Box</span>`
             : '<span class="inventory-tag empty">&nbsp;</span>'
         ].join('');
-        const categoryShort = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : '-';
+        const categoryShort = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : item.gender === 'kids' ? 'K' : '-';
         const categoryPill = item.gender ? `<span class="gender-pill ${item.gender}">${categoryShort}</span>` : categoryShort;
         const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : '';
         const soldPill = item.sold ? `<span class="inventory-tag sold">Sold</span>` : '';
@@ -1851,7 +1869,7 @@
                 <div style="font:14px Arial,sans-serif;line-height:1.6;color:#444;">
                   <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
                   <div><strong>Details:</strong> ${escapeHtml(`${currency(item.price)} | ${item.has_box ? 'Box' : 'No box'} | ${item.notes || 'No notes'}`)}</div>
-                  <div><strong>Category:</strong> ${escapeHtml(item.gender ? (item.gender === 'womens' ? 'Womens' : 'Mens') : 'Unspecified')}</div>
+                  <div><strong>Category:</strong> ${escapeHtml(item.gender ? (item.gender === 'womens' ? 'Womens' : item.gender === 'kids' ? 'Kids' : 'Mens') : 'Unspecified')}</div>
                 </div>
               </div>
               <div style="width:360px;">
