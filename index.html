@@ -1943,6 +1943,7 @@
 
     function exportPdfReport() {
       const exportItems = sortedInventory();
+      const exportTotal = exportItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
       const reportWindow = window.open('', '_blank');
       if (!reportWindow) {
         alert('Allow pop-ups to open the PDF report preview.');
@@ -1982,6 +1983,7 @@
               <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
             </div>
             <h1 style="margin-top:0;">Shoe Inventory Report</h1>
+            <div style="margin-bottom:8px;color:#555;">Current view total: ${escapeHtml(currency(exportTotal))}</div>
             <div style="margin-bottom:20px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} · ${exportItems.length} pair(s) in current view</div>
             ${rows || '<p>No inventory available.</p>'}
           </body>
