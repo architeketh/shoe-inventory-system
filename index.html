@@ -1054,12 +1054,13 @@
             <option value="brand_desc">Brand Z-A</option>
               <option value="gender_asc">Category A-Z</option>
               <option value="gender_desc">Category Z-A</option>
-            <option value="size_asc">Size low-high</option>
-            <option value="size_desc">Size high-low</option>
-            <option value="price_asc">Price low-high</option>
-            <option value="price_desc">Price high-low</option>
-            <option value="sold_only">Sold only</option>
-          </select>
+              <option value="size_asc">Size low-high</option>
+              <option value="size_desc">Size high-low</option>
+              <option value="price_asc">Price low-high</option>
+              <option value="price_desc">Price high-low</option>
+              <option value="for_sale_only">For sale only</option>
+              <option value="sold_only">Sold only</option>
+            </select>
           <input class="search-input" id="search-input" type="search" placeholder="Search + Enter" aria-label="Search shoes">
           <button class="button secondary" type="button" id="search-clear-button">Clear</button>
         </div>
@@ -1538,10 +1539,10 @@
       variants.add(compact);
       const words = base.split(/\s+/).filter(Boolean);
       words.forEach((word) => variants.add(word.replace(/[\s'-]+/g, '')));
-      if (base === 'mens' || base === "men's" || base === 'men' || base === 'm') {
+      if (['mens', "men's", 'men', 'm', 'male'].includes(base) || ['mens', 'mens', 'men', 'm', 'male'].includes(compact)) {
         ['mens', "men's", 'men', 'm', 'male'].forEach((value) => variants.add(value));
       }
-      if (base === 'womens' || base === "women's" || base === 'women' || base === 'w') {
+      if (['womens', "women's", 'women', 'w', 'female'].includes(base) || ['womens', 'womens', 'women', 'w', 'female'].includes(compact)) {
         ['womens', "women's", 'women', 'w', 'female'].forEach((value) => variants.add(value));
       }
       if (base === 'kids' || base === 'kid' || base === 'youth' || base === 'y') {
@@ -1568,12 +1569,12 @@
         const terms = normalizedSearchTerms(state.searchTerm);
         items = items.filter((item) => {
           const genderTerms = item.gender === 'mens'
-            ? ['mens', "men's", 'men', 'm', 'male']
+            ? ['mens', "men's", 'men', 'm', 'male', 'category mens']
             : item.gender === 'womens'
-              ? ['womens', "women's", 'women', 'w', 'female']
+              ? ['womens', "women's", 'women', 'w', 'female', 'category womens']
               : item.gender === 'kids'
-                ? ['kids', 'kid', 'youth', 'y', 'child']
-              : [];
+                ? ['kids', 'kid', 'youth', 'y', 'child', 'category kids']
+                : [];
           const searchValues = [
             item.brand,
             item.description,
@@ -1582,7 +1583,7 @@
             item.gender,
             ...genderTerms,
             item.has_box ? 'box' : 'no box',
-            item.sold ? 'sold' : 'for sale',
+            item.sold ? 'sold' : 'for sale forsale available active',
             String(item.price ?? '')
           ].map((value) => String(value || '').toLowerCase());
           return terms.some((term) => searchValues.some((value) => value.includes(term)));
@@ -1605,6 +1606,8 @@
           return items.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
         case 'price_desc':
           return items.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+        case 'for_sale_only':
+          return items.filter((item) => !item.sold);
         case 'sold_only':
           return items.filter((item) => item.sold);
         default:
