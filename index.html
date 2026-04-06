@@ -225,11 +225,12 @@
       flex-wrap: wrap;
       gap: 10px;
       align-items: center;
+      justify-content: space-between;
     }
 
     .toolbar-compact {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 10px;
       align-items: center;
     }
@@ -632,8 +633,8 @@
     }
 
     .search-input {
-      min-width: 180px;
-      width: 100%;
+      min-width: 150px;
+      width: 150px;
       padding: 12px 14px;
       border-radius: 999px;
     }
@@ -831,10 +832,15 @@
         width: 100%;
       }
 
-      .sort-select {
-        min-width: 0;
-        width: 100%;
-      }
+        .sort-select {
+          min-width: 0;
+          width: 100%;
+        }
+
+        .search-input {
+          min-width: 0;
+          width: 100%;
+        }
 
       .photo-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1026,7 +1032,7 @@
             <option value="price_desc">Price high-low</option>
             <option value="sold_only">Sold only</option>
           </select>
-          <input class="search-input" id="search-input" type="search" placeholder="Search shoes" aria-label="Search shoes">
+          <input class="search-input" id="search-input" type="search" placeholder="Search + Enter" aria-label="Search shoes">
         </div>
         <div class="toolbar-compact">
           <span class="toolbar-label">Export</span>
@@ -1630,7 +1636,13 @@
       state.sortValue = event.target.value;
       renderInventory();
     });
-    elements.searchInput.addEventListener('input', (event) => {
+    elements.searchInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      state.searchTerm = event.target.value.trim();
+      renderInventory();
+    });
+    elements.searchInput.addEventListener('search', (event) => {
       state.searchTerm = event.target.value.trim();
       renderInventory();
     });
