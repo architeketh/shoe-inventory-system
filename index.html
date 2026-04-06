@@ -590,14 +590,16 @@
     .inventory-meta {
       margin-top: 2px;
       font-size: 0.9rem;
+      line-height: 1.35;
+      word-break: break-word;
     }
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 72px 56px 132px minmax(200px, 1.45fr) 38px 64px 82px 132px 66px;
+      grid-template-columns: 72px 56px 128px minmax(280px, 1.9fr) 34px 56px 72px 142px 62px;
       gap: 10px;
       align-items: center;
-      min-width: 940px;
+      min-width: 980px;
     }
 
     .inventory-cell {
@@ -606,7 +608,7 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 72px 56px 132px minmax(200px, 1.45fr) 38px 64px 82px 132px 66px;
+      grid-template-columns: 72px 56px 128px minmax(280px, 1.9fr) 34px 56px 72px 142px 62px;
       gap: 10px;
       align-items: center;
       padding: 0 16px 10px;
@@ -887,7 +889,7 @@
         display: none;
       }
 
-      .inventory-line { min-width: 940px; }
+      .inventory-line { min-width: 980px; }
 
       .photo-strip {
         justify-content: flex-start;
