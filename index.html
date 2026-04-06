@@ -287,6 +287,13 @@
       border-color: rgba(239, 68, 68, 0.18);
     }
 
+    .inventory-tag.empty {
+      min-width: 48px;
+      color: transparent;
+      background: rgba(255, 255, 255, 0.55);
+      border-color: rgba(52, 33, 18, 0.12);
+    }
+
     .inventory-pill-button {
       appearance: none;
       border: 0;
@@ -1553,7 +1560,9 @@
         elements.inventoryList.innerHTML = sortedInventory().map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
         const tags = [
-          item.has_box ? `<span class="inventory-tag boxed ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">Box</span>` : ''
+          item.has_box
+            ? `<span class="inventory-tag boxed ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">Box</span>`
+            : '<span class="inventory-tag empty">&nbsp;</span>'
         ].join('');
         const categoryShort = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : '-';
         const categoryPill = item.gender ? `<span class="gender-pill ${item.gender}">${categoryShort}</span>` : categoryShort;
