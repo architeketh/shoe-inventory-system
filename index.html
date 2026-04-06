@@ -1525,7 +1525,19 @@
       let items = [...state.inventory];
       if (state.searchTerm) {
         const q = state.searchTerm.toLowerCase();
-        items = items.filter((item) => [item.brand, item.description, item.notes, item.size, item.gender].some((value) => String(value || '').toLowerCase().includes(q)));
+        items = items.filter((item) => {
+          const searchValues = [
+            item.brand,
+            item.description,
+            item.notes,
+            item.size,
+            item.gender,
+            item.has_box ? 'box' : 'no box',
+            item.sold ? 'sold' : 'for sale',
+            String(item.price ?? '')
+          ];
+          return searchValues.some((value) => String(value || '').toLowerCase().includes(q));
+        });
       }
       switch (state.sortValue) {
         case 'brand_asc':
