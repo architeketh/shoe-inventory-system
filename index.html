@@ -694,6 +694,12 @@
       cursor: pointer;
     }
 
+    .mini-button.price-ai-used {
+      color: #1f5b3d;
+      background: rgba(239, 248, 243, 0.96);
+      border-color: rgba(49, 87, 74, 0.2);
+    }
+
     .report-note {
       margin-top: 10px;
       color: var(--muted);
@@ -1326,7 +1332,8 @@
       aiUsedForCurrentDraft: false,
       isPriceAiRunning: false,
       pricingItemId: null,
-      lastPriceRecommendation: null
+      lastPriceRecommendation: null,
+      editPriceAiUsed: false
     };
 
     const elements = {
@@ -1700,6 +1707,7 @@
           price: draft.price,
           notes: draft.notes || null,
           sold: draft.sold,
+          price_ai_used: false,
           has_box: state.hasBox,
           source_method: state.hasBox ? 'box' : 'no_box',
           ai_assisted: state.aiUsedForCurrentDraft,
@@ -1850,6 +1858,7 @@
         const categoryPill = item.gender ? `<span class="gender-pill ${item.gender}">${categoryShort}</span>` : categoryShort;
         const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : item.gender === 'kids' ? 'gender-kids' : '';
         const soldPill = item.sold ? `<span class="inventory-tag sold">Sold</span>` : '';
+        const priceAiClass = item.price_ai_used ? 'mini-button price-ai-used' : 'mini-button';
 
           const photoStrip = photos.length
             ? `<div class="photo-strip">${photos.map((url, index) => `<button class="photo-thumb" type="button" data-photo-item="${item.id}" data-photo-index="${index}"><img src="${url}" alt="Saved photo ${index + 1}"></button>`).join('')}</div>`
@@ -1861,7 +1870,7 @@
                 <div class="inventory-cell">
                   <div class="inventory-actions">
                     <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div class="pill-row">${tags}</div></button>
-                    <button class="mini-button" type="button" data-price-ai-id="${item.id}">Price AI</button>
+                    <button class="${priceAiClass}" type="button" data-price-ai-id="${item.id}">Price AI</button>
                   </div>
                 </div>
                 <div class="inventory-cell">
@@ -1915,7 +1924,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,gender,price,notes,sold,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,brand,description,size,gender,price,notes,sold,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -2026,6 +2035,7 @@
       if (!Number.isFinite(recommended) || !itemId) return;
       closePriceAiModal();
       startEdit(itemId);
+      state.editPriceAiUsed = true;
       elements.editPrice.value = recommended.toFixed(2);
       elements.editStatus.className = 'form-status success';
       elements.editStatus.textContent = 'Recommended price applied. Save changes to keep it.';
@@ -2049,6 +2059,7 @@
       const item = state.inventory.find((entry) => entry.id === id);
       if (!item) return;
       state.editingId = id;
+      state.editPriceAiUsed = Boolean(item.price_ai_used);
       setEditBoxMode(Boolean(item.has_box));
       elements.editBrand.value = item.brand || '';
       elements.editSize.value = item.size || '';
@@ -2065,6 +2076,7 @@
 
     function closeEditModal() {
       state.editingId = null;
+      state.editPriceAiUsed = false;
       elements.editModal.classList.add('hidden');
       elements.editModal.setAttribute('aria-hidden', 'true');
       elements.editForm.reset();
@@ -2085,6 +2097,7 @@
           price: Number(elements.editPrice.value || 0),
           notes: elements.editNotes.value.trim() || null,
           sold: elements.editSold.value === 'true',
+          price_ai_used: state.editPriceAiUsed,
           has_box: state.editHasBox,
           source_method: state.editHasBox ? 'box' : 'no_box'
         };
@@ -2128,6 +2141,7 @@
         price: item.price,
         notes: item.notes || null,
         sold: Boolean(item.sold),
+        price_ai_used: false,
         has_box: Boolean(item.has_box),
         source_method: item.has_box ? 'box' : 'no_box',
         ai_assisted: Boolean(item.ai_assisted),
