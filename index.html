@@ -293,6 +293,8 @@
       background: transparent;
       padding: 0;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
     }
 
     .inventory-tag.ai {
@@ -815,6 +817,16 @@
       .toggle-row {
         flex-direction: column;
         align-items: stretch;
+      }
+
+      #edit-box-toggle {
+        flex-direction: row;
+        align-items: center;
+      }
+
+      #edit-box-toggle .toggle-pill {
+        width: auto;
+        flex: 1 1 0;
       }
 
       .inventory-toolbar {
@@ -1540,12 +1552,12 @@
         elements.inventoryList.innerHTML = sortedInventory().map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
         const tags = [
-          item.has_box ? `<button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><span class="inventory-tag boxed ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">Box</span></button>` : ''
+          item.has_box ? `<span class="inventory-tag boxed ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">Box</span>` : ''
         ].join('');
         const categoryShort = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : '-';
-        const categoryPill = item.gender ? `<button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><span class="gender-pill ${item.gender}">${categoryShort}</span></button>` : categoryShort;
+        const categoryPill = item.gender ? `<span class="gender-pill ${item.gender}">${categoryShort}</span>` : categoryShort;
         const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : '';
-        const soldPill = item.sold ? `<button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><span class="inventory-tag sold">Sold</span></button>` : '';
+        const soldPill = item.sold ? `<span class="inventory-tag sold">Sold</span>` : '';
 
           const photoStrip = photos.length
             ? `<div class="photo-strip">${photos.map((url, index) => `<button class="photo-thumb" type="button" data-photo-item="${item.id}" data-photo-index="${index}"><img src="${url}" alt="Saved photo ${index + 1}"></button>`).join('')}</div>`
@@ -1555,7 +1567,7 @@
             <article class="inventory-card ${cardClass}">
               <div class="inventory-line">
                 <div class="inventory-cell">
-                  <div class="pill-row">${tags}</div>
+                  <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div class="pill-row">${tags}</div></button>
                 </div>
                 <div class="inventory-cell">
                   <div class="pill-row">${soldPill}</div>
@@ -1566,7 +1578,7 @@
                 </div>
               <div class="inventory-cell">
                 <div class="mini-label">Cat</div>
-                <div>${categoryPill}</div>
+                  <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div>${categoryPill}</div></button>
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Details</div>
