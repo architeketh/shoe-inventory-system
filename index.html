@@ -1097,7 +1097,7 @@
         <div>Actions</div>
       </div>
       <div id="inventory-list" class="inventory-list"></div>
-      <div class="report-note">PDF export opens a report page with print controls and thumbnails. Excel export downloads a spreadsheet-friendly `.xls` file.</div>
+      <div class="report-note">PDF and CSV exports follow the current filter/search view and open with print controls or download directly.</div>
     </section>
   </div>
 
@@ -1924,12 +1924,13 @@
     }
 
     function exportPdfReport() {
+      const exportItems = sortedInventory();
       const reportWindow = window.open('', '_blank');
       if (!reportWindow) {
         alert('Allow pop-ups to open the PDF report preview.');
         return;
       }
-      const rows = state.inventory.map((item) => {
+      const rows = exportItems.map((item) => {
         const thumbs = (item.photo_urls || []).map((url) => `<img src="${url}" style="width:100%;aspect-ratio:1 / 1;object-fit:cover;border-radius:10px;border:1px solid #ddd;display:block;" />`).join('');
         return `
           <section style="page-break-inside:avoid;border:1px solid #ddd;border-radius:16px;padding:16px;margin-bottom:16px;">
@@ -1963,7 +1964,7 @@
               <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
             </div>
             <h1 style="margin-top:0;">Shoe Inventory Report</h1>
-            <div style="margin-bottom:20px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))}</div>
+            <div style="margin-bottom:20px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} · ${exportItems.length} pair(s) in current view</div>
             ${rows || '<p>No inventory available.</p>'}
           </body>
         </html>
@@ -1973,9 +1974,10 @@
     }
 
     function exportXlsReport() {
+      const exportItems = sortedInventory();
       const lines = [
         ['Brand', 'Description', 'Size', 'Category', 'Price', 'Box', 'Notes', 'Saved'],
-        ...state.inventory.map((item) => [
+        ...exportItems.map((item) => [
           item.brand || '',
           item.description || '',
           item.size || '',
