@@ -782,6 +782,51 @@
       box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
     }
 
+    .price-ai-modal-card {
+      position: relative;
+      width: min(100%, 640px);
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      padding: 20px;
+      border-radius: 24px;
+      background: rgba(255, 252, 247, 0.98);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+    }
+
+    .price-ai-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+    }
+
+    .price-ai-card {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.88);
+    }
+
+    .price-ai-card strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 1.5rem;
+      letter-spacing: -0.04em;
+      color: var(--sage);
+    }
+
+    .price-ai-meta {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0 16px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .price-ai-meta span {
+      display: block;
+    }
+
     .edit-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -940,6 +985,16 @@
       }
 
       .edit-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .price-ai-modal-card {
+        width: min(100%, 640px);
+        padding: 16px;
+        border-radius: 20px;
+      }
+
+      .price-ai-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -1212,13 +1267,46 @@
       </div>
   </div>
 
+  <div class="modal hidden" id="price-ai-modal" aria-hidden="true">
+    <div class="price-ai-modal-card">
+      <button class="modal-close" type="button" id="price-ai-close" aria-label="Close price AI">x</button>
+      <div class="eyebrow">Price AI</div>
+      <h3 id="price-ai-title">Market recommendation</h3>
+      <div class="form-status" id="price-ai-status">Select a shoe and run Price AI to see a market recommendation.</div>
+      <div class="price-ai-grid">
+        <div class="price-ai-card">
+          <div class="mini-label">Quick sale</div>
+          <strong id="price-ai-quick">--</strong>
+        </div>
+        <div class="price-ai-card">
+          <div class="mini-label">Recommended</div>
+          <strong id="price-ai-recommended">--</strong>
+        </div>
+        <div class="price-ai-card">
+          <div class="mini-label">High ask</div>
+          <strong id="price-ai-high">--</strong>
+        </div>
+      </div>
+      <div class="price-ai-meta">
+        <span id="price-ai-range">Comp range: --</span>
+        <span id="price-ai-sources">Sources: --</span>
+        <span id="price-ai-summary">Summary: --</span>
+      </div>
+      <div class="button-row">
+        <button class="button secondary" type="button" id="price-ai-apply-button">Use recommended price</button>
+        <button class="button ghost" type="button" id="price-ai-cancel-button">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const APP_CONFIG = {
       supabaseUrl: 'https://ozyefxmaeltienuagmcq.supabase.co',
       supabaseAnonKey: 'sb_publishable_63KSwhRg3Tl_q2Hj0Xs7cQ_cGAE1T9b',
       photoBucket: 'shoe-photos',
       inventoryTable: 'shoe_inventory',
-      aiFunctionName: 'shoe-intake-ai'
+      aiFunctionName: 'shoe-intake-ai',
+      priceAiFunctionName: 'shoe-price-ai'
     };
 
     const state = {
@@ -1235,7 +1323,10 @@
       touchStartX: 0,
       isSaving: false,
       isAiRunning: false,
-      aiUsedForCurrentDraft: false
+      aiUsedForCurrentDraft: false,
+      isPriceAiRunning: false,
+      pricingItemId: null,
+      lastPriceRecommendation: null
     };
 
     const elements = {
@@ -1280,6 +1371,18 @@
       modalImage: document.getElementById('modal-image'),
       modalPrev: document.getElementById('modal-prev'),
       modalNext: document.getElementById('modal-next'),
+      priceAiModal: document.getElementById('price-ai-modal'),
+      priceAiClose: document.getElementById('price-ai-close'),
+      priceAiTitle: document.getElementById('price-ai-title'),
+      priceAiStatus: document.getElementById('price-ai-status'),
+      priceAiQuick: document.getElementById('price-ai-quick'),
+      priceAiRecommended: document.getElementById('price-ai-recommended'),
+      priceAiHigh: document.getElementById('price-ai-high'),
+      priceAiRange: document.getElementById('price-ai-range'),
+      priceAiSources: document.getElementById('price-ai-sources'),
+      priceAiSummary: document.getElementById('price-ai-summary'),
+      priceAiApplyButton: document.getElementById('price-ai-apply-button'),
+      priceAiCancelButton: document.getElementById('price-ai-cancel-button'),
       editModal: document.getElementById('edit-modal'),
       editClose: document.getElementById('edit-close'),
       editForm: document.getElementById('edit-form'),
@@ -1365,6 +1468,49 @@
       if (!state.galleryUrls.length) return;
       state.galleryIndex = (state.galleryIndex + 1) % state.galleryUrls.length;
       renderGalleryImage();
+    }
+
+    function setPriceAiLoading(message) {
+      elements.priceAiStatus.className = 'form-status';
+      elements.priceAiStatus.textContent = message;
+      elements.priceAiApplyButton.disabled = true;
+      elements.priceAiQuick.textContent = '--';
+      elements.priceAiRecommended.textContent = '--';
+      elements.priceAiHigh.textContent = '--';
+      elements.priceAiRange.textContent = 'Comp range: --';
+      elements.priceAiSources.textContent = 'Sources: --';
+      elements.priceAiSummary.textContent = 'Summary: --';
+    }
+
+    function renderPriceAiResult(result) {
+      state.lastPriceRecommendation = result;
+      elements.priceAiStatus.className = 'form-status success';
+      elements.priceAiStatus.textContent = 'Market recommendation ready. Review it, then optionally apply the recommended price.';
+      elements.priceAiApplyButton.disabled = !Number.isFinite(Number(result?.recommended_price));
+      elements.priceAiQuick.textContent = currency(result?.quick_sale_price || 0);
+      elements.priceAiRecommended.textContent = currency(result?.recommended_price || 0);
+      elements.priceAiHigh.textContent = currency(result?.high_ask_price || 0);
+      elements.priceAiRange.textContent = `Comp range: ${currency(result?.comp_range_low || 0)} - ${currency(result?.comp_range_high || 0)}`;
+      elements.priceAiSources.textContent = `Sources: ${Array.isArray(result?.sources) && result.sources.length ? result.sources.join(', ') : 'Not provided'}`;
+      elements.priceAiSummary.textContent = `Summary: ${result?.summary || 'No summary provided.'}`;
+    }
+
+    function openPriceAiModal(item) {
+      state.pricingItemId = item?.id || null;
+      state.lastPriceRecommendation = null;
+      elements.priceAiTitle.textContent = item ? `Market recommendation for ${item.brand || 'shoe'}` : 'Market recommendation';
+      setPriceAiLoading('Checking market comps...');
+      elements.priceAiModal.classList.remove('hidden');
+      elements.priceAiModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closePriceAiModal() {
+      state.pricingItemId = null;
+      state.lastPriceRecommendation = null;
+      state.isPriceAiRunning = false;
+      elements.priceAiModal.classList.add('hidden');
+      elements.priceAiModal.setAttribute('aria-hidden', 'true');
+      elements.priceAiApplyButton.disabled = true;
     }
 
     function updateModeCopy() {
@@ -1743,6 +1889,7 @@
               <div class="inventory-cell">
                 <div class="inventory-actions">
                   <button class="mini-button" type="button" data-edit-id="${item.id}">Edit</button>
+                  <button class="mini-button" type="button" data-price-ai-id="${item.id}">Price AI</button>
                   <button class="mini-button" type="button" data-duplicate-id="${item.id}">Copy</button>
                   <button class="mini-button" type="button" data-delete-id="${item.id}">Delete</button>
                 </div>
@@ -1832,6 +1979,11 @@
         startEdit(editButton.dataset.editId);
         return;
       }
+      const priceAiButton = event.target.closest('[data-price-ai-id]');
+      if (priceAiButton) {
+        runPriceAi(priceAiButton.dataset.priceAiId);
+        return;
+      }
       const duplicateButton = event.target.closest('[data-duplicate-id]');
       if (duplicateButton) {
         duplicateItem(duplicateButton.dataset.duplicateId);
@@ -1864,6 +2016,21 @@
       if (delta > 0) showPrevPhoto();
       else showNextPhoto();
     }, { passive: true });
+    elements.priceAiClose.addEventListener('click', closePriceAiModal);
+    elements.priceAiCancelButton.addEventListener('click', closePriceAiModal);
+    elements.priceAiApplyButton.addEventListener('click', () => {
+      const recommended = Number(state.lastPriceRecommendation?.recommended_price);
+      const itemId = state.pricingItemId;
+      if (!Number.isFinite(recommended) || !itemId) return;
+      closePriceAiModal();
+      startEdit(itemId);
+      elements.editPrice.value = recommended.toFixed(2);
+      elements.editStatus.className = 'form-status success';
+      elements.editStatus.textContent = 'Recommended price applied. Save changes to keep it.';
+    });
+    elements.priceAiModal.addEventListener('click', (event) => {
+      if (event.target === elements.priceAiModal) closePriceAiModal();
+    });
     document.addEventListener('keydown', (event) => {
       if (elements.photoModal.classList.contains('hidden')) return;
       if (event.key === 'Escape') closePhotoModal();
@@ -1972,6 +2139,45 @@
       }
       await loadInventory();
       showBanner('success', 'Copied', `${item.brand} ${item.description} was copied as a new item.`);
+    }
+
+    async function runPriceAi(id) {
+      const item = state.inventory.find((entry) => entry.id === id);
+      if (!item) return;
+      if (!SUPABASE_READY) {
+        showBanner('error', 'Price AI unavailable', 'Supabase is not configured.');
+        return;
+      }
+      if (state.isPriceAiRunning) return;
+
+      state.isPriceAiRunning = true;
+      openPriceAiModal(item);
+
+      try {
+        const { data, error } = await supabaseClient.functions.invoke(APP_CONFIG.priceAiFunctionName, {
+          body: {
+            brand: item.brand,
+            description: item.description,
+            size: item.size,
+            gender: item.gender,
+            has_box: item.has_box,
+            notes: item.notes,
+            sold: item.sold,
+            price: item.price,
+            photo_urls: Array.isArray(item.photo_urls) ? item.photo_urls : []
+          }
+        });
+
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        renderPriceAiResult(data || {});
+      } catch (error) {
+        elements.priceAiStatus.className = 'form-status error';
+        elements.priceAiStatus.textContent = error?.message || String(error);
+        elements.priceAiSummary.textContent = 'Summary: Price AI could not complete the lookup.';
+      } finally {
+        state.isPriceAiRunning = false;
+      }
     }
 
     function exportPdfReport() {
