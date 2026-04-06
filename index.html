@@ -947,14 +947,14 @@
       <div style="padding-top:18px;">
         <div class="pill-row" style="margin-bottom:18px;">
           <span class="pill strong">Shoe Inventory System</span>
-          <span class="pill strong">Up to 4 phone photos</span>
+          <span class="pill strong">Up to 6 phone photos</span>
           <span class="pill">Price always required</span>
           <span class="pill">Box or no box prompt</span>
         </div>
         <div class="flow-grid">
           <article class="flow-card">
             <h3>1. Capture photos</h3>
-            <p>Use the phone camera or gallery. The app previews up to four images and uploads them to Supabase Storage when you save the pair.</p>
+            <p>Use the phone camera or gallery. The app previews up to six images and uploads them to Supabase Storage when you save the pair.</p>
           </article>
           <article class="flow-card">
             <h3>2. Answer box or no box</h3>
@@ -1002,7 +1002,7 @@
               <button class="button ghost" type="button" id="use-camera-button">Use camera</button>
               <button class="button secondary" type="button" id="browse-files-button">Choose files</button>
             </div>
-            <div class="helper">Select up to 4 photos. You can open the photo library, launch the camera, or use a general file picker.</div>
+            <div class="helper">Select up to 6 photos. You can open the photo library, launch the camera, or use a general file picker.</div>
             <div class="photo-grid" id="photo-preview"></div>
           </div>
 
@@ -1377,9 +1377,9 @@
 
     function handlePhotoSelection(files) {
       const merged = state.photoFiles.concat(Array.from(files || []));
-      state.photoFiles = merged.slice(0, 4);
-      if (merged.length > 4) {
-        alert('Only 4 photos can be uploaded per pair. The first 4 were kept.');
+      state.photoFiles = merged.slice(0, 6);
+      if (merged.length > 6) {
+        alert('Only 6 photos can be uploaded per pair. The first 6 were kept.');
       }
       renderPhotoPreview();
     }
