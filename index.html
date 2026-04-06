@@ -701,6 +701,17 @@
       line-height: 1.4;
     }
 
+    .inventory-summary {
+      margin-top: 12px;
+      padding: 12px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--sage);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
     .modal {
       position: fixed;
       inset: 0;
@@ -1097,6 +1108,7 @@
         <div>Actions</div>
       </div>
       <div id="inventory-list" class="inventory-list"></div>
+      <div id="inventory-summary" class="inventory-summary">0 pairs total · $0.00</div>
       <div class="report-note">PDF and CSV exports follow the current filter/search view and open with print controls or download directly.</div>
     </section>
   </div>
@@ -1222,6 +1234,7 @@
       resetButton: document.getElementById('reset-button'),
       saveButton: document.getElementById('save-button'),
       inventoryList: document.getElementById('inventory-list'),
+      inventorySummary: document.getElementById('inventory-summary'),
       inventoryStatus: document.getElementById('inventory-status'),
       sortSelect: document.getElementById('sort-select'),
       searchInput: document.getElementById('search-input'),
@@ -1639,10 +1652,15 @@
     function renderInventory() {
       if (!state.inventory.length) {
         elements.inventoryList.innerHTML = '<div class="empty-state">No pairs have been saved yet. Add your first pair above, upload the photos, and this list will fill in automatically.</div>';
+        elements.inventorySummary.textContent = '0 pairs total · $0.00';
         return;
       }
 
-        elements.inventoryList.innerHTML = sortedInventory().map((item) => {
+      const visibleItems = sortedInventory();
+      const visibleTotal = visibleItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
+      elements.inventorySummary.textContent = `${visibleItems.length} ${visibleItems.length === 1 ? 'pair' : 'pairs'} total · ${currency(visibleTotal)}`;
+
+        elements.inventoryList.innerHTML = visibleItems.map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
         const tags = [
           item.has_box
