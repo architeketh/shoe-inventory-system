@@ -594,10 +594,10 @@
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 90px 72px minmax(220px, 1.7fr) 44px 200px 90px 150px 78px;
+      grid-template-columns: 90px 72px 150px minmax(220px, 1.55fr) 44px 80px 90px 150px 78px;
       gap: 14px;
       align-items: center;
-      min-width: 980px;
+      min-width: 1120px;
     }
 
     .inventory-cell {
@@ -606,7 +606,7 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 90px 72px minmax(220px, 1.7fr) 44px 200px 90px 150px 78px;
+      grid-template-columns: 90px 72px 150px minmax(220px, 1.55fr) 44px 80px 90px 150px 78px;
       gap: 14px;
       align-items: center;
       padding: 0 16px 10px;
@@ -614,6 +614,11 @@
       font: 700 0.72rem/1.2 var(--mono);
       text-transform: uppercase;
       letter-spacing: 0.08em;
+    }
+
+    .inventory-head [data-sort-key] {
+      cursor: pointer;
+      user-select: none;
     }
 
     .price {
@@ -882,7 +887,7 @@
         display: none;
       }
 
-      .inventory-line { min-width: 980px; }
+      .inventory-line { min-width: 1120px; }
 
       .photo-strip {
         justify-content: flex-start;
@@ -1080,10 +1085,11 @@
       <div class="inventory-head">
         <div>Status</div>
         <div>Sold</div>
-        <div>Shoe</div>
+        <div data-sort-key="brand">Brand</div>
+        <div data-sort-key="description">Description</div>
         <div>Cat</div>
-        <div>Details</div>
-        <div>Price</div>
+        <div data-sort-key="size">Size</div>
+        <div data-sort-key="price">Price</div>
         <div>Attachments</div>
         <div>Actions</div>
       </div>
@@ -1175,6 +1181,7 @@
       editHasBox: true,
       sortValue: 'created_at_desc',
       searchTerm: '',
+      columnSort: { key: null, direction: 'asc' },
       galleryUrls: [],
       galleryIndex: 0,
       touchStartX: 0,
@@ -1593,18 +1600,35 @@
       }
       switch (state.sortValue) {
         case 'mens_only':
-          return items.filter((item) => item.gender === 'mens');
+          items = items.filter((item) => item.gender === 'mens');
+          break;
         case 'womens_only':
-          return items.filter((item) => item.gender === 'womens');
+          items = items.filter((item) => item.gender === 'womens');
+          break;
         case 'kids_only':
-          return items.filter((item) => item.gender === 'kids');
+          items = items.filter((item) => item.gender === 'kids');
+          break;
         case 'for_sale_only':
-          return items.filter((item) => !item.sold);
+          items = items.filter((item) => !item.sold);
+          break;
         case 'sold_only':
-          return items.filter((item) => item.sold);
+          items = items.filter((item) => item.sold);
+          break;
         default:
-          return items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          items = items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          break;
       }
+
+      if (state.columnSort.key) {
+        const factor = state.columnSort.direction === 'asc' ? 1 : -1;
+        items = [...items].sort((a, b) => {
+          if (state.columnSort.key === 'price') return (Number(a.price || 0) - Number(b.price || 0)) * factor;
+          if (state.columnSort.key === 'size') return String(a.size || '').localeCompare(String(b.size || ''), undefined, { numeric: true, sensitivity: 'base' }) * factor;
+          return String(a[state.columnSort.key] || '').localeCompare(String(b[state.columnSort.key] || ''), undefined, { sensitivity: 'base' }) * factor;
+        });
+      }
+
+      return items;
     }
 
     function renderInventory() {
@@ -1638,17 +1662,19 @@
                 <div class="inventory-cell">
                   <div class="pill-row">${soldPill}</div>
                 </div>
-                <div class="inventory-cell">
-                  <h3>${escapeHtml(item.brand || 'Unknown brand')}</h3>
-                  <div class="inventory-meta">${escapeHtml(item.description || 'No description')}</div>
-                </div>
               <div class="inventory-cell">
-                <div class="mini-label">Cat</div>
-                  <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div>${categoryPill}</div></button>
+                <h3>${escapeHtml(item.brand || 'Unknown brand')}</h3>
               </div>
               <div class="inventory-cell">
-                <div class="mini-label">Details</div>
-                <p>${escapeHtml(`Size ${item.size || '-'} | ${item.has_box ? 'Box' : 'No box'} | ${item.notes || 'No notes'}`)}</p>
+                <div class="inventory-meta">${escapeHtml(item.description || 'No description')}</div>
+              </div>
+              <div class="inventory-cell">
+                <div class="mini-label">Cat</div>
+                <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div>${categoryPill}</div></button>
+              </div>
+              <div class="inventory-cell">
+                <div class="mini-label">Size</div>
+                <p>${escapeHtml(item.size || '-')}</p>
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Price</div>
@@ -1715,6 +1741,18 @@
     elements.refreshButton.addEventListener('click', loadInventory);
     elements.sortSelect.addEventListener('change', (event) => {
       state.sortValue = event.target.value;
+      renderInventory();
+    });
+    document.querySelector('.inventory-head').addEventListener('click', (event) => {
+      const header = event.target.closest('[data-sort-key]');
+      if (!header) return;
+      const key = header.dataset.sortKey;
+      if (state.columnSort.key === key) {
+        state.columnSort.direction = state.columnSort.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.columnSort.key = key;
+        state.columnSort.direction = 'asc';
+      }
       renderInventory();
     });
     elements.searchInput.addEventListener('keydown', (event) => {
