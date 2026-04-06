@@ -287,6 +287,14 @@
       border-color: rgba(239, 68, 68, 0.18);
     }
 
+    .inventory-pill-button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+    }
+
     .inventory-tag.ai {
       color: var(--sage);
       background: rgba(239, 248, 243, 0.96);
@@ -702,7 +710,9 @@
       color: #fff;
       font-size: 1.35rem;
       cursor: pointer;
-      display: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .viewer-arrow.prev {
@@ -711,14 +721,6 @@
 
     .viewer-arrow.next {
       right: 12px;
-    }
-
-    @media (hover: hover) and (pointer: fine) {
-      .viewer-arrow {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-      }
     }
 
     .edit-modal-card {
@@ -1538,12 +1540,12 @@
         elements.inventoryList.innerHTML = sortedInventory().map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
         const tags = [
-          `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'} ${!item.has_box ? 'strike' : ''} ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">Box</span>`
+          item.has_box ? `<button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><span class="inventory-tag boxed ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">Box</span></button>` : ''
         ].join('');
         const categoryShort = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : '-';
-        const categoryPill = item.gender ? `<span class="gender-pill ${item.gender}">${categoryShort}</span>` : categoryShort;
+        const categoryPill = item.gender ? `<button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><span class="gender-pill ${item.gender}">${categoryShort}</span></button>` : categoryShort;
         const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : '';
-        const soldPill = item.sold ? '<span class="inventory-tag sold">Sold</span>' : '';
+        const soldPill = item.sold ? `<button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><span class="inventory-tag sold">Sold</span></button>` : '';
 
           const photoStrip = photos.length
             ? `<div class="photo-strip">${photos.map((url, index) => `<button class="photo-thumb" type="button" data-photo-item="${item.id}" data-photo-index="${index}"><img src="${url}" alt="Saved photo ${index + 1}"></button>`).join('')}</div>`
