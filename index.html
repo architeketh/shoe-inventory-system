@@ -594,10 +594,10 @@
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 90px 72px 150px minmax(220px, 1.55fr) 44px 80px 90px 150px 78px;
-      gap: 14px;
+      grid-template-columns: 72px 56px 132px minmax(200px, 1.45fr) 38px 64px 82px 132px 66px;
+      gap: 10px;
       align-items: center;
-      min-width: 1120px;
+      min-width: 940px;
     }
 
     .inventory-cell {
@@ -606,8 +606,8 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 90px 72px 150px minmax(220px, 1.55fr) 44px 80px 90px 150px 78px;
-      gap: 14px;
+      grid-template-columns: 72px 56px 132px minmax(200px, 1.45fr) 38px 64px 82px 132px 66px;
+      gap: 10px;
       align-items: center;
       padding: 0 16px 10px;
       color: var(--muted);
@@ -887,7 +887,7 @@
         display: none;
       }
 
-      .inventory-line { min-width: 1120px; }
+      .inventory-line { min-width: 940px; }
 
       .photo-strip {
         justify-content: flex-start;
@@ -1059,6 +1059,7 @@
         <div class="toolbar-compact">
           <span class="toolbar-label">Sort</span>
           <select class="sort-select" id="sort-select" aria-label="Sort inventory">
+              <option value="all">All</option>
               <option value="created_at_desc">Newest first</option>
               <option value="mens_only">Mens only</option>
               <option value="womens_only">Womens only</option>
@@ -1156,7 +1157,7 @@
           <div class="form-status" id="edit-status">Update the fields and save changes.</div>
           <div class="button-row">
             <button class="button secondary" type="button" id="delete-button">Delete shoe</button>
-            <button class="button secondary" type="button" id="duplicate-button">Duplicate shoe</button>
+            <button class="button secondary" type="button" id="duplicate-button">Copy shoe</button>
             <button class="button ghost" type="button" id="edit-cancel-button">Cancel</button>
             <button class="button primary" type="submit" id="edit-save-button">Save changes</button>
           </div>
@@ -1598,7 +1599,9 @@
           return terms.some((term) => searchValues.some((value) => value.includes(term)));
         });
       }
-      switch (state.sortValue) {
+        switch (state.sortValue) {
+        case 'all':
+          break;
         case 'mens_only':
           items = items.filter((item) => item.gender === 'mens');
           break;
@@ -1687,7 +1690,7 @@
               <div class="inventory-cell">
                 <div class="inventory-actions">
                   <button class="mini-button" type="button" data-edit-id="${item.id}">Edit</button>
-                  <button class="mini-button" type="button" data-duplicate-id="${item.id}">Duplicate</button>
+                  <button class="mini-button" type="button" data-duplicate-id="${item.id}">Copy</button>
                   <button class="mini-button" type="button" data-delete-id="${item.id}">Delete</button>
                 </div>
               </div>
@@ -1911,11 +1914,11 @@
       };
       const { error } = await supabaseClient.from(APP_CONFIG.inventoryTable).insert(payload);
       if (error) {
-        showBanner('error', 'Duplicate failed', error.message || String(error));
+        showBanner('error', 'Copy failed', error.message || String(error));
         return;
       }
       await loadInventory();
-      showBanner('success', 'Duplicated', `${item.brand} ${item.description} was duplicated as a new item.`);
+      showBanner('success', 'Copied', `${item.brand} ${item.description} was copied as a new item.`);
     }
 
     function exportPdfReport() {
