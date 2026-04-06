@@ -1104,7 +1104,7 @@
     <div class="edit-modal-card">
       <button class="modal-close" type="button" id="edit-close" aria-label="Close edit">x</button>
       <div class="eyebrow">Edit shoe</div>
-      <form id="edit-form">
+        <form id="edit-form">
         <div class="toggle-row" id="edit-box-toggle" style="margin-bottom:14px;">
           <button class="toggle-pill active" type="button" data-edit-box-value="yes">Box</button>
           <button class="toggle-pill" type="button" data-edit-box-value="no">No box</button>
@@ -1147,14 +1147,15 @@
             </select>
           </div>
         </div>
-        <div class="form-status" id="edit-status">Update the fields and save changes.</div>
-        <div class="button-row">
-          <button class="button secondary" type="button" id="delete-button">Delete shoe</button>
-          <button class="button ghost" type="button" id="edit-cancel-button">Cancel</button>
-          <button class="button primary" type="submit" id="edit-save-button">Save changes</button>
-        </div>
-      </form>
-    </div>
+          <div class="form-status" id="edit-status">Update the fields and save changes.</div>
+          <div class="button-row">
+            <button class="button secondary" type="button" id="delete-button">Delete shoe</button>
+            <button class="button secondary" type="button" id="duplicate-button">Duplicate shoe</button>
+            <button class="button ghost" type="button" id="edit-cancel-button">Cancel</button>
+            <button class="button primary" type="submit" id="edit-save-button">Save changes</button>
+          </div>
+        </form>
+      </div>
   </div>
 
   <script>
@@ -1233,11 +1234,12 @@
       editPrice: document.getElementById('edit-price'),
       editNotes: document.getElementById('edit-notes'),
       editSold: document.getElementById('edit-sold'),
-      editStatus: document.getElementById('edit-status'),
-      editCancelButton: document.getElementById('edit-cancel-button'),
-      editSaveButton: document.getElementById('edit-save-button'),
-      deleteButton: document.getElementById('delete-button')
-    };
+        editStatus: document.getElementById('edit-status'),
+        editCancelButton: document.getElementById('edit-cancel-button'),
+        editSaveButton: document.getElementById('edit-save-button'),
+        deleteButton: document.getElementById('delete-button'),
+        duplicateButton: document.getElementById('duplicate-button')
+      };
 
     const SUPABASE_READY = !APP_CONFIG.supabaseUrl.includes('YOUR_PROJECT') && !APP_CONFIG.supabaseAnonKey.includes('YOUR_SUPABASE');
     const supabaseClient = SUPABASE_READY ? window.supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseAnonKey) : null;
@@ -1659,6 +1661,7 @@
               <div class="inventory-cell">
                 <div class="inventory-actions">
                   <button class="mini-button" type="button" data-edit-id="${item.id}">Edit</button>
+                  <button class="mini-button" type="button" data-duplicate-id="${item.id}">Duplicate</button>
                   <button class="mini-button" type="button" data-delete-id="${item.id}">Delete</button>
                 </div>
               </div>
@@ -1733,6 +1736,11 @@
       const editButton = event.target.closest('[data-edit-id]');
       if (editButton) {
         startEdit(editButton.dataset.editId);
+        return;
+      }
+      const duplicateButton = event.target.closest('[data-duplicate-id]');
+      if (duplicateButton) {
+        duplicateItem(duplicateButton.dataset.duplicateId);
         return;
       }
       const deleteButton = event.target.closest('[data-delete-id]');
@@ -1846,6 +1854,32 @@
       showBanner('success', 'Deleted', `${item.brand} ${item.description} was deleted.`);
     }
 
+    async function duplicateItem(id) {
+      const item = state.inventory.find((entry) => entry.id === id);
+      if (!item) return;
+      const payload = {
+        brand: item.brand,
+        description: item.description,
+        size: item.size,
+        gender: item.gender || null,
+        price: item.price,
+        notes: item.notes || null,
+        sold: Boolean(item.sold),
+        has_box: Boolean(item.has_box),
+        source_method: item.has_box ? 'box' : 'no_box',
+        ai_assisted: Boolean(item.ai_assisted),
+        photo_urls: Array.isArray(item.photo_urls) ? item.photo_urls : [],
+        photo_paths: Array.isArray(item.photo_paths) ? item.photo_paths : []
+      };
+      const { error } = await supabaseClient.from(APP_CONFIG.inventoryTable).insert(payload);
+      if (error) {
+        showBanner('error', 'Duplicate failed', error.message || String(error));
+        return;
+      }
+      await loadInventory();
+      showBanner('success', 'Duplicated', `${item.brand} ${item.description} was duplicated as a new item.`);
+    }
+
     function exportPdfReport() {
       const reportWindow = window.open('', '_blank');
       if (!reportWindow) {
@@ -1933,6 +1967,9 @@
     elements.editClose.addEventListener('click', closeEditModal);
     elements.deleteButton.addEventListener('click', () => {
       if (state.editingId) deleteItem(state.editingId).then(closeEditModal);
+    });
+    elements.duplicateButton.addEventListener('click', () => {
+      if (state.editingId) duplicateItem(state.editingId);
     });
     elements.editModal.addEventListener('click', (event) => {
       if (event.target === elements.editModal) closeEditModal();
