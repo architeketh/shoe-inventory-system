@@ -275,6 +275,17 @@
       border-color: rgba(59, 130, 246, 0.14);
     }
 
+    .inventory-tag.strike {
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+    }
+
+    .inventory-tag.sold {
+      color: #7f1d1d;
+      background: rgba(254, 226, 226, 0.96);
+      border-color: rgba(239, 68, 68, 0.18);
+    }
+
     .inventory-tag.ai {
       color: var(--sage);
       background: rgba(239, 248, 243, 0.96);
@@ -544,10 +555,10 @@
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 90px minmax(220px, 1.75fr) 44px 210px 90px 150px 78px;
+      grid-template-columns: 90px 72px minmax(220px, 1.7fr) 44px 200px 90px 150px 78px;
       gap: 14px;
       align-items: center;
-      min-width: 900px;
+      min-width: 980px;
     }
 
     .inventory-cell {
@@ -556,7 +567,7 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 90px minmax(220px, 1.75fr) 44px 210px 90px 150px 78px;
+      grid-template-columns: 90px 72px minmax(220px, 1.7fr) 44px 200px 90px 150px 78px;
       gap: 14px;
       align-items: center;
       padding: 0 16px 10px;
@@ -616,6 +627,13 @@
     .sort-select {
       width: auto;
       min-width: 168px;
+      padding: 12px 14px;
+      border-radius: 999px;
+    }
+
+    .search-input {
+      min-width: 180px;
+      width: 100%;
       padding: 12px 14px;
       border-radius: 999px;
     }
@@ -826,7 +844,7 @@
         display: none;
       }
 
-      .inventory-line { min-width: 900px; }
+      .inventory-line { min-width: 980px; }
 
       .photo-strip {
         justify-content: flex-start;
@@ -965,6 +983,14 @@
             <label for="notes">Notes</label>
             <input id="notes" name="notes" type="text" placeholder="Condition, flaws, release year, SKU...">
           </div>
+
+          <div class="field">
+            <label for="sold">Sold</label>
+            <select id="sold" name="sold">
+              <option value="false">For sale</option>
+              <option value="true">Sold</option>
+            </select>
+          </div>
         </div>
 
         <div class="prompt-box" id="required-copy">
@@ -998,7 +1024,9 @@
             <option value="size_desc">Size high-low</option>
             <option value="price_asc">Price low-high</option>
             <option value="price_desc">Price high-low</option>
+            <option value="sold_only">Sold only</option>
           </select>
+          <input class="search-input" id="search-input" type="search" placeholder="Search shoes" aria-label="Search shoes">
         </div>
         <div class="toolbar-compact">
           <span class="toolbar-label">Export</span>
@@ -1015,6 +1043,7 @@
       </div>
       <div class="inventory-head">
         <div>Status</div>
+        <div>Sold</div>
         <div>Shoe</div>
         <div>Cat</div>
         <div>Details</div>
@@ -1073,6 +1102,13 @@
             <label for="edit-notes">Notes</label>
             <input id="edit-notes" type="text">
           </div>
+          <div class="field">
+            <label for="edit-sold">Sold</label>
+            <select id="edit-sold">
+              <option value="false">For sale</option>
+              <option value="true">Sold</option>
+            </select>
+          </div>
         </div>
         <div class="form-status" id="edit-status">Update the fields and save changes.</div>
         <div class="button-row">
@@ -1100,6 +1136,7 @@
       editingId: null,
       editHasBox: true,
       sortValue: 'created_at_desc',
+      searchTerm: '',
       galleryUrls: [],
       galleryIndex: 0,
       touchStartX: 0,
@@ -1128,6 +1165,7 @@
       gender: document.getElementById('gender'),
       price: document.getElementById('price'),
       notes: document.getElementById('notes'),
+      sold: document.getElementById('sold'),
       choosePhotosButton: document.getElementById('choose-photos-button'),
       useCameraButton: document.getElementById('use-camera-button'),
       browseFilesButton: document.getElementById('browse-files-button'),
@@ -1138,6 +1176,7 @@
       inventoryList: document.getElementById('inventory-list'),
       inventoryStatus: document.getElementById('inventory-status'),
       sortSelect: document.getElementById('sort-select'),
+      searchInput: document.getElementById('search-input'),
       reportButton: document.getElementById('report-button'),
       xlsButton: document.getElementById('xls-button'),
       refreshButton: document.getElementById('refresh-button'),
@@ -1155,6 +1194,7 @@
       editDescription: document.getElementById('edit-description'),
       editPrice: document.getElementById('edit-price'),
       editNotes: document.getElementById('edit-notes'),
+      editSold: document.getElementById('edit-sold'),
       editStatus: document.getElementById('edit-status'),
       editCancelButton: document.getElementById('edit-cancel-button'),
       editSaveButton: document.getElementById('edit-save-button'),
@@ -1300,7 +1340,8 @@
         gender: elements.gender.value.trim(),
         description: elements.description.value.trim(),
         price: Number(elements.price.value || 0),
-        notes: elements.notes.value.trim()
+        notes: elements.notes.value.trim(),
+        sold: elements.sold.value === 'true'
       };
     }
 
@@ -1416,6 +1457,7 @@
           gender: draft.gender || null,
           price: draft.price,
           notes: draft.notes || null,
+          sold: draft.sold,
           has_box: state.hasBox,
           source_method: state.hasBox ? 'box' : 'no_box',
           ai_assisted: state.aiUsedForCurrentDraft,
@@ -1452,7 +1494,11 @@
     }
 
     function sortedInventory() {
-      const items = [...state.inventory];
+      let items = [...state.inventory];
+      if (state.searchTerm) {
+        const q = state.searchTerm.toLowerCase();
+        items = items.filter((item) => [item.brand, item.description, item.notes, item.size, item.gender].some((value) => String(value || '').toLowerCase().includes(q)));
+      }
       switch (state.sortValue) {
         case 'brand_asc':
           return items.sort((a, b) => String(a.brand || '').localeCompare(String(b.brand || ''), undefined, { sensitivity: 'base' }));
@@ -1470,6 +1516,8 @@
           return items.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
         case 'price_desc':
           return items.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+        case 'sold_only':
+          return items.filter((item) => item.sold);
         default:
           return items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       }
@@ -1484,26 +1532,30 @@
         elements.inventoryList.innerHTML = sortedInventory().map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
         const tags = [
-          `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'} ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">${item.has_box ? 'Box' : 'No box'}</span>`
+          `<span class="inventory-tag ${item.has_box ? 'boxed' : 'no-box'} ${!item.has_box ? 'strike' : ''} ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">Box</span>`
         ].join('');
         const categoryShort = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : '-';
         const categoryPill = item.gender ? `<span class="gender-pill ${item.gender}">${categoryShort}</span>` : categoryShort;
         const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : '';
+        const soldPill = item.sold ? '<span class="inventory-tag sold">Sold</span>' : '';
 
           const photoStrip = photos.length
             ? `<div class="photo-strip">${photos.map((url, index) => `<button class="photo-thumb" type="button" data-photo-item="${item.id}" data-photo-index="${index}"><img src="${url}" alt="Saved photo ${index + 1}"></button>`).join('')}</div>`
             : '<div class="attachments-empty">No photos</div>';
 
         return `
-          <article class="inventory-card ${cardClass}">
-            <div class="inventory-line">
-              <div class="inventory-cell">
-                <div class="pill-row">${tags}</div>
-              </div>
-              <div class="inventory-cell">
-                <h3>${escapeHtml(item.brand || 'Unknown brand')}</h3>
-                <div class="inventory-meta">${escapeHtml(item.description || 'No description')}</div>
-              </div>
+            <article class="inventory-card ${cardClass}">
+              <div class="inventory-line">
+                <div class="inventory-cell">
+                  <div class="pill-row">${tags}</div>
+                </div>
+                <div class="inventory-cell">
+                  <div class="pill-row">${soldPill}</div>
+                </div>
+                <div class="inventory-cell">
+                  <h3>${escapeHtml(item.brand || 'Unknown brand')}</h3>
+                  <div class="inventory-meta">${escapeHtml(item.description || 'No description')}</div>
+                </div>
               <div class="inventory-cell">
                 <div class="mini-label">Cat</div>
                 <div>${categoryPill}</div>
@@ -1545,7 +1597,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,gender,price,notes,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,brand,description,size,gender,price,notes,sold,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -1576,6 +1628,10 @@
     elements.refreshButton.addEventListener('click', loadInventory);
     elements.sortSelect.addEventListener('change', (event) => {
       state.sortValue = event.target.value;
+      renderInventory();
+    });
+    elements.searchInput.addEventListener('input', (event) => {
+      state.searchTerm = event.target.value.trim();
       renderInventory();
     });
     elements.inventoryList.addEventListener('click', (event) => {
@@ -1634,6 +1690,7 @@
       elements.editDescription.value = item.description || '';
       elements.editPrice.value = item.price ?? '';
       elements.editNotes.value = item.notes || '';
+      elements.editSold.value = item.sold ? 'true' : 'false';
       elements.editStatus.className = 'form-status';
       elements.editStatus.textContent = 'Update the fields and save changes.';
       elements.editModal.classList.remove('hidden');
@@ -1661,6 +1718,7 @@
           description: elements.editDescription.value.trim(),
           price: Number(elements.editPrice.value || 0),
           notes: elements.editNotes.value.trim() || null,
+          sold: elements.editSold.value === 'true',
           has_box: state.editHasBox,
           source_method: state.editHasBox ? 'box' : 'no_box'
         };
