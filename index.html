@@ -577,6 +577,11 @@
       border-color: rgba(59, 130, 246, 0.14);
     }
 
+    .inventory-card.gender-kids {
+      background: linear-gradient(180deg, rgba(254, 249, 195, 0.92) 0%, rgba(255, 255, 255, 0.88) 100%);
+      border-color: rgba(245, 158, 11, 0.16);
+    }
+
     .inventory-card h3 {
       font-size: 1rem;
       letter-spacing: -0.03em;
@@ -1050,15 +1055,9 @@
           <span class="toolbar-label">Sort</span>
           <select class="sort-select" id="sort-select" aria-label="Sort inventory">
               <option value="created_at_desc">Newest first</option>
-              <option value="brand_asc">Brand A-Z</option>
-              <option value="brand_desc">Brand Z-A</option>
               <option value="mens_only">Mens only</option>
               <option value="womens_only">Womens only</option>
               <option value="kids_only">Kids only</option>
-              <option value="size_asc">Size low-high</option>
-              <option value="size_desc">Size high-low</option>
-              <option value="price_asc">Price low-high</option>
-              <option value="price_desc">Price high-low</option>
               <option value="for_sale_only">For sale only</option>
               <option value="sold_only">Sold only</option>
             </select>
@@ -1591,24 +1590,12 @@
         });
       }
       switch (state.sortValue) {
-        case 'brand_asc':
-          return items.sort((a, b) => String(a.brand || '').localeCompare(String(b.brand || ''), undefined, { sensitivity: 'base' }));
-        case 'brand_desc':
-          return items.sort((a, b) => String(b.brand || '').localeCompare(String(a.brand || ''), undefined, { sensitivity: 'base' }));
         case 'mens_only':
           return items.filter((item) => item.gender === 'mens');
         case 'womens_only':
           return items.filter((item) => item.gender === 'womens');
         case 'kids_only':
           return items.filter((item) => item.gender === 'kids');
-        case 'size_asc':
-          return items.sort((a, b) => String(a.size || '').localeCompare(String(b.size || ''), undefined, { numeric: true, sensitivity: 'base' }));
-        case 'size_desc':
-          return items.sort((a, b) => String(b.size || '').localeCompare(String(a.size || ''), undefined, { numeric: true, sensitivity: 'base' }));
-        case 'price_asc':
-          return items.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
-        case 'price_desc':
-          return items.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
         case 'for_sale_only':
           return items.filter((item) => !item.sold);
         case 'sold_only':
@@ -1633,7 +1620,7 @@
         ].join('');
         const categoryShort = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : item.gender === 'kids' ? 'K' : '-';
         const categoryPill = item.gender ? `<span class="gender-pill ${item.gender}">${categoryShort}</span>` : categoryShort;
-        const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : '';
+        const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : item.gender === 'kids' ? 'gender-kids' : '';
         const soldPill = item.sold ? `<span class="inventory-tag sold">Sold</span>` : '';
 
           const photoStrip = photos.length
