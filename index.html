@@ -1859,7 +1859,10 @@
             <article class="inventory-card ${cardClass}">
               <div class="inventory-line">
                 <div class="inventory-cell">
-                  <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div class="pill-row">${tags}</div></button>
+                  <div class="inventory-actions">
+                    <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div class="pill-row">${tags}</div></button>
+                    <button class="mini-button" type="button" data-price-ai-id="${item.id}">Price AI</button>
+                  </div>
                 </div>
                 <div class="inventory-cell">
                   <div class="pill-row">${soldPill}</div>
@@ -1889,7 +1892,6 @@
               <div class="inventory-cell">
                 <div class="inventory-actions">
                   <button class="mini-button" type="button" data-edit-id="${item.id}">Edit</button>
-                  <button class="mini-button" type="button" data-price-ai-id="${item.id}">Price AI</button>
                   <button class="mini-button" type="button" data-duplicate-id="${item.id}">Copy</button>
                   <button class="mini-button" type="button" data-delete-id="${item.id}">Delete</button>
                 </div>
