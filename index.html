@@ -1055,6 +1055,7 @@
             <option value="sold_only">Sold only</option>
           </select>
           <input class="search-input" id="search-input" type="search" placeholder="Search + Enter" aria-label="Search shoes">
+          <button class="button secondary" type="button" id="search-clear-button">Clear</button>
         </div>
         <div class="toolbar-compact">
           <span class="toolbar-label">Export</span>
@@ -1205,6 +1206,7 @@
       inventoryStatus: document.getElementById('inventory-status'),
       sortSelect: document.getElementById('sort-select'),
       searchInput: document.getElementById('search-input'),
+      searchClearButton: document.getElementById('search-clear-button'),
       reportButton: document.getElementById('report-button'),
       xlsButton: document.getElementById('xls-button'),
       refreshButton: document.getElementById('refresh-button'),
@@ -1521,10 +1523,37 @@
       elements.averagePrice.textContent = currency(average);
     }
 
+    function normalizedSearchTerms(raw) {
+      const base = String(raw || '').toLowerCase().trim();
+      if (!base) return [];
+      const variants = new Set([base]);
+      const compact = base.replace(/[\s'-]+/g, '');
+      variants.add(compact);
+      if (base === 'mens' || base === "men's" || base === 'men' || base === 'm') {
+        ['mens', "men's", 'men', 'm', 'male'].forEach((value) => variants.add(value));
+      }
+      if (base === 'womens' || base === "women's" || base === 'women' || base === 'w') {
+        ['womens', "women's", 'women', 'w', 'female'].forEach((value) => variants.add(value));
+      }
+      if (compact === 'nobox') {
+        ['no box', 'nobox', 'without box'].forEach((value) => variants.add(value));
+      }
+      if (base === 'box') {
+        ['box', 'with box'].forEach((value) => variants.add(value));
+      }
+      if (compact === 'forsale' || base === 'for sale') {
+        ['for sale', 'forsale', 'available', 'active'].forEach((value) => variants.add(value));
+      }
+      if (base === 'sold') {
+        ['sold'].forEach((value) => variants.add(value));
+      }
+      return [...variants];
+    }
+
     function sortedInventory() {
       let items = [...state.inventory];
       if (state.searchTerm) {
-        const q = state.searchTerm.toLowerCase();
+        const terms = normalizedSearchTerms(state.searchTerm);
         items = items.filter((item) => {
           const searchValues = [
             item.brand,
@@ -1532,11 +1561,13 @@
             item.notes,
             item.size,
             item.gender,
+            item.gender === 'mens' ? 'm mens men male' : '',
+            item.gender === 'womens' ? 'w womens women female' : '',
             item.has_box ? 'box' : 'no box',
             item.sold ? 'sold' : 'for sale',
             String(item.price ?? '')
-          ];
-          return searchValues.some((value) => String(value || '').toLowerCase().includes(q));
+          ].map((value) => String(value || '').toLowerCase());
+          return terms.some((term) => searchValues.some((value) => value.includes(term)));
         });
       }
       switch (state.sortValue) {
@@ -1680,6 +1711,11 @@
     });
     elements.searchInput.addEventListener('search', (event) => {
       state.searchTerm = event.target.value.trim();
+      renderInventory();
+    });
+    elements.searchClearButton.addEventListener('click', () => {
+      state.searchTerm = '';
+      elements.searchInput.value = '';
       renderInventory();
     });
     elements.inventoryList.addEventListener('click', (event) => {
