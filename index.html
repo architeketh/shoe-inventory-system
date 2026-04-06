@@ -695,9 +695,13 @@
     }
 
     .mini-button.price-ai-used {
-      color: #1f5b3d;
-      background: rgba(239, 248, 243, 0.96);
-      border-color: rgba(49, 87, 74, 0.2);
+      color: #ffffff;
+      background: linear-gradient(135deg, #3f8f68 0%, #2c6c4d 100%);
+      border-color: rgba(49, 87, 74, 0.28);
+    }
+
+    .mini-button .mobile-label {
+      display: none;
     }
 
     .report-note {
@@ -955,6 +959,19 @@
 
       .photo-strip {
         justify-content: flex-start;
+      }
+
+      .inventory-line .inventory-actions .mini-button[data-price-ai-id] {
+        min-width: 42px;
+        padding: 8px 10px;
+      }
+
+      .inventory-line .inventory-actions .mini-button[data-price-ai-id] .desktop-label {
+        display: none;
+      }
+
+      .inventory-line .inventory-actions .mini-button[data-price-ai-id] .mobile-label {
+        display: inline;
       }
 
       .modal {
@@ -1870,7 +1887,7 @@
                 <div class="inventory-cell">
                   <div class="inventory-actions">
                     <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div class="pill-row">${tags}</div></button>
-                    <button class="${priceAiClass}" type="button" data-price-ai-id="${item.id}">Price AI</button>
+                    <button class="${priceAiClass}" type="button" data-price-ai-id="${item.id}"><span class="desktop-label">Price AI</span><span class="mobile-label">AI</span></button>
                   </div>
                 </div>
                 <div class="inventory-cell">
