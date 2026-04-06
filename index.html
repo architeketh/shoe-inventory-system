@@ -1350,7 +1350,9 @@
       isPriceAiRunning: false,
       pricingItemId: null,
       lastPriceRecommendation: null,
-      editPriceAiUsed: false
+      editPriceAiUsed: false,
+      editOriginalPrice: null,
+      editAppliedPriceAiValue: null
     };
 
     const elements = {
@@ -2053,6 +2055,7 @@
       closePriceAiModal();
       startEdit(itemId);
       state.editPriceAiUsed = true;
+      state.editAppliedPriceAiValue = recommended;
       elements.editPrice.value = recommended.toFixed(2);
       elements.editStatus.className = 'form-status success';
       elements.editStatus.textContent = 'Recommended price applied. Save changes to keep it.';
@@ -2077,6 +2080,8 @@
       if (!item) return;
       state.editingId = id;
       state.editPriceAiUsed = Boolean(item.price_ai_used);
+      state.editOriginalPrice = Number(item.price || 0);
+      state.editAppliedPriceAiValue = null;
       setEditBoxMode(Boolean(item.has_box));
       elements.editBrand.value = item.brand || '';
       elements.editSize.value = item.size || '';
@@ -2094,6 +2099,8 @@
     function closeEditModal() {
       state.editingId = null;
       state.editPriceAiUsed = false;
+      state.editOriginalPrice = null;
+      state.editAppliedPriceAiValue = null;
       elements.editModal.classList.add('hidden');
       elements.editModal.setAttribute('aria-hidden', 'true');
       elements.editForm.reset();
@@ -2106,15 +2113,28 @@
       elements.editStatus.className = 'form-status';
       elements.editStatus.textContent = 'Saving changes...';
       try {
+        const editedPrice = Number(elements.editPrice.value || 0);
+        const appliedAiPrice = Number(state.editAppliedPriceAiValue);
+        const originalPrice = Number(state.editOriginalPrice);
+        let priceAiUsed = state.editPriceAiUsed;
+
+        if (priceAiUsed) {
+          if (Number.isFinite(appliedAiPrice)) {
+            priceAiUsed = editedPrice === appliedAiPrice;
+          } else if (Number.isFinite(originalPrice)) {
+            priceAiUsed = editedPrice === originalPrice;
+          }
+        }
+
         const payload = {
           brand: elements.editBrand.value.trim(),
           size: elements.editSize.value.trim(),
           gender: elements.editGender.value.trim() || null,
           description: elements.editDescription.value.trim(),
-          price: Number(elements.editPrice.value || 0),
+          price: editedPrice,
           notes: elements.editNotes.value.trim() || null,
           sold: elements.editSold.value === 'true',
-          price_ai_used: state.editPriceAiUsed,
+          price_ai_used: priceAiUsed,
           has_box: state.editHasBox,
           source_method: state.editHasBox ? 'box' : 'no_box'
         };
