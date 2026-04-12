@@ -1198,6 +1198,8 @@
           <span class="toolbar-label">Export</span>
           <button class="button ghost" type="button" id="report-button">PDF</button>
           <button class="button ghost" type="button" id="xls-button">CSV</button>
+          <button class="button ghost" type="button" id="whatnot-button">Whatnot</button>
+          <button class="button ghost" type="button" id="depop-button">Depop</button>
         </div>
         <button class="button secondary" type="button" id="refresh-button">Sync Data</button>
       </div>
@@ -1220,7 +1222,7 @@
       </div>
       <div id="inventory-list" class="inventory-list"></div>
       <div id="inventory-summary" class="inventory-summary">0 pairs total · $0.00</div>
-      <div class="report-note">PDF and CSV exports follow the current filter/search view and open with print controls or download directly.</div>
+      <div class="report-note">PDF, CSV, Whatnot, and Depop exports follow the current filter/search view. Whatnot uses official bulk-import fields; Depop export is a prep CSV for their web bulk listing workflow.</div>
     </section>
   </div>
 
@@ -1391,6 +1393,8 @@
       searchClearButton: document.getElementById('search-clear-button'),
       reportButton: document.getElementById('report-button'),
       xlsButton: document.getElementById('xls-button'),
+      whatnotButton: document.getElementById('whatnot-button'),
+      depopButton: document.getElementById('depop-button'),
       refreshButton: document.getElementById('refresh-button'),
       formStatus: document.getElementById('form-status'),
       photoModal: document.getElementById('photo-modal'),
@@ -2312,8 +2316,113 @@
       URL.revokeObjectURL(url);
     }
 
+    function downloadCsv(filename, lines) {
+      const csv = lines.map((row) => row.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function buildTitle(item, maxLength = 80) {
+      const parts = [item.brand, item.description, item.size ? `Size ${item.size}` : ''].filter(Boolean);
+      const title = parts.join(' ').replace(/\s+/g, ' ').trim();
+      return title.length > maxLength ? `${title.slice(0, maxLength - 1).trim()}…` : title;
+    }
+
+    function mapCondition(item) {
+      const notes = String(item.notes || '').toLowerCase();
+      if (notes.includes('new') || notes.includes('nwt') || notes.includes('nwot')) return 'New';
+      if (notes.includes('excellent') || notes.includes('like new')) return 'Excellent';
+      if (notes.includes('good')) return 'Good';
+      if (notes.includes('fair') || notes.includes('flaw') || notes.includes('worn')) return 'Fair';
+      return 'Good';
+    }
+
+    function exportWhatnotCsv() {
+      const exportItems = sortedInventory();
+      const lines = [
+        ['Category', 'Sub Category', 'Title', 'Description', 'Quantity', 'Type', 'Price', 'Shipping Profile', 'Offerable', 'Condition', 'Image URL 1', 'Image URL 2', 'Image URL 3', 'Image URL 4', 'Image URL 5', 'Image URL 6', 'Image URL 7', 'Image URL 8'],
+        ...exportItems.map((item) => {
+          const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 8) : [];
+          const description = [
+            item.description || '',
+            item.gender ? `Category: ${item.gender}` : '',
+            item.has_box ? 'Includes box.' : 'No box.',
+            item.notes || ''
+          ].filter(Boolean).join(' ');
+          return [
+            'Fashion',
+            'Shoes',
+            buildTitle(item, 120),
+            description.trim(),
+            1,
+            'Buy It Now',
+            Number(item.price || 0).toFixed(2),
+            '',
+            'FALSE',
+            mapCondition(item),
+            photos[0] || '',
+            photos[1] || '',
+            photos[2] || '',
+            photos[3] || '',
+            photos[4] || '',
+            photos[5] || '',
+            photos[6] || '',
+            photos[7] || ''
+          ];
+        })
+      ];
+      downloadCsv(`whatnot-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
+      alert('Whatnot CSV exported. Review Category, Sub Category, Shipping Profile, and Condition before import.');
+    }
+
+    function exportDepopCsv() {
+      const exportItems = sortedInventory();
+      const lines = [
+        ['SKU', 'Title', 'Description', 'Price', 'Brand', 'Category', 'Size', 'Condition', 'Colour', 'Shipping', 'Image URL 1', 'Image URL 2', 'Image URL 3', 'Image URL 4', 'Image URL 5', 'Image URL 6'],
+        ...exportItems.map((item) => {
+          const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 6) : [];
+          const sku = `${(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase()}-${String(item.id || '').slice(0, 6).toUpperCase()}`;
+          const description = [
+            item.description || '',
+            item.notes || '',
+            item.has_box ? 'Includes original box.' : 'No box.',
+            item.gender ? `Category: ${item.gender}.` : ''
+          ].filter(Boolean).join(' ');
+          return [
+            sku,
+            buildTitle(item, 80),
+            description.trim(),
+            Number(item.price || 0).toFixed(2),
+            item.brand || '',
+            'Shoes',
+            item.size || '',
+            mapCondition(item),
+            '',
+            '',
+            photos[0] || '',
+            photos[1] || '',
+            photos[2] || '',
+            photos[3] || '',
+            photos[4] || '',
+            photos[5] || ''
+          ];
+        })
+      ];
+      downloadCsv(`depop-prep-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
+      alert('Depop prep CSV exported. Match the columns to Depop\\'s current bulk listing template before import.');
+    }
+
     elements.reportButton.addEventListener('click', exportPdfReport);
     elements.xlsButton.addEventListener('click', exportXlsReport);
+    elements.whatnotButton.addEventListener('click', exportWhatnotCsv);
+    elements.depopButton.addEventListener('click', exportDepopCsv);
     document.getElementById('edit-box-toggle').addEventListener('click', (event) => {
       const button = event.target.closest('[data-edit-box-value]');
       if (!button) return;
