@@ -1267,6 +1267,7 @@
       <div class="viewer-toolbar">
         <span class="pill" id="viewer-status">Original</span>
         <div class="viewer-toolbar-actions">
+          <button class="button ghost" type="button" id="delete-image-button">Delete Image</button>
           <button class="button ghost hidden" type="button" id="replace-original-button">Replace Original</button>
           <button class="button secondary" type="button" id="white-bg-button">White BG</button>
         </div>
@@ -1454,6 +1455,7 @@
       modalPrev: document.getElementById('modal-prev'),
       modalNext: document.getElementById('modal-next'),
       viewerStatus: document.getElementById('viewer-status'),
+      deleteImageButton: document.getElementById('delete-image-button'),
       whiteBgButton: document.getElementById('white-bg-button'),
       replaceOriginalButton: document.getElementById('replace-original-button'),
       priceAiModal: document.getElementById('price-ai-modal'),
@@ -1696,6 +1698,49 @@
       }
       state.pendingWhiteBgReplacement = null;
       showBanner('success', 'Original replaced', 'The processed white background image replaced the original photo.');
+    }
+
+    async function deleteCurrentViewerPhoto() {
+      if (!SUPABASE_READY || !state.galleryItemId || !state.galleryUrls.length) return;
+      const item = state.inventory.find((entry) => entry.id === state.galleryItemId);
+      if (!item) return;
+      if ((item.photo_urls || []).length <= 1) {
+        alert('Each shoe needs at least one image. Add another image before deleting this one.');
+        return;
+      }
+
+      const currentUrl = state.galleryUrls[state.galleryIndex];
+      const currentIndex = (item.photo_urls || []).findIndex((url) => url === currentUrl);
+      if (currentIndex < 0) return;
+
+      if (!window.confirm('Delete this image from the shoe record?')) return;
+
+      const nextUrls = [...(item.photo_urls || [])];
+      const nextPaths = [...(item.photo_paths || [])];
+      const removedPath = nextPaths[currentIndex] || '';
+
+      nextUrls.splice(currentIndex, 1);
+      nextPaths.splice(currentIndex, 1);
+
+      const { error: updateError } = await supabaseClient
+        .from(APP_CONFIG.inventoryTable)
+        .update({ photo_urls: nextUrls, photo_paths: nextPaths })
+        .eq('id', item.id);
+      if (updateError) throw updateError;
+
+      if (removedPath) {
+        await supabaseClient.storage.from(APP_CONFIG.photoBucket).remove([removedPath]);
+      }
+
+      state.pendingWhiteBgReplacement = null;
+      await loadInventory();
+      const refreshed = state.inventory.find((entry) => entry.id === item.id);
+      if (refreshed && Array.isArray(refreshed.photo_urls) && refreshed.photo_urls.length) {
+        openPhotoModal(refreshed.photo_urls, Math.max(0, currentIndex - 1), refreshed.id);
+      } else {
+        closePhotoModal();
+      }
+      showBanner('success', 'Image deleted', 'The image was removed from this shoe.');
     }
 
     async function makeCurrentPhotoWhiteBg() {
@@ -2303,6 +2348,16 @@
     elements.cancelEditButton.addEventListener('click', resetDraft);
     elements.modalPrev.addEventListener('click', showPrevPhoto);
     elements.modalNext.addEventListener('click', showNextPhoto);
+    elements.deleteImageButton.addEventListener('click', async () => {
+      try {
+        elements.deleteImageButton.disabled = true;
+        await deleteCurrentViewerPhoto();
+      } catch (error) {
+        showBanner('error', 'Delete image failed', error?.message || String(error));
+      } finally {
+        elements.deleteImageButton.disabled = false;
+      }
+    });
     elements.whiteBgButton.addEventListener('click', makeCurrentPhotoWhiteBg);
     elements.replaceOriginalButton.addEventListener('click', async () => {
       try {
