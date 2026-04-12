@@ -1713,6 +1713,18 @@
       });
     }
 
+    function triggerMobileSafeSave() {
+      const active = document.activeElement;
+      if (active && typeof active.blur === 'function') active.blur();
+      window.setTimeout(() => {
+        if (typeof elements.form.requestSubmit === 'function') {
+          elements.form.requestSubmit();
+        } else {
+          elements.saveButton.click();
+        }
+      }, 40);
+    }
+
     async function saveInventoryItem(event) {
       event.preventDefault();
       if (!SUPABASE_READY) {
@@ -1982,6 +1994,12 @@
     elements.aiFillButton.addEventListener('click', runAiLookup);
     elements.resetButton.addEventListener('click', resetDraft);
     elements.form.addEventListener('submit', saveInventoryItem);
+    elements.saveButton.addEventListener('click', (event) => {
+      if (!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) return;
+      if (state.isSaving) return;
+      event.preventDefault();
+      triggerMobileSafeSave();
+    });
     elements.refreshButton.addEventListener('click', loadInventory);
     elements.sortSelect.addEventListener('change', (event) => {
       state.sortValue = event.target.value;
