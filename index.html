@@ -747,6 +747,24 @@
       box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
     }
 
+    .viewer-toolbar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .viewer-toolbar .button,
+    .viewer-toolbar .pill {
+      pointer-events: auto;
+    }
+
     .modal-image {
       width: 100%;
       max-height: calc(100vh - 120px);
@@ -993,6 +1011,17 @@
         background: transparent;
       }
 
+      .viewer-toolbar {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+      }
+
+      .viewer-toolbar .button,
+      .viewer-toolbar .pill {
+        width: auto;
+      }
+
       .viewer-arrow {
         width: 40px;
         height: 40px;
@@ -1228,6 +1257,10 @@
 
   <div class="modal hidden" id="photo-modal" aria-hidden="true">
     <div class="modal-card">
+      <div class="viewer-toolbar">
+        <span class="pill" id="viewer-status">Original</span>
+        <button class="button secondary" type="button" id="white-bg-button">White BG</button>
+      </div>
       <button class="viewer-arrow prev" type="button" id="modal-prev" aria-label="Previous photo">&#8249;</button>
       <img class="modal-image" id="modal-image" alt="Shoe attachment preview">
       <button class="viewer-arrow next" type="button" id="modal-next" aria-label="Next photo">&#8250;</button>
@@ -1349,6 +1382,7 @@
       columnSort: { key: null, direction: 'asc' },
       galleryUrls: [],
       galleryIndex: 0,
+      galleryItemId: null,
       touchStartX: 0,
       isSaving: false,
       isAiRunning: false,
@@ -1359,6 +1393,9 @@
       editPriceAiUsed: false,
       editOriginalPrice: null,
       editAppliedPriceAiValue: null
+      ,
+      isWhiteBgRunning: false,
+      backgroundRemovalModule: null
     };
 
     const elements = {
@@ -1405,6 +1442,8 @@
       modalImage: document.getElementById('modal-image'),
       modalPrev: document.getElementById('modal-prev'),
       modalNext: document.getElementById('modal-next'),
+      viewerStatus: document.getElementById('viewer-status'),
+      whiteBgButton: document.getElementById('white-bg-button'),
       priceAiModal: document.getElementById('price-ai-modal'),
       priceAiClose: document.getElementById('price-ai-close'),
       priceAiTitle: document.getElementById('price-ai-title'),
@@ -1477,9 +1516,13 @@
       elements.modalImage.src = state.galleryUrls[state.galleryIndex];
     }
 
-    function openPhotoModal(urls, index = 0) {
+    function openPhotoModal(urls, index = 0, itemId = null) {
       state.galleryUrls = Array.isArray(urls) ? urls : [urls];
       state.galleryIndex = Math.max(0, Math.min(index, state.galleryUrls.length - 1));
+      state.galleryItemId = itemId;
+      elements.viewerStatus.textContent = 'Original';
+      elements.whiteBgButton.disabled = false;
+      elements.whiteBgButton.textContent = 'White BG';
       renderGalleryImage();
       elements.photoModal.classList.remove('hidden');
       elements.photoModal.setAttribute('aria-hidden', 'false');
@@ -1488,6 +1531,8 @@
     function closePhotoModal() {
       state.galleryUrls = [];
       state.galleryIndex = 0;
+      state.galleryItemId = null;
+      state.isWhiteBgRunning = false;
       elements.photoModal.classList.add('hidden');
       elements.photoModal.setAttribute('aria-hidden', 'true');
       elements.modalImage.removeAttribute('src');
@@ -1502,7 +1547,105 @@
     function showNextPhoto() {
       if (!state.galleryUrls.length) return;
       state.galleryIndex = (state.galleryIndex + 1) % state.galleryUrls.length;
+      elements.viewerStatus.textContent = 'Original';
       renderGalleryImage();
+    }
+
+    async function getBackgroundRemovalModule() {
+      if (state.backgroundRemovalModule) return state.backgroundRemovalModule;
+      state.backgroundRemovalModule = await import('https://esm.sh/@imgly/background-removal@1.6.0');
+      return state.backgroundRemovalModule;
+    }
+
+    function loadImageElement(src) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('Could not load processed image.'));
+        image.src = src;
+      });
+    }
+
+    async function flattenTransparentBlobToWhite(blob) {
+      const objectUrl = URL.createObjectURL(blob);
+      try {
+        const image = await loadImageElement(objectUrl);
+        const canvas = document.createElement('canvas');
+        canvas.width = image.naturalWidth || image.width;
+        canvas.height = image.naturalHeight || image.height;
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0);
+        return await new Promise((resolve, reject) => {
+          canvas.toBlob((outputBlob) => {
+            if (outputBlob) resolve(outputBlob);
+            else reject(new Error('Could not create white background image.'));
+          }, 'image/png');
+        });
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
+
+    async function uploadProcessedViewerPhoto(blob, item) {
+      const path = `processed/${new Date().toISOString().slice(0, 10)}/${item.id}-${crypto.randomUUID()}-whitebg.png`;
+      const { error } = await supabaseClient.storage.from(APP_CONFIG.photoBucket).upload(path, blob, {
+        upsert: false,
+        contentType: 'image/png'
+      });
+      if (error) throw error;
+      const { data } = supabaseClient.storage.from(APP_CONFIG.photoBucket).getPublicUrl(path);
+      const nextUrls = (Array.isArray(item.photo_urls) ? item.photo_urls : []).concat(data.publicUrl);
+      const nextPaths = (Array.isArray(item.photo_paths) ? item.photo_paths : []).concat(path);
+      const { error: updateError } = await supabaseClient
+        .from(APP_CONFIG.inventoryTable)
+        .update({ photo_urls: nextUrls, photo_paths: nextPaths })
+        .eq('id', item.id);
+      if (updateError) throw updateError;
+      return data.publicUrl;
+    }
+
+    async function makeCurrentPhotoWhiteBg() {
+      if (!SUPABASE_READY) {
+        alert('Supabase must be configured before processing images.');
+        return;
+      }
+      if (state.isWhiteBgRunning || !state.galleryUrls.length || !state.galleryItemId) return;
+
+      const item = state.inventory.find((entry) => entry.id === state.galleryItemId);
+      if (!item) return;
+
+      state.isWhiteBgRunning = true;
+      elements.whiteBgButton.disabled = true;
+      elements.whiteBgButton.textContent = 'Processing...';
+      elements.viewerStatus.textContent = 'Processing white background...';
+
+      try {
+        const sourceUrl = state.galleryUrls[state.galleryIndex];
+        const response = await fetch(sourceUrl);
+        if (!response.ok) throw new Error('Could not fetch the current image.');
+        const sourceBlob = await response.blob();
+        const { removeBackground } = await getBackgroundRemovalModule();
+        const transparentBlob = await removeBackground(sourceBlob);
+        const whiteBlob = await flattenTransparentBlobToWhite(transparentBlob);
+        const processedUrl = await uploadProcessedViewerPhoto(whiteBlob, item);
+        await loadInventory();
+        const refreshed = state.inventory.find((entry) => entry.id === item.id);
+        if (refreshed && Array.isArray(refreshed.photo_urls)) {
+          openPhotoModal(refreshed.photo_urls, refreshed.photo_urls.length - 1, refreshed.id);
+          elements.viewerStatus.textContent = 'White background saved';
+        }
+        showBanner('success', 'White background created', 'A processed copy was added to this shoe without removing the original image.');
+      } catch (error) {
+        elements.viewerStatus.textContent = 'White BG failed';
+        showBanner('error', 'White background failed', error?.message || String(error));
+      } finally {
+        state.isWhiteBgRunning = false;
+        elements.whiteBgButton.disabled = false;
+        elements.whiteBgButton.textContent = 'White BG';
+      }
     }
 
     function setPriceAiLoading(message) {
@@ -2057,11 +2200,12 @@
       if (!button) return;
       const item = state.inventory.find((entry) => entry.id === button.dataset.photoItem);
       if (!item || !Array.isArray(item.photo_urls) || !item.photo_urls.length) return;
-      openPhotoModal(item.photo_urls, Number(button.dataset.photoIndex || 0));
+      openPhotoModal(item.photo_urls, Number(button.dataset.photoIndex || 0), item.id);
     });
     elements.cancelEditButton.addEventListener('click', resetDraft);
     elements.modalPrev.addEventListener('click', showPrevPhoto);
     elements.modalNext.addEventListener('click', showNextPhoto);
+    elements.whiteBgButton.addEventListener('click', makeCurrentPhotoWhiteBg);
     elements.photoModal.addEventListener('click', (event) => {
       if (event.target === elements.photoModal) closePhotoModal();
     });
