@@ -1173,6 +1173,11 @@
             </select>
           </div>
 
+          <div class="field">
+            <label for="category-2">Category 2</label>
+            <input id="category-2" name="category-2" type="text" placeholder="Sneakers, Boots, Sandals..." required>
+          </div>
+
           <div class="field-stack">
             <label for="description">Description</label>
             <textarea id="description" name="description" placeholder="Air Jordan 1 Retro High OG Chicago, red white black..."></textarea>
@@ -1197,9 +1202,63 @@
           </div>
         </div>
 
+        <details class="collapsible" style="margin-top:16px;">
+          <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
+          <div class="form-grid" style="padding-top:16px;">
+            <div class="field">
+              <label for="condition">Condition</label>
+              <input id="condition" name="condition" type="text" placeholder="Excellent, Good, Fair...">
+            </div>
+
+            <div class="field">
+              <label for="original-tags-attached">Original tags attached</label>
+              <select id="original-tags-attached" name="original-tags-attached">
+                <option value="">Select</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="estimated-retail-price">Estimated retail price</label>
+              <input id="estimated-retail-price" name="estimated-retail-price" type="number" min="0" step="0.01" placeholder="120.00">
+            </div>
+
+            <div class="field">
+              <label for="colors">Colors</label>
+              <input id="colors" name="colors" type="text" placeholder="Pink, Black, White...">
+            </div>
+
+            <div class="field">
+              <label for="shoe-style">Shoe style</label>
+              <input id="shoe-style" name="shoe-style" type="text" placeholder="Platform, Low top, Running...">
+            </div>
+
+            <div class="field">
+              <label for="brand-style-name">Brand Style Name</label>
+              <input id="brand-style-name" name="brand-style-name" type="text" placeholder="Defaults from description if left blank">
+            </div>
+
+            <div class="field">
+              <label for="materials">Materials</label>
+              <input id="materials" name="materials" type="text" placeholder="Leather, Mesh, Suede...">
+            </div>
+
+            <div class="field">
+              <label for="made-in">Made in</label>
+              <input id="made-in" name="made-in" type="text" placeholder="Vietnam, China, Italy...">
+            </div>
+
+            <div class="field">
+              <label for="serial-number">Serial number</label>
+              <input id="serial-number" name="serial-number" type="text" placeholder="SKU, serial, style code...">
+            </div>
+          </div>
+        </details>
+
         <div class="prompt-box" id="required-copy">
           <strong>Current requirement</strong>
-          <p>If there is no box, brand, size, and description must be entered manually or filled by AI lookup from the shoe photos. Price is still required either way.</p>
+          <p>If there is no box, brand, category 2, and price must be entered manually or filled by AI lookup from the shoe photos. Description can also feed Brand Style Name.</p>
         </div>
 
         <div class="button-row">
@@ -1305,6 +1364,10 @@
               <option value="kids">Kids</option>
             </select>
           </div>
+          <div class="field">
+            <label for="edit-category-2">Category 2</label>
+            <input id="edit-category-2" type="text">
+          </div>
           <div class="field" style="grid-column:1/-1;">
             <label for="edit-description">Description</label>
             <textarea id="edit-description"></textarea>
@@ -1325,6 +1388,51 @@
             </select>
           </div>
         </div>
+          <details class="collapsible" style="margin-top:16px;">
+            <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
+            <div class="edit-grid" style="padding-top:16px;">
+              <div class="field">
+                <label for="edit-condition">Condition</label>
+                <input id="edit-condition" type="text">
+              </div>
+              <div class="field">
+                <label for="edit-original-tags-attached">Original tags attached</label>
+                <select id="edit-original-tags-attached">
+                  <option value="">Select</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="edit-estimated-retail-price">Estimated retail price</label>
+                <input id="edit-estimated-retail-price" type="number" min="0" step="0.01">
+              </div>
+              <div class="field">
+                <label for="edit-colors">Colors</label>
+                <input id="edit-colors" type="text">
+              </div>
+              <div class="field">
+                <label for="edit-shoe-style">Shoe style</label>
+                <input id="edit-shoe-style" type="text">
+              </div>
+              <div class="field">
+                <label for="edit-brand-style-name">Brand Style Name</label>
+                <input id="edit-brand-style-name" type="text">
+              </div>
+              <div class="field">
+                <label for="edit-materials">Materials</label>
+                <input id="edit-materials" type="text">
+              </div>
+              <div class="field">
+                <label for="edit-made-in">Made in</label>
+                <input id="edit-made-in" type="text">
+              </div>
+              <div class="field">
+                <label for="edit-serial-number">Serial number</label>
+                <input id="edit-serial-number" type="text">
+              </div>
+            </div>
+          </details>
           <div class="form-status" id="edit-status">Update the fields and save changes.</div>
           <div class="button-row">
             <button class="button secondary" type="button" id="delete-button">Delete shoe</button>
@@ -1427,10 +1535,20 @@
       brand: document.getElementById('brand'),
       size: document.getElementById('size'),
       description: document.getElementById('description'),
+      category2: document.getElementById('category-2'),
       gender: document.getElementById('gender'),
       price: document.getElementById('price'),
       notes: document.getElementById('notes'),
       sold: document.getElementById('sold'),
+      condition: document.getElementById('condition'),
+      originalTagsAttached: document.getElementById('original-tags-attached'),
+      estimatedRetailPrice: document.getElementById('estimated-retail-price'),
+      colors: document.getElementById('colors'),
+      shoeStyle: document.getElementById('shoe-style'),
+      brandStyleName: document.getElementById('brand-style-name'),
+      materials: document.getElementById('materials'),
+      madeIn: document.getElementById('made-in'),
+      serialNumber: document.getElementById('serial-number'),
       choosePhotosButton: document.getElementById('choose-photos-button'),
       useCameraButton: document.getElementById('use-camera-button'),
       browseFilesButton: document.getElementById('browse-files-button'),
@@ -1477,10 +1595,20 @@
       editBrand: document.getElementById('edit-brand'),
       editSize: document.getElementById('edit-size'),
       editGender: document.getElementById('edit-gender'),
+      editCategory2: document.getElementById('edit-category-2'),
       editDescription: document.getElementById('edit-description'),
       editPrice: document.getElementById('edit-price'),
       editNotes: document.getElementById('edit-notes'),
       editSold: document.getElementById('edit-sold'),
+      editCondition: document.getElementById('edit-condition'),
+      editOriginalTagsAttached: document.getElementById('edit-original-tags-attached'),
+      editEstimatedRetailPrice: document.getElementById('edit-estimated-retail-price'),
+      editColors: document.getElementById('edit-colors'),
+      editShoeStyle: document.getElementById('edit-shoe-style'),
+      editBrandStyleName: document.getElementById('edit-brand-style-name'),
+      editMaterials: document.getElementById('edit-materials'),
+      editMadeIn: document.getElementById('edit-made-in'),
+      editSerialNumber: document.getElementById('edit-serial-number'),
         editStatus: document.getElementById('edit-status'),
         editCancelButton: document.getElementById('edit-cancel-button'),
         editSaveButton: document.getElementById('edit-save-button'),
@@ -1899,14 +2027,26 @@
     }
 
     function getDraftValues() {
+      const description = elements.description.value.trim();
+      const brandStyleName = elements.brandStyleName.value.trim() || description;
       return {
         brand: elements.brand.value.trim(),
         size: elements.size.value.trim(),
+        category2: elements.category2.value.trim(),
         gender: elements.gender.value.trim(),
-        description: elements.description.value.trim(),
+        description,
         price: Number(elements.price.value || 0),
         notes: elements.notes.value.trim(),
-        sold: elements.sold.value === 'true'
+        sold: elements.sold.value === 'true',
+        condition: elements.condition.value.trim(),
+        originalTagsAttached: elements.originalTagsAttached.value.trim(),
+        estimatedRetailPrice: Number(elements.estimatedRetailPrice.value || 0),
+        colors: elements.colors.value.trim(),
+        shoeStyle: elements.shoeStyle.value.trim(),
+        brandStyleName,
+        materials: elements.materials.value.trim(),
+        madeIn: elements.madeIn.value.trim(),
+        serialNumber: elements.serialNumber.value.trim()
       };
     }
 
@@ -1918,8 +2058,8 @@
       if (!draft.price) {
         throw new Error('Price is required.');
       }
-      if (!draft.brand || !draft.size || !draft.description) {
-        throw new Error('Brand, size, and description must be filled manually or by AI before saving.');
+      if (!draft.brand || !draft.category2 || !draft.price) {
+        throw new Error('Brand, Category 2, and price are required before saving.');
       }
       return draft;
     }
@@ -1973,6 +2113,7 @@
         if (suggestion.brand) elements.brand.value = suggestion.brand;
         if (suggestion.size) elements.size.value = suggestion.size;
         if (suggestion.description) elements.description.value = suggestion.description;
+        if (!elements.brandStyleName.value.trim() && suggestion.description) elements.brandStyleName.value = suggestion.description;
         if (suggestion.notes && !elements.notes.value.trim()) elements.notes.value = suggestion.notes;
         state.aiUsedForCurrentDraft = true;
         alert('AI filled the available fields. Review them, enter the price, and save.');
@@ -2031,10 +2172,20 @@
           brand: draft.brand,
           description: draft.description,
           size: draft.size,
+          category_2: draft.category2,
           gender: draft.gender || null,
           price: draft.price,
           notes: draft.notes || null,
           sold: draft.sold,
+          condition: draft.condition || null,
+          original_tags_attached: draft.originalTagsAttached || null,
+          estimated_retail_price: draft.estimatedRetailPrice || null,
+          colors: draft.colors || null,
+          shoe_style: draft.shoeStyle || null,
+          brand_style_name: draft.brandStyleName || null,
+          materials: draft.materials || null,
+          made_in: draft.madeIn || null,
+          serial_number: draft.serialNumber || null,
           price_ai_used: false,
           has_box: state.hasBox,
           source_method: state.hasBox ? 'box' : 'no_box',
@@ -2252,7 +2403,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,gender,price,notes,sold,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,brand,description,size,category_2,gender,price,notes,sold,condition,original_tags_attached,estimated_retail_price,colors,shoe_style,brand_style_name,materials,made_in,serial_number,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -2421,11 +2572,21 @@
       setEditBoxMode(Boolean(item.has_box));
       elements.editBrand.value = item.brand || '';
       elements.editSize.value = item.size || '';
+      elements.editCategory2.value = item.category_2 || '';
       elements.editGender.value = item.gender || '';
       elements.editDescription.value = item.description || '';
       elements.editPrice.value = item.price ?? '';
       elements.editNotes.value = item.notes || '';
       elements.editSold.value = item.sold ? 'true' : 'false';
+      elements.editCondition.value = item.condition || '';
+      elements.editOriginalTagsAttached.value = item.original_tags_attached || '';
+      elements.editEstimatedRetailPrice.value = item.estimated_retail_price ?? '';
+      elements.editColors.value = item.colors || '';
+      elements.editShoeStyle.value = item.shoe_style || '';
+      elements.editBrandStyleName.value = item.brand_style_name || item.description || '';
+      elements.editMaterials.value = item.materials || '';
+      elements.editMadeIn.value = item.made_in || '';
+      elements.editSerialNumber.value = item.serial_number || '';
       elements.editStatus.className = 'form-status';
       elements.editStatus.textContent = 'Update the fields and save changes.';
       elements.editModal.classList.remove('hidden');
@@ -2453,6 +2614,8 @@
         const appliedAiPrice = Number(state.editAppliedPriceAiValue);
         const originalPrice = Number(state.editOriginalPrice);
         let priceAiUsed = state.editPriceAiUsed;
+        const editDescription = elements.editDescription.value.trim();
+        const editBrandStyleName = elements.editBrandStyleName.value.trim() || editDescription;
 
         if (priceAiUsed) {
           if (Number.isFinite(appliedAiPrice)) {
@@ -2465,17 +2628,27 @@
         const payload = {
           brand: elements.editBrand.value.trim(),
           size: elements.editSize.value.trim(),
+          category_2: elements.editCategory2.value.trim(),
           gender: elements.editGender.value.trim() || null,
-          description: elements.editDescription.value.trim(),
+          description: editDescription,
           price: editedPrice,
           notes: elements.editNotes.value.trim() || null,
           sold: elements.editSold.value === 'true',
+          condition: elements.editCondition.value.trim() || null,
+          original_tags_attached: elements.editOriginalTagsAttached.value.trim() || null,
+          estimated_retail_price: Number(elements.editEstimatedRetailPrice.value || 0) || null,
+          colors: elements.editColors.value.trim() || null,
+          shoe_style: elements.editShoeStyle.value.trim() || null,
+          brand_style_name: editBrandStyleName || null,
+          materials: elements.editMaterials.value.trim() || null,
+          made_in: elements.editMadeIn.value.trim() || null,
+          serial_number: elements.editSerialNumber.value.trim() || null,
           price_ai_used: priceAiUsed,
           has_box: state.editHasBox,
           source_method: state.editHasBox ? 'box' : 'no_box'
         };
-        if (!payload.brand || !payload.size || !payload.description || !payload.price) {
-          throw new Error('Brand, size, description, and price are required.');
+        if (!payload.brand || !payload.category_2 || !payload.price) {
+          throw new Error('Brand, Category 2, and price are required.');
         }
         const { error } = await supabaseClient.from(APP_CONFIG.inventoryTable).update(payload).eq('id', state.editingId);
         if (error) throw error;
@@ -2510,10 +2683,20 @@
         brand: item.brand,
         description: item.description,
         size: item.size,
+        category_2: item.category_2 || null,
         gender: item.gender || null,
         price: item.price,
         notes: item.notes || null,
         sold: Boolean(item.sold),
+        condition: item.condition || null,
+        original_tags_attached: item.original_tags_attached || null,
+        estimated_retail_price: item.estimated_retail_price || null,
+        colors: item.colors || null,
+        shoe_style: item.shoe_style || null,
+        brand_style_name: item.brand_style_name || item.description || null,
+        materials: item.materials || null,
+        made_in: item.made_in || null,
+        serial_number: item.serial_number || null,
         price_ai_used: false,
         has_box: Boolean(item.has_box),
         source_method: item.has_box ? 'box' : 'no_box',
@@ -2548,6 +2731,7 @@
             brand: item.brand,
             description: item.description,
             size: item.size,
+            category_2: item.category_2,
             gender: item.gender,
             has_box: item.has_box,
             notes: item.notes,
@@ -2624,13 +2808,16 @@
     function exportXlsReport() {
       const exportItems = sortedInventory();
       const lines = [
-        ['Brand', 'Description', 'Size', 'Category', 'Price', 'Box', 'Notes', 'Saved'],
+        ['Brand', 'Brand Style Name', 'Description', 'Size', 'Category', 'Category 2', 'Price', 'Condition', 'Box', 'Notes', 'Saved'],
         ...exportItems.map((item) => [
           item.brand || '',
+          item.brand_style_name || '',
           item.description || '',
           item.size || '',
           item.gender || '',
+          item.category_2 || '',
           String(item.price ?? ''),
+          item.condition || '',
           item.has_box ? 'Yes' : 'No',
           item.notes || '',
           formatDate(item.created_at)
@@ -2683,14 +2870,15 @@
         ...exportItems.map((item) => {
           const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 8) : [];
           const description = [
-            item.description || '',
+            item.brand_style_name || item.description || '',
             item.gender ? `Category: ${item.gender}` : '',
+            item.category_2 ? `Sub category: ${item.category_2}` : '',
             item.has_box ? 'Includes box.' : 'No box.',
             item.notes || ''
           ].filter(Boolean).join(' ');
           return [
             'Fashion',
-            'Shoes',
+            item.category_2 || 'Shoes',
             buildTitle(item, 120),
             description.trim(),
             1,
@@ -2698,7 +2886,7 @@
             Number(item.price || 0).toFixed(2),
             '',
             'FALSE',
-            mapCondition(item),
+            item.condition || mapCondition(item),
             photos[0] || '',
             photos[1] || '',
             photos[2] || '',
@@ -2717,15 +2905,16 @@
     function exportDepopCsv() {
       const exportItems = sortedInventory();
       const lines = [
-        ['SKU', 'Title', 'Description', 'Price', 'Brand', 'Category', 'Size', 'Condition', 'Colour', 'Shipping', 'Image URL 1', 'Image URL 2', 'Image URL 3', 'Image URL 4', 'Image URL 5', 'Image URL 6'],
+        ['SKU', 'Title', 'Description', 'Price', 'Brand', 'Category', 'Category 2', 'Size', 'Condition', 'Colour', 'Shipping', 'Image URL 1', 'Image URL 2', 'Image URL 3', 'Image URL 4', 'Image URL 5', 'Image URL 6'],
         ...exportItems.map((item) => {
           const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 6) : [];
           const sku = `${(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase()}-${String(item.id || '').slice(0, 6).toUpperCase()}`;
           const description = [
-            item.description || '',
+            item.brand_style_name || item.description || '',
             item.notes || '',
             item.has_box ? 'Includes original box.' : 'No box.',
-            item.gender ? `Category: ${item.gender}.` : ''
+            item.gender ? `Category: ${item.gender}.` : '',
+            item.category_2 ? `Sub category: ${item.category_2}.` : ''
           ].filter(Boolean).join(' ');
           return [
             sku,
@@ -2734,9 +2923,10 @@
             Number(item.price || 0).toFixed(2),
             item.brand || '',
             'Shoes',
+            item.category_2 || '',
             item.size || '',
-            mapCondition(item),
-            '',
+            item.condition || mapCondition(item),
+            item.colors || '',
             '',
             photos[0] || '',
             photos[1] || '',
