@@ -805,7 +805,7 @@
 
     .price-ai-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
       margin: 14px 0;
     }
@@ -1311,6 +1311,10 @@
           <div class="mini-label">High ask</div>
           <strong id="price-ai-high">--</strong>
         </div>
+        <div class="price-ai-card">
+          <div class="mini-label">Retail</div>
+          <strong id="price-ai-retail">--</strong>
+        </div>
       </div>
       <div class="price-ai-meta">
         <span id="price-ai-range">Comp range: --</span>
@@ -1408,6 +1412,7 @@
       priceAiQuick: document.getElementById('price-ai-quick'),
       priceAiRecommended: document.getElementById('price-ai-recommended'),
       priceAiHigh: document.getElementById('price-ai-high'),
+      priceAiRetail: document.getElementById('price-ai-retail'),
       priceAiRange: document.getElementById('price-ai-range'),
       priceAiSources: document.getElementById('price-ai-sources'),
       priceAiSummary: document.getElementById('price-ai-summary'),
@@ -1507,6 +1512,7 @@
       elements.priceAiQuick.textContent = '--';
       elements.priceAiRecommended.textContent = '--';
       elements.priceAiHigh.textContent = '--';
+      elements.priceAiRetail.textContent = '--';
       elements.priceAiRange.textContent = 'Comp range: --';
       elements.priceAiSources.textContent = 'Sources: --';
       elements.priceAiSummary.textContent = 'Summary: --';
@@ -1520,6 +1526,7 @@
       elements.priceAiQuick.textContent = currency(result?.quick_sale_price || 0);
       elements.priceAiRecommended.textContent = currency(result?.recommended_price || 0);
       elements.priceAiHigh.textContent = currency(result?.high_ask_price || 0);
+      elements.priceAiRetail.textContent = Number.isFinite(Number(result?.retail_price)) && Number(result?.retail_price) > 0 ? currency(result.retail_price) : '--';
       elements.priceAiRange.textContent = `Comp range: ${currency(result?.comp_range_low || 0)} - ${currency(result?.comp_range_high || 0)}`;
       elements.priceAiSources.textContent = `Sources: ${Array.isArray(result?.sources) && result.sources.length ? result.sources.join(', ') : 'Not provided'}`;
       elements.priceAiSummary.textContent = `Summary: ${result?.summary || 'No summary provided.'}`;
