@@ -1320,7 +1320,7 @@
           <span class="toolbar-label">Export</span>
           <button class="button ghost" type="button" id="report-button">PDF</button>
           <button class="button ghost" type="button" id="review-report-button">Review PDF</button>
-          <button class="button ghost" type="button" id="review-html-button">Review HTML</button>
+          <button class="button ghost" type="button" id="review-html-button">Review Tab</button>
           <button class="button ghost" type="button" id="xls-button">CSV</button>
           <button class="button ghost" type="button" id="whatnot-button">Whatnot</button>
           <button class="button ghost" type="button" id="depop-button">Depop</button>
@@ -2891,8 +2891,7 @@
     }
 
     function buildReviewListingHtml(exportItems, exportTotal, options = {}) {
-      const mode = options.mode === 'download' ? 'download' : 'popup';
-      const printButtonLabel = mode === 'download' ? 'Print / Save as PDF' : 'Print / Save PDF';
+      const printButtonLabel = 'Create PDF';
       const cards = exportItems.map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
         const photoMarkup = photos.length
@@ -2919,21 +2918,6 @@
           </article>
         `;
       }).join('');
-      const printRows = exportItems.map((item) => `
-        <article class="print-review-row">
-          <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
-          <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
-          <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
-          <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
-          <div><strong>Original Tags Attached:</strong> ${escapeHtml(item.original_tags_attached || '-')}</div>
-          <div><strong>Estimated Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
-          <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
-          <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
-          <div><strong>Shoe Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
-          <div><strong>Description:</strong> ${escapeHtml(item.description || '-')}</div>
-          <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
-        </article>
-      `).join('');
       return `
         <html>
           <head>
@@ -2982,19 +2966,6 @@
                 border: 1px solid #e4d8cb;
                 display: block;
               }
-              .print-review-list {
-                display: none;
-              }
-              .print-review-row {
-                border: 1px solid #dbcfc2;
-                border-radius: 10px;
-                padding: 12px;
-                background: #fff;
-                margin-bottom: 10px;
-                page-break-inside: avoid;
-                break-inside: avoid;
-                font: 12px/1.55 Arial, sans-serif;
-              }
               @media print {
                 body {
                   padding: 12px;
@@ -3004,10 +2975,18 @@
                   display: none;
                 }
                 .review-grid {
-                  display: none;
+                  grid-template-columns: repeat(2, minmax(0, 1fr));
+                  gap: 10px;
                 }
-                .print-review-list {
-                  display: block;
+                .review-card {
+                  border-radius: 10px;
+                  box-shadow: none;
+                }
+                .review-photo-grid {
+                  grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+                .review-photo-grid img:nth-child(n+3) {
+                  display: none;
                 }
               }
             </style>
@@ -3032,9 +3011,6 @@
             <section class="review-grid">
               ${cards || '<p>No inventory available.</p>'}
             </section>
-            <section class="print-review-list">
-              ${printRows || '<p>No inventory available.</p>'}
-            </section>
           </body>
         </html>
       `;
@@ -3043,16 +3019,16 @@
     function exportReviewListingHtml() {
       const exportItems = sortedInventory();
       const exportTotal = exportItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
-      const html = buildReviewListingHtml(exportItems, exportTotal, { mode: 'download' });
+      const html = buildReviewListingHtml(exportItems, exportTotal, { mode: 'tab' });
       const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `review-listing-${new Date().toISOString().slice(0, 10)}.html`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      const reviewTab = window.open(url, '_blank');
+      if (!reviewTab) {
+        alert('Allow pop-ups to open the review tab.');
+        URL.revokeObjectURL(url);
+        return;
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
     function exportXlsReport() {
