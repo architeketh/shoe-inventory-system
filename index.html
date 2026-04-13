@@ -1592,6 +1592,7 @@
       cropMode: false,
       cropStart: null,
       cropRect: null,
+      cropPointerId: null,
       isSaving: false,
       isAiRunning: false,
       aiUsedForCurrentDraft: false,
@@ -1796,21 +1797,26 @@
       state.cropMode = false;
       state.cropStart = null;
       state.cropRect = null;
+      state.cropPointerId = null;
       updateCropUi();
     }
 
     function updateCropUi() {
       const active = Boolean(state.cropMode);
       const hasRect = Boolean(state.cropRect && state.cropRect.width >= 12 && state.cropRect.height >= 12);
+      const displayed = getDisplayedImageRect();
+      const overlayRect = elements.cropOverlay.getBoundingClientRect();
       elements.cropOverlay.classList.toggle('active', active);
       elements.cropButton.classList.toggle('hidden', active);
       elements.cancelCropButton.classList.toggle('hidden', !active);
       elements.applyCropButton.classList.toggle('hidden', !active);
       elements.applyCropButton.disabled = !hasRect;
       elements.cropMask.classList.toggle('hidden', !hasRect);
-      if (hasRect) {
-        elements.cropMask.style.left = `${state.cropRect.x}px`;
-        elements.cropMask.style.top = `${state.cropRect.y}px`;
+      if (hasRect && displayed && overlayRect) {
+        const leftOffset = displayed.left - overlayRect.left;
+        const topOffset = displayed.top - overlayRect.top;
+        elements.cropMask.style.left = `${leftOffset + state.cropRect.x}px`;
+        elements.cropMask.style.top = `${topOffset + state.cropRect.y}px`;
         elements.cropMask.style.width = `${state.cropRect.width}px`;
         elements.cropMask.style.height = `${state.cropRect.height}px`;
       }
@@ -1836,17 +1842,16 @@
       return { left, top, width, height };
     }
 
-    function getPointInOverlay(event) {
+    function getPointOnImage(event) {
       const displayed = getDisplayedImageRect();
-      const overlayRect = elements.cropOverlay.getBoundingClientRect();
-      if (!displayed || !overlayRect) return null;
+      if (!displayed) return null;
       const clientX = event.clientX;
       const clientY = event.clientY;
       const clampedX = Math.max(displayed.left, Math.min(clientX, displayed.left + displayed.width));
       const clampedY = Math.max(displayed.top, Math.min(clientY, displayed.top + displayed.height));
       return {
-        x: clampedX - overlayRect.left,
-        y: clampedY - overlayRect.top
+        x: clampedX - displayed.left,
+        y: clampedY - displayed.top
       };
     }
 
@@ -2132,8 +2137,8 @@
       const scaleY = elements.modalImage.naturalHeight / displayed.height;
       const cropX = Math.max(0, Math.round(state.cropRect.x * scaleX));
       const cropY = Math.max(0, Math.round(state.cropRect.y * scaleY));
-      const cropWidth = Math.max(1, Math.round(state.cropRect.width * scaleX));
-      const cropHeight = Math.max(1, Math.round(state.cropRect.height * scaleY));
+      const cropWidth = Math.max(1, Math.min(Math.round(state.cropRect.width * scaleX), (elements.modalImage.naturalWidth || 0) - cropX));
+      const cropHeight = Math.max(1, Math.min(Math.round(state.cropRect.height * scaleY), (elements.modalImage.naturalHeight || 0) - cropY));
 
       const sourceUrl = state.galleryUrls[state.galleryIndex];
       const response = await fetch(sourceUrl);
@@ -2182,6 +2187,7 @@
       } finally {
         URL.revokeObjectURL(objectUrl);
         resetCropState();
+        elements.applyCropButton.disabled = false;
       }
     }
 
@@ -2775,6 +2781,7 @@
       state.cropMode = true;
       state.cropStart = null;
       state.cropRect = null;
+      state.cropPointerId = null;
       elements.viewerStatus.textContent = 'Drag to select crop area';
       updateCropUi();
     });
@@ -2793,28 +2800,41 @@
         showBanner('error', 'Crop failed', error?.message || String(error));
       }
     });
-    elements.cropOverlay.addEventListener('pointerdown', (event) => {
-      if (!state.cropMode) return;
-      const point = getPointInOverlay(event);
-      if (!point) return;
-      state.cropStart = point;
-      state.cropRect = { x: point.x, y: point.y, width: 0, height: 0 };
-      elements.cropOverlay.setPointerCapture?.(event.pointerId);
-      updateCropUi();
-    });
-    elements.cropOverlay.addEventListener('pointermove', (event) => {
+    function handleCropPointerMove(event) {
       if (!state.cropMode || !state.cropStart) return;
-      const point = getPointInOverlay(event);
+      if (state.cropPointerId !== null && event.pointerId !== state.cropPointerId) return;
+      const point = getPointOnImage(event);
       if (!point) return;
       setCropRectFromPoints(state.cropStart, point);
-    });
-    const finishCropDrag = () => {
+    }
+
+    function finishCropDrag(event) {
       if (!state.cropMode) return;
+      if (event && state.cropPointerId !== null && event.pointerId !== state.cropPointerId) return;
       state.cropStart = null;
+      state.cropPointerId = null;
+      window.removeEventListener('pointermove', handleCropPointerMove);
+      window.removeEventListener('pointerup', finishCropDrag);
+      window.removeEventListener('pointercancel', finishCropDrag);
       updateCropUi();
-    };
-    elements.cropOverlay.addEventListener('pointerup', finishCropDrag);
-    elements.cropOverlay.addEventListener('pointercancel', finishCropDrag);
+    }
+
+    elements.cropOverlay.addEventListener('pointerdown', (event) => {
+      if (!state.cropMode) return;
+      const point = getPointOnImage(event);
+      if (!point) return;
+      event.preventDefault();
+      state.cropStart = point;
+      state.cropRect = { x: point.x, y: point.y, width: 0, height: 0 };
+      state.cropPointerId = event.pointerId;
+      window.removeEventListener('pointermove', handleCropPointerMove);
+      window.removeEventListener('pointerup', finishCropDrag);
+      window.removeEventListener('pointercancel', finishCropDrag);
+      window.addEventListener('pointermove', handleCropPointerMove);
+      window.addEventListener('pointerup', finishCropDrag);
+      window.addEventListener('pointercancel', finishCropDrag);
+      updateCropUi();
+    });
     elements.deleteImageButton.addEventListener('click', async () => {
       try {
         elements.deleteImageButton.disabled = true;
