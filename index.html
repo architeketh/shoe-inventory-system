@@ -1084,8 +1084,11 @@
       </div>
       <div class="hero-grid">
         <div class="status-banner warning" id="connection-banner">
-          <strong>Waiting for setup</strong>
-          <p>Add your Supabase URL and anon key near the top of this file, then the app can upload photos and save inventory from GitHub Pages.</p>
+          <strong id="connection-banner-title">Waiting for setup</strong>
+          <p id="connection-banner-body">Add your Supabase URL and anon key near the top of this file, then the app can upload photos and save inventory from GitHub Pages.</p>
+          <p id="inventory-status-version" style="margin-top:10px;">Mobile Build 04.12.26-1</p>
+          <p id="inventory-status-updated" style="margin-top:4px;">Updated: Loading...</p>
+          <p id="inventory-status-sync" style="margin-top:4px;">Sync status: Waiting for first sync...</p>
         </div>
         <div class="stat-grid">
           <article class="stat-chip">
@@ -1334,11 +1337,6 @@
         <div>
           <h2>Saved pairs</h2>
         </div>
-        <article class="config-box" style="min-width:260px;padding:14px 16px;">
-          <strong id="inventory-status-version">Mobile Build 04.12.26-1</strong>
-          <p id="inventory-status-updated" style="margin-top:6px;">Updated: Loading...</p>
-          <p id="inventory-status-sync" style="margin-top:4px;">Sync status: Waiting for first sync...</p>
-        </article>
       </div>
       <div class="inventory-head">
         <div>Status</div>
@@ -1574,6 +1572,8 @@
 
     const elements = {
       connectionBanner: document.getElementById('connection-banner'),
+      connectionBannerTitle: document.getElementById('connection-banner-title'),
+      connectionBannerBody: document.getElementById('connection-banner-body'),
       savedLabel: document.getElementById('saved-label'),
       totalPairs: document.getElementById('total-pairs'),
       boxedCount: document.getElementById('boxed-count'),
@@ -1700,7 +1700,8 @@
 
     function showBanner(type, title, body) {
       elements.connectionBanner.className = `status-banner ${type}`;
-      elements.connectionBanner.innerHTML = `<strong>${escapeHtml(title)}</strong><p>${escapeHtml(body)}</p>`;
+      elements.connectionBannerTitle.textContent = title;
+      elements.connectionBannerBody.textContent = body;
     }
 
     function syncResponsiveLabels() {
