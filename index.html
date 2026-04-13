@@ -2885,11 +2885,11 @@
       const cards = exportItems.map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
         const photoMarkup = photos.length
-          ? photos.map((url) => `<img src="${url}" style="width:100%;aspect-ratio:1 / 1;object-fit:cover;border-radius:8px;border:1px solid #e4d8cb;display:block;" />`).join('')
+          ? photos.map((url) => `<img class="review-photo" src="${url}" loading="lazy" decoding="async" />`).join('')
           : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;">No photos</div>';
         return `
-          <article style="border:1px solid #dbcfc2;border-radius:14px;padding:10px;background:#fff;display:flex;flex-direction:column;gap:8px;break-inside:avoid;">
-            <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:6px;">
+          <article class="review-card">
+            <div class="review-photo-grid">
               ${photoMarkup}
             </div>
             <div style="font:11px Arial,sans-serif;color:#6c5d52;line-height:1.45;">
@@ -2914,15 +2914,79 @@
           <head>
             <title>Review Listing PDF</title>
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+                color: #222;
+                background: #faf8f5;
+              }
+              .print-toolbar {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+                margin-bottom: 16px;
+              }
+              .review-grid {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 12px;
+                align-items: start;
+              }
+              .review-card {
+                border: 1px solid #dbcfc2;
+                border-radius: 14px;
+                padding: 10px;
+                background: #fff;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                break-inside: avoid;
+                page-break-inside: avoid;
+              }
+              .review-photo-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 6px;
+              }
+              .review-photo {
+                width: 100%;
+                aspect-ratio: 1 / 1;
+                object-fit: cover;
+                border-radius: 8px;
+                border: 1px solid #e4d8cb;
+                display: block;
+              }
+              @media print {
+                body {
+                  padding: 12px;
+                  background: #fff;
+                }
+                .print-toolbar {
+                  display: none;
+                }
+                .review-grid {
+                  grid-template-columns: repeat(2, minmax(0, 1fr));
+                  gap: 10px;
+                }
+                .review-card {
+                  border-radius: 10px;
+                  box-shadow: none;
+                }
+                .review-photo-grid img:nth-child(n+3) {
+                  display: none;
+                }
+              }
+            </style>
           </head>
-          <body style="font-family:Arial,sans-serif;padding:20px;color:#222;background:#faf8f5;">
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+          <body>
+            <div class="print-toolbar">
               <button onclick="window.print()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">Print / Save PDF</button>
               <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
             </div>
             <h1 style="margin:0 0 8px;">Review Listing</h1>
             <div style="margin-bottom:16px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} | ${exportItems.length} pair(s) | ${escapeHtml(currency(exportTotal))} total</div>
-            <section style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:12px;align-items:start;">
+            <section class="review-grid">
               ${cards || '<p>No inventory available.</p>'}
             </section>
           </body>
