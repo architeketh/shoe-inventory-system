@@ -2908,6 +2908,21 @@
           </article>
         `;
       }).join('');
+      const printRows = exportItems.map((item) => `
+        <article class="print-review-row">
+          <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
+          <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
+          <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
+          <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
+          <div><strong>Original Tags Attached:</strong> ${escapeHtml(item.original_tags_attached || '-')}</div>
+          <div><strong>Estimated Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
+          <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
+          <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
+          <div><strong>Shoe Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
+          <div><strong>Description:</strong> ${escapeHtml(item.description || '-')}</div>
+          <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
+        </article>
+      `).join('');
 
       reportWindow.document.write(`
         <html>
@@ -2957,6 +2972,19 @@
                 border: 1px solid #e4d8cb;
                 display: block;
               }
+              .print-review-list {
+                display: none;
+              }
+              .print-review-row {
+                border: 1px solid #dbcfc2;
+                border-radius: 10px;
+                padding: 12px;
+                background: #fff;
+                margin-bottom: 10px;
+                page-break-inside: avoid;
+                break-inside: avoid;
+                font: 12px/1.55 Arial, sans-serif;
+              }
               @media print {
                 body {
                   padding: 12px;
@@ -2966,28 +2994,36 @@
                   display: none;
                 }
                 .review-grid {
-                  grid-template-columns: repeat(2, minmax(0, 1fr));
-                  gap: 10px;
-                }
-                .review-card {
-                  border-radius: 10px;
-                  box-shadow: none;
-                }
-                .review-photo-grid img:nth-child(n+3) {
                   display: none;
+                }
+                .print-review-list {
+                  display: block;
                 }
               }
             </style>
+            <script>
+              function printReviewListing() {
+                const body = document.body;
+                body.classList.add('print-mode');
+                setTimeout(() => window.print(), 50);
+              }
+              window.addEventListener('afterprint', () => {
+                document.body.classList.remove('print-mode');
+              });
+            </script>
           </head>
           <body>
             <div class="print-toolbar">
-              <button onclick="window.print()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">Print / Save PDF</button>
+              <button onclick="printReviewListing()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">Print / Save PDF</button>
               <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
             </div>
             <h1 style="margin:0 0 8px;">Review Listing</h1>
             <div style="margin-bottom:16px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} | ${exportItems.length} pair(s) | ${escapeHtml(currency(exportTotal))} total</div>
             <section class="review-grid">
               ${cards || '<p>No inventory available.</p>'}
+            </section>
+            <section class="print-review-list">
+              ${printRows || '<p>No inventory available.</p>'}
             </section>
           </body>
         </html>
