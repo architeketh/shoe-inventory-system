@@ -1175,7 +1175,14 @@
 
           <div class="field">
             <label for="category-2">Category 2</label>
-            <input id="category-2" name="category-2" type="text" placeholder="Sneakers, Boots, Sandals..." required>
+            <select id="category-2" name="category-2" required>
+              <option value="">Select</option>
+              <option value="Boots">Boots</option>
+              <option value="Flats">Flats</option>
+              <option value="Heels">Heels</option>
+              <option value="Sandals">Sandals</option>
+              <option value="Sneakers">Sneakers</option>
+            </select>
           </div>
 
           <div class="field-stack">
@@ -1194,6 +1201,40 @@
           </div>
 
           <div class="field">
+            <label for="condition">Condition</label>
+            <input id="condition" name="condition" type="text" placeholder="Excellent, Good, Fair...">
+          </div>
+
+          <div class="field">
+            <label for="original-tags-attached">Original tags attached</label>
+            <select id="original-tags-attached" name="original-tags-attached">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="estimated-retail-price">Estimated retail price</label>
+            <input id="estimated-retail-price" name="estimated-retail-price" type="number" min="0" step="0.01" placeholder="120.00">
+          </div>
+
+          <div class="field">
+            <label for="colors">Colors</label>
+            <input id="colors" name="colors" type="text" placeholder="Pink, Black, White...">
+          </div>
+
+          <div class="field">
+            <label for="shoe-style">Shoe style</label>
+            <input id="shoe-style" name="shoe-style" type="text" placeholder="Platform, Low top, Running...">
+          </div>
+
+          <div class="field-stack">
+            <label for="brand-style-name">Brand Style Name</label>
+            <input id="brand-style-name" name="brand-style-name" type="text" placeholder="Defaults from description if left blank">
+          </div>
+
+          <div class="field">
             <label for="sold">Sold</label>
             <select id="sold" name="sold">
               <option value="false">For sale</option>
@@ -1205,40 +1246,6 @@
         <details class="collapsible" style="margin-top:16px;">
           <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
           <div class="form-grid" style="padding-top:16px;">
-            <div class="field">
-              <label for="condition">Condition</label>
-              <input id="condition" name="condition" type="text" placeholder="Excellent, Good, Fair...">
-            </div>
-
-            <div class="field">
-              <label for="original-tags-attached">Original tags attached</label>
-              <select id="original-tags-attached" name="original-tags-attached">
-                <option value="">Select</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="estimated-retail-price">Estimated retail price</label>
-              <input id="estimated-retail-price" name="estimated-retail-price" type="number" min="0" step="0.01" placeholder="120.00">
-            </div>
-
-            <div class="field">
-              <label for="colors">Colors</label>
-              <input id="colors" name="colors" type="text" placeholder="Pink, Black, White...">
-            </div>
-
-            <div class="field">
-              <label for="shoe-style">Shoe style</label>
-              <input id="shoe-style" name="shoe-style" type="text" placeholder="Platform, Low top, Running...">
-            </div>
-
-            <div class="field">
-              <label for="brand-style-name">Brand Style Name</label>
-              <input id="brand-style-name" name="brand-style-name" type="text" placeholder="Defaults from description if left blank">
-            </div>
-
             <div class="field">
               <label for="materials">Materials</label>
               <input id="materials" name="materials" type="text" placeholder="Leather, Mesh, Suede...">
@@ -1292,6 +1299,7 @@
         <div class="toolbar-compact">
           <span class="toolbar-label">Export</span>
           <button class="button ghost" type="button" id="report-button">PDF</button>
+          <button class="button ghost" type="button" id="review-report-button">Review PDF</button>
           <button class="button ghost" type="button" id="xls-button">CSV</button>
           <button class="button ghost" type="button" id="whatnot-button">Whatnot</button>
           <button class="button ghost" type="button" id="depop-button">Depop</button>
@@ -1317,7 +1325,7 @@
       </div>
       <div id="inventory-list" class="inventory-list"></div>
       <div id="inventory-summary" class="inventory-summary">0 pairs total · $0.00</div>
-      <div class="report-note">PDF, CSV, Whatnot, and Depop exports follow the current filter/search view. Whatnot uses official bulk-import fields; Depop export is a prep CSV for their web bulk listing workflow.</div>
+      <div class="report-note">PDF, Review PDF, CSV, Whatnot, and Depop exports follow the current filter/search view. Review PDF lays items out as listing cards for quick scanning.</div>
     </section>
   </div>
 
@@ -1366,7 +1374,14 @@
           </div>
           <div class="field">
             <label for="edit-category-2">Category 2</label>
-            <input id="edit-category-2" type="text">
+            <select id="edit-category-2">
+              <option value="">Select</option>
+              <option value="Boots">Boots</option>
+              <option value="Flats">Flats</option>
+              <option value="Heels">Heels</option>
+              <option value="Sandals">Sandals</option>
+              <option value="Sneakers">Sneakers</option>
+            </select>
           </div>
           <div class="field" style="grid-column:1/-1;">
             <label for="edit-description">Description</label>
@@ -1381,6 +1396,34 @@
             <input id="edit-notes" type="text">
           </div>
           <div class="field">
+            <label for="edit-condition">Condition</label>
+            <input id="edit-condition" type="text">
+          </div>
+          <div class="field">
+            <label for="edit-original-tags-attached">Original tags attached</label>
+            <select id="edit-original-tags-attached">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="edit-estimated-retail-price">Estimated retail price</label>
+            <input id="edit-estimated-retail-price" type="number" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label for="edit-colors">Colors</label>
+            <input id="edit-colors" type="text">
+          </div>
+          <div class="field">
+            <label for="edit-shoe-style">Shoe style</label>
+            <input id="edit-shoe-style" type="text">
+          </div>
+          <div class="field" style="grid-column:1/-1;">
+            <label for="edit-brand-style-name">Brand Style Name</label>
+            <input id="edit-brand-style-name" type="text">
+          </div>
+          <div class="field">
             <label for="edit-sold">Sold</label>
             <select id="edit-sold">
               <option value="false">For sale</option>
@@ -1391,34 +1434,6 @@
           <details class="collapsible" style="margin-top:16px;">
             <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
             <div class="edit-grid" style="padding-top:16px;">
-              <div class="field">
-                <label for="edit-condition">Condition</label>
-                <input id="edit-condition" type="text">
-              </div>
-              <div class="field">
-                <label for="edit-original-tags-attached">Original tags attached</label>
-                <select id="edit-original-tags-attached">
-                  <option value="">Select</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="edit-estimated-retail-price">Estimated retail price</label>
-                <input id="edit-estimated-retail-price" type="number" min="0" step="0.01">
-              </div>
-              <div class="field">
-                <label for="edit-colors">Colors</label>
-                <input id="edit-colors" type="text">
-              </div>
-              <div class="field">
-                <label for="edit-shoe-style">Shoe style</label>
-                <input id="edit-shoe-style" type="text">
-              </div>
-              <div class="field">
-                <label for="edit-brand-style-name">Brand Style Name</label>
-                <input id="edit-brand-style-name" type="text">
-              </div>
               <div class="field">
                 <label for="edit-materials">Materials</label>
                 <input id="edit-materials" type="text">
@@ -1563,6 +1578,7 @@
       searchInput: document.getElementById('search-input'),
       searchClearButton: document.getElementById('search-clear-button'),
       reportButton: document.getElementById('report-button'),
+      reviewReportButton: document.getElementById('review-report-button'),
       xlsButton: document.getElementById('xls-button'),
       whatnotButton: document.getElementById('whatnot-button'),
       depopButton: document.getElementById('depop-button'),
@@ -2805,6 +2821,62 @@
       reportWindow.focus();
     }
 
+    function exportReviewListingPdf() {
+      const exportItems = sortedInventory();
+      const exportTotal = exportItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
+      const reportWindow = window.open('', '_blank');
+      if (!reportWindow) {
+        alert('Allow pop-ups to open the review listing PDF preview.');
+        return;
+      }
+
+      const cards = exportItems.map((item) => {
+        const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
+        const photoMarkup = photos.length
+          ? photos.map((url) => `<img src="${url}" style="width:100%;aspect-ratio:1 / 1;object-fit:cover;border-radius:8px;border:1px solid #e4d8cb;display:block;" />`).join('')
+          : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;">No photos</div>';
+        const categoryLabel = item.gender ? (item.gender === 'womens' ? 'Womens' : item.gender === 'kids' ? 'Kids' : 'Mens') : 'Unspecified';
+        return `
+          <article style="border:1px solid #dbcfc2;border-radius:14px;padding:10px;background:#fff;display:flex;flex-direction:column;gap:8px;break-inside:avoid;">
+            <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:6px;">
+              ${photoMarkup}
+            </div>
+            <div style="font:700 12px Arial,sans-serif;color:#23170f;line-height:1.35;">${escapeHtml(item.brand || '')}</div>
+            <div style="font:12px Arial,sans-serif;color:#4f443b;line-height:1.35;">${escapeHtml(item.brand_style_name || item.description || '')}</div>
+            <div style="font:11px Arial,sans-serif;color:#6c5d52;line-height:1.45;">
+              <div><strong>Category:</strong> ${escapeHtml(categoryLabel)} / ${escapeHtml(item.category_2 || '-')}</div>
+              <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
+              <div><strong>Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
+              <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
+              <div><strong>Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      reportWindow.document.write(`
+        <html>
+          <head>
+            <title>Review Listing PDF</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          </head>
+          <body style="font-family:Arial,sans-serif;padding:20px;color:#222;background:#faf8f5;">
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+              <button onclick="window.print()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">Print / Save PDF</button>
+              <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
+            </div>
+            <h1 style="margin:0 0 8px;">Review Listing</h1>
+            <div style="margin-bottom:16px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} | ${exportItems.length} pair(s) | ${escapeHtml(currency(exportTotal))} total</div>
+            <section style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:12px;align-items:start;">
+              ${cards || '<p>No inventory available.</p>'}
+            </section>
+          </body>
+        </html>
+      `);
+      reportWindow.document.close();
+      reportWindow.focus();
+    }
+
     function exportXlsReport() {
       const exportItems = sortedInventory();
       const lines = [
@@ -2942,6 +3014,7 @@
     }
 
     elements.reportButton.addEventListener('click', exportPdfReport);
+    elements.reviewReportButton.addEventListener('click', exportReviewListingPdf);
     elements.xlsButton.addEventListener('click', exportXlsReport);
     elements.whatnotButton.addEventListener('click', exportWhatnotCsv);
     elements.depopButton.addEventListener('click', exportDepopCsv);
