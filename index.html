@@ -592,14 +592,18 @@
       font-size: 0.9rem;
       line-height: 1.35;
       word-break: break-word;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 66px 72px 96px minmax(220px, 1.45fr) 34px 56px 76px 204px 62px;
+      grid-template-columns: 78px 120px minmax(160px, 1.2fr) 76px 76px 76px 110px 132px 86px;
       gap: 10px;
       align-items: center;
-      min-width: 886px;
+      min-width: 980px;
     }
 
     .inventory-cell {
@@ -608,7 +612,7 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 66px 72px 96px minmax(220px, 1.45fr) 34px 56px 76px 204px 62px;
+      grid-template-columns: 78px 120px minmax(160px, 1.2fr) 76px 76px 76px 110px 132px 86px;
       gap: 10px;
       align-items: center;
       padding: 0 16px 10px;
@@ -667,6 +671,17 @@
       flex-direction: column;
       gap: 8px;
       justify-content: flex-start;
+      align-items: flex-start;
+    }
+
+    .inventory-actions.end {
+      align-items: stretch;
+    }
+
+    .inventory-status-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       align-items: flex-start;
     }
 
@@ -980,7 +995,7 @@
         display: none;
       }
 
-      .inventory-line { min-width: 920px; }
+      .inventory-line { min-width: 980px; }
 
       .photo-strip {
         justify-content: flex-start;
@@ -1319,7 +1334,6 @@
       </div>
       <div class="inventory-head">
         <div>Status</div>
-        <div>Sold</div>
         <div data-sort-key="brand">Brand</div>
         <div data-sort-key="description">Description</div>
         <div>Category</div>
@@ -2384,9 +2398,6 @@
                     <button class="${priceAiClass}" type="button" data-price-ai-id="${item.id}"><span class="desktop-label">Price AI</span><span class="mobile-label">AI</span></button>
                   </div>
                 </div>
-                <div class="inventory-cell">
-                  <div class="pill-row">${soldPill}</div>
-                </div>
               <div class="inventory-cell">
                 <h3>${escapeHtml(item.brand || 'Unknown brand')}</h3>
               </div>
@@ -2407,14 +2418,14 @@
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Listed Price</div>
-                <div class="price">${currency(item.price)}</div>
+                ${soldPill ? `<div class="inventory-status-stack">${soldPill}<div class="price">${currency(item.price)}</div></div>` : `<div class="price">${currency(item.price)}</div>`}
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Attachments</div>
                 ${photoStrip}
               </div>
               <div class="inventory-cell">
-                <div class="inventory-actions">
+                <div class="inventory-actions end">
                   <button class="mini-button" type="button" data-edit-id="${item.id}">Edit</button>
                   <button class="mini-button" type="button" data-duplicate-id="${item.id}">Copy</button>
                   <button class="mini-button" type="button" data-delete-id="${item.id}">Delete</button>
