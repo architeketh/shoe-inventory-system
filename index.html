@@ -1334,7 +1334,11 @@
         <div>
           <h2>Saved pairs</h2>
         </div>
-        <span class="pill" id="inventory-status">Loading inventory...</span>
+        <article class="config-box" style="min-width:260px;padding:14px 16px;">
+          <strong id="inventory-status-version">Mobile Build 04.12.26-1</strong>
+          <p id="inventory-status-updated" style="margin-top:6px;">Updated: Loading...</p>
+          <p id="inventory-status-sync" style="margin-top:4px;">Sync status: Waiting for first sync...</p>
+        </article>
       </div>
       <div class="inventory-head">
         <div>Status</div>
@@ -1530,6 +1534,7 @@
 
   <script>
     const APP_CONFIG = {
+      appVersion: '04.12.26-1',
       supabaseUrl: 'https://ozyefxmaeltienuagmcq.supabase.co',
       supabaseAnonKey: 'sb_publishable_63KSwhRg3Tl_q2Hj0Xs7cQ_cGAE1T9b',
       photoBucket: 'shoe-photos',
@@ -1550,6 +1555,7 @@
       galleryUrls: [],
       galleryIndex: 0,
       galleryItemId: null,
+      lastInventorySyncAt: null,
       touchStartX: 0,
       isSaving: false,
       isAiRunning: false,
@@ -1607,7 +1613,9 @@
       saveButton: document.getElementById('save-button'),
       inventoryList: document.getElementById('inventory-list'),
       inventorySummary: document.getElementById('inventory-summary'),
-      inventoryStatus: document.getElementById('inventory-status'),
+      inventoryStatusVersion: document.getElementById('inventory-status-version'),
+      inventoryStatusUpdated: document.getElementById('inventory-status-updated'),
+      inventoryStatusSync: document.getElementById('inventory-status-sync'),
       sortSelect: document.getElementById('sort-select'),
       searchInput: document.getElementById('search-input'),
       searchClearButton: document.getElementById('search-clear-button'),
@@ -1697,6 +1705,25 @@
 
     function syncResponsiveLabels() {
       elements.savedLabel.textContent = window.innerWidth <= 640 ? 'Saved' : 'Pairs saved';
+    }
+
+    function formatStatusTimestamp(value) {
+      if (!value) return 'Not yet synced';
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) return 'Not yet synced';
+      return date.toLocaleString([], {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    }
+
+    function updateInventoryStatusCard(syncMessage) {
+      elements.inventoryStatusVersion.textContent = `Mobile Build ${APP_CONFIG.appVersion}`;
+      elements.inventoryStatusUpdated.textContent = `Updated: ${formatStatusTimestamp(state.lastInventorySyncAt)}`;
+      elements.inventoryStatusSync.textContent = `Sync status: ${syncMessage}`;
     }
 
     function showFormStatus(type, message) {
@@ -2447,14 +2474,15 @@
 
     async function loadInventory() {
       if (!SUPABASE_READY) {
-        elements.inventoryStatus.textContent = 'Supabase not configured';
+        state.lastInventorySyncAt = null;
+        updateInventoryStatusCard('Supabase not configured');
         state.inventory = [];
         renderStats();
         renderInventory();
         return;
       }
 
-      elements.inventoryStatus.textContent = 'Loading inventory...';
+      updateInventoryStatusCard('Syncing data...');
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
@@ -2462,11 +2490,12 @@
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
-        elements.inventoryStatus.textContent = `Loaded ${state.inventory.length} pairs`;
+        state.lastInventorySyncAt = new Date();
+        updateInventoryStatusCard(`Synced ${state.inventory.length} pairs`);
         renderStats();
         renderInventory();
       } catch (error) {
-        elements.inventoryStatus.textContent = 'Inventory failed to load';
+        updateInventoryStatusCard('Sync failed');
         showBanner('error', 'Inventory load failed', error.message || String(error));
       }
     }
