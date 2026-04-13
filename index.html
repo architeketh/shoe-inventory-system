@@ -796,6 +796,32 @@
       background: #f2ece4;
     }
 
+    .modal-image-stage {
+      position: relative;
+    }
+
+    .crop-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: none;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .crop-overlay.active {
+      display: block;
+    }
+
+    .crop-mask {
+      position: absolute;
+      border: 2px solid rgba(191, 90, 42, 0.95);
+      background: rgba(191, 90, 42, 0.16);
+      box-shadow: 0 0 0 9999px rgba(24, 16, 10, 0.34);
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
     .viewer-arrow {
       position: absolute;
       top: 50%;
@@ -1360,12 +1386,20 @@
         <span class="pill" id="viewer-status">Original</span>
         <div class="viewer-toolbar-actions">
           <button class="button ghost" type="button" id="delete-image-button">Delete Image</button>
+          <button class="button ghost" type="button" id="crop-button">Crop</button>
+          <button class="button ghost hidden" type="button" id="cancel-crop-button">Cancel Crop</button>
+          <button class="button ghost hidden" type="button" id="apply-crop-button">Apply Crop</button>
           <button class="button ghost hidden" type="button" id="replace-original-button">Replace Original</button>
           <button class="button secondary" type="button" id="white-bg-button">White BG</button>
         </div>
       </div>
       <button class="viewer-arrow prev" type="button" id="modal-prev" aria-label="Previous photo">&#8249;</button>
-      <img class="modal-image" id="modal-image" alt="Shoe attachment preview">
+      <div class="modal-image-stage" id="modal-image-stage">
+        <img class="modal-image" id="modal-image" alt="Shoe attachment preview">
+        <div class="crop-overlay" id="crop-overlay" aria-hidden="true">
+          <div class="crop-mask hidden" id="crop-mask"></div>
+        </div>
+      </div>
       <button class="viewer-arrow next" type="button" id="modal-next" aria-label="Next photo">&#8250;</button>
     </div>
   </div>
@@ -1555,6 +1589,9 @@
       galleryItemId: null,
       lastInventorySyncAt: null,
       touchStartX: 0,
+      cropMode: false,
+      cropStart: null,
+      cropRect: null,
       isSaving: false,
       isAiRunning: false,
       aiUsedForCurrentDraft: false,
@@ -1627,10 +1664,16 @@
       formStatus: document.getElementById('form-status'),
       photoModal: document.getElementById('photo-modal'),
       modalImage: document.getElementById('modal-image'),
+      modalImageStage: document.getElementById('modal-image-stage'),
+      cropOverlay: document.getElementById('crop-overlay'),
+      cropMask: document.getElementById('crop-mask'),
       modalPrev: document.getElementById('modal-prev'),
       modalNext: document.getElementById('modal-next'),
       viewerStatus: document.getElementById('viewer-status'),
       deleteImageButton: document.getElementById('delete-image-button'),
+      cropButton: document.getElementById('crop-button'),
+      cancelCropButton: document.getElementById('cancel-crop-button'),
+      applyCropButton: document.getElementById('apply-crop-button'),
       whiteBgButton: document.getElementById('white-bg-button'),
       replaceOriginalButton: document.getElementById('replace-original-button'),
       priceAiModal: document.getElementById('price-ai-modal'),
@@ -1746,6 +1789,74 @@
       } else if (!state.isWhiteBgRunning) {
         elements.viewerStatus.textContent = 'Original';
       }
+      updateCropUi();
+    }
+
+    function resetCropState() {
+      state.cropMode = false;
+      state.cropStart = null;
+      state.cropRect = null;
+      updateCropUi();
+    }
+
+    function updateCropUi() {
+      const active = Boolean(state.cropMode);
+      const hasRect = Boolean(state.cropRect && state.cropRect.width >= 12 && state.cropRect.height >= 12);
+      elements.cropOverlay.classList.toggle('active', active);
+      elements.cropButton.classList.toggle('hidden', active);
+      elements.cancelCropButton.classList.toggle('hidden', !active);
+      elements.applyCropButton.classList.toggle('hidden', !active);
+      elements.applyCropButton.disabled = !hasRect;
+      elements.cropMask.classList.toggle('hidden', !hasRect);
+      if (hasRect) {
+        elements.cropMask.style.left = `${state.cropRect.x}px`;
+        elements.cropMask.style.top = `${state.cropRect.y}px`;
+        elements.cropMask.style.width = `${state.cropRect.width}px`;
+        elements.cropMask.style.height = `${state.cropRect.height}px`;
+      }
+    }
+
+    function getDisplayedImageRect() {
+      const image = elements.modalImage;
+      if (!image || !image.naturalWidth || !image.naturalHeight) return null;
+      const imageRect = image.getBoundingClientRect();
+      const imageAspect = image.naturalWidth / image.naturalHeight;
+      const boxAspect = imageRect.width / imageRect.height;
+      let width = imageRect.width;
+      let height = imageRect.height;
+      let left = imageRect.left;
+      let top = imageRect.top;
+      if (imageAspect > boxAspect) {
+        height = width / imageAspect;
+        top += (imageRect.height - height) / 2;
+      } else {
+        width = height * imageAspect;
+        left += (imageRect.width - width) / 2;
+      }
+      return { left, top, width, height };
+    }
+
+    function getPointInOverlay(event) {
+      const displayed = getDisplayedImageRect();
+      const overlayRect = elements.cropOverlay.getBoundingClientRect();
+      if (!displayed || !overlayRect) return null;
+      const clientX = event.clientX;
+      const clientY = event.clientY;
+      const clampedX = Math.max(displayed.left, Math.min(clientX, displayed.left + displayed.width));
+      const clampedY = Math.max(displayed.top, Math.min(clientY, displayed.top + displayed.height));
+      return {
+        x: clampedX - overlayRect.left,
+        y: clampedY - overlayRect.top
+      };
+    }
+
+    function setCropRectFromPoints(start, end) {
+      const x = Math.min(start.x, end.x);
+      const y = Math.min(start.y, end.y);
+      const width = Math.abs(end.x - start.x);
+      const height = Math.abs(end.y - start.y);
+      state.cropRect = { x, y, width, height };
+      updateCropUi();
     }
 
     function openPhotoModal(urls, index = 0, itemId = null) {
@@ -1759,6 +1870,7 @@
       elements.viewerStatus.textContent = 'Original';
       elements.whiteBgButton.disabled = false;
       elements.whiteBgButton.textContent = 'White BG';
+      resetCropState();
       renderGalleryImage();
       elements.photoModal.classList.remove('hidden');
       elements.photoModal.setAttribute('aria-hidden', 'false');
@@ -1770,6 +1882,7 @@
       state.galleryItemId = null;
       state.isWhiteBgRunning = false;
       state.pendingWhiteBgReplacement = null;
+      resetCropState();
       elements.photoModal.classList.add('hidden');
       elements.photoModal.setAttribute('aria-hidden', 'true');
       elements.modalImage.removeAttribute('src');
@@ -1778,12 +1891,14 @@
     function showPrevPhoto() {
       if (!state.galleryUrls.length) return;
       state.galleryIndex = (state.galleryIndex - 1 + state.galleryUrls.length) % state.galleryUrls.length;
+      resetCropState();
       renderGalleryImage();
     }
 
     function showNextPhoto() {
       if (!state.galleryUrls.length) return;
       state.galleryIndex = (state.galleryIndex + 1) % state.galleryUrls.length;
+      resetCropState();
       elements.viewerStatus.textContent = 'Original';
       renderGalleryImage();
     }
@@ -1851,8 +1966,9 @@
       }
     }
 
-    async function uploadProcessedViewerPhoto(blob, item) {
-      const path = `processed/${new Date().toISOString().slice(0, 10)}/${item.id}-${crypto.randomUUID()}-whitebg.png`;
+    async function uploadProcessedViewerPhoto(blob, item, suffix = 'processed') {
+      const safeSuffix = String(suffix || 'processed').replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
+      const path = `processed/${new Date().toISOString().slice(0, 10)}/${item.id}-${crypto.randomUUID()}-${safeSuffix}.png`;
       const { error } = await supabaseClient.storage.from(APP_CONFIG.photoBucket).upload(path, blob, {
         upsert: false,
         contentType: 'image/png'
@@ -1903,8 +2019,9 @@
         openPhotoModal(refreshed.photo_urls, pending.originalIndex, refreshed.id);
         elements.viewerStatus.textContent = 'Original replaced';
       }
+      const replacementLabel = pending.sourceAction === 'crop' ? 'cropped image' : 'processed image';
       state.pendingWhiteBgReplacement = null;
-      showBanner('success', 'Original replaced', 'The processed white background image replaced the original photo.');
+      showBanner('success', 'Original replaced', `The ${replacementLabel} replaced the original photo.`);
     }
 
     async function deleteCurrentViewerPhoto() {
@@ -1974,7 +2091,7 @@
         const { removeBackground } = await getBackgroundRemovalModule();
         const transparentBlob = await removeBackground(resizedBlob);
         const whiteBlob = await flattenTransparentBlobToWhite(transparentBlob);
-        const processed = await uploadProcessedViewerPhoto(whiteBlob, item);
+        const processed = await uploadProcessedViewerPhoto(whiteBlob, item, 'whitebg');
         await loadInventory();
         const refreshed = state.inventory.find((entry) => entry.id === item.id);
         if (refreshed && Array.isArray(refreshed.photo_urls)) {
@@ -1982,7 +2099,8 @@
             itemId: refreshed.id,
             originalIndex: state.galleryIndex,
             processedUrl: processed.url,
-            processedPath: processed.path
+            processedPath: processed.path,
+            sourceAction: 'white-bg'
           };
           openPhotoModal(refreshed.photo_urls, refreshed.photo_urls.length - 1, refreshed.id);
           elements.viewerStatus.textContent = 'Review processed image';
@@ -1995,6 +2113,75 @@
         state.isWhiteBgRunning = false;
         elements.whiteBgButton.disabled = false;
         elements.whiteBgButton.textContent = 'White BG';
+      }
+    }
+
+    async function applyCropToCurrentPhoto() {
+      if (!SUPABASE_READY) {
+        alert('Supabase must be configured before processing images.');
+        return;
+      }
+      if (!state.cropRect || !state.galleryUrls.length || !state.galleryItemId) return;
+      const item = state.inventory.find((entry) => entry.id === state.galleryItemId);
+      if (!item) return;
+
+      const displayed = getDisplayedImageRect();
+      if (!displayed) throw new Error('Image is not ready for cropping yet.');
+
+      const scaleX = elements.modalImage.naturalWidth / displayed.width;
+      const scaleY = elements.modalImage.naturalHeight / displayed.height;
+      const cropX = Math.max(0, Math.round(state.cropRect.x * scaleX));
+      const cropY = Math.max(0, Math.round(state.cropRect.y * scaleY));
+      const cropWidth = Math.max(1, Math.round(state.cropRect.width * scaleX));
+      const cropHeight = Math.max(1, Math.round(state.cropRect.height * scaleY));
+
+      const sourceUrl = state.galleryUrls[state.galleryIndex];
+      const response = await fetch(sourceUrl);
+      if (!response.ok) throw new Error('Could not fetch the current image.');
+      const sourceBlob = await response.blob();
+      const objectUrl = URL.createObjectURL(sourceBlob);
+
+      try {
+        const image = await loadImageElement(objectUrl);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.min(cropWidth, image.naturalWidth || image.width);
+        canvas.height = Math.min(cropHeight, image.naturalHeight || image.height);
+        const context = canvas.getContext('2d');
+        context.drawImage(
+          image,
+          cropX,
+          cropY,
+          cropWidth,
+          cropHeight,
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+        const croppedBlob = await new Promise((resolve, reject) => {
+          canvas.toBlob((outputBlob) => {
+            if (outputBlob) resolve(outputBlob);
+            else reject(new Error('Could not create cropped image.'));
+          }, 'image/png');
+        });
+        const processed = await uploadProcessedViewerPhoto(croppedBlob, item, 'crop');
+        await loadInventory();
+        const refreshed = state.inventory.find((entry) => entry.id === item.id);
+        if (refreshed && Array.isArray(refreshed.photo_urls)) {
+          state.pendingWhiteBgReplacement = {
+            itemId: refreshed.id,
+            originalIndex: state.galleryIndex,
+            processedUrl: processed.url,
+            processedPath: processed.path,
+            sourceAction: 'crop'
+          };
+          openPhotoModal(refreshed.photo_urls, refreshed.photo_urls.length - 1, refreshed.id);
+          elements.viewerStatus.textContent = 'Review cropped image';
+        }
+        showBanner('success', 'Crop created', 'A cropped copy was added. If it looks good, tap Replace Original.');
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+        resetCropState();
       }
     }
 
@@ -2584,6 +2771,50 @@
     elements.cancelEditButton.addEventListener('click', resetDraft);
     elements.modalPrev.addEventListener('click', showPrevPhoto);
     elements.modalNext.addEventListener('click', showNextPhoto);
+    elements.cropButton.addEventListener('click', () => {
+      state.cropMode = true;
+      state.cropStart = null;
+      state.cropRect = null;
+      elements.viewerStatus.textContent = 'Drag to select crop area';
+      updateCropUi();
+    });
+    elements.cancelCropButton.addEventListener('click', () => {
+      resetCropState();
+      elements.viewerStatus.textContent = 'Original';
+    });
+    elements.applyCropButton.addEventListener('click', async () => {
+      try {
+        elements.applyCropButton.disabled = true;
+        elements.viewerStatus.textContent = 'Processing crop...';
+        await applyCropToCurrentPhoto();
+      } catch (error) {
+        resetCropState();
+        elements.viewerStatus.textContent = 'Crop failed';
+        showBanner('error', 'Crop failed', error?.message || String(error));
+      }
+    });
+    elements.cropOverlay.addEventListener('pointerdown', (event) => {
+      if (!state.cropMode) return;
+      const point = getPointInOverlay(event);
+      if (!point) return;
+      state.cropStart = point;
+      state.cropRect = { x: point.x, y: point.y, width: 0, height: 0 };
+      elements.cropOverlay.setPointerCapture?.(event.pointerId);
+      updateCropUi();
+    });
+    elements.cropOverlay.addEventListener('pointermove', (event) => {
+      if (!state.cropMode || !state.cropStart) return;
+      const point = getPointInOverlay(event);
+      if (!point) return;
+      setCropRectFromPoints(state.cropStart, point);
+    });
+    const finishCropDrag = () => {
+      if (!state.cropMode) return;
+      state.cropStart = null;
+      updateCropUi();
+    };
+    elements.cropOverlay.addEventListener('pointerup', finishCropDrag);
+    elements.cropOverlay.addEventListener('pointercancel', finishCropDrag);
     elements.deleteImageButton.addEventListener('click', async () => {
       try {
         elements.deleteImageButton.disabled = true;
