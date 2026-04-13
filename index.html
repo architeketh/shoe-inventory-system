@@ -1119,7 +1119,7 @@
       <summary class="summary-pill"><span>Add a pair</span><span>+</span></summary>
       <div style="padding-top:18px;">
         <div class="section-head">
-          <div class="eyebrow">Intake form</div>
+          <div class="eyebrow">Item Details</div>
           <div class="toggle-row" id="box-toggle">
             <button class="toggle-pill active" type="button" data-box-value="yes">Box</button>
             <button class="toggle-pill" type="button" data-box-value="no">No box</button>
@@ -1154,27 +1154,7 @@
           </div>
 
           <div class="field">
-            <label for="brand">Brand</label>
-            <input id="brand" name="brand" type="text" placeholder="Nike, Adidas, New Balance...">
-          </div>
-
-          <div class="field">
-            <label for="size">Size</label>
-            <input id="size" name="size" type="text" placeholder="10.5, 7Y, EU 42...">
-          </div>
-
-          <div class="field">
-            <label for="gender">Category</label>
-            <select id="gender" name="gender">
-              <option value="">Select</option>
-              <option value="mens">Mens</option>
-              <option value="womens">Womens</option>
-              <option value="kids">Kids</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="category-2">Category 2</label>
+            <label for="category-2">Category</label>
             <select id="category-2" name="category-2" required>
               <option value="">Select</option>
               <option value="Boots">Boots</option>
@@ -1185,19 +1165,14 @@
             </select>
           </div>
 
-          <div class="field-stack">
-            <label for="description">Description</label>
-            <textarea id="description" name="description" placeholder="Air Jordan 1 Retro High OG Chicago, red white black..."></textarea>
+          <div class="field">
+            <label for="brand">Brand</label>
+            <input id="brand" name="brand" type="text" placeholder="Nike, Adidas, New Balance...">
           </div>
 
           <div class="field">
-            <label for="price">Price</label>
-            <input id="price" name="price" type="number" min="0" step="0.01" placeholder="120.00" required>
-          </div>
-
-          <div class="field">
-            <label for="notes">Notes</label>
-            <input id="notes" name="notes" type="text" placeholder="Condition, flaws, release year, SKU...">
+            <label for="size">Size</label>
+            <input id="size" name="size" type="text" placeholder="10.5, 7Y, EU 42...">
           </div>
 
           <div class="field">
@@ -1206,7 +1181,7 @@
           </div>
 
           <div class="field">
-            <label for="original-tags-attached">Original tags attached</label>
+            <label for="original-tags-attached">Original Tags Attached</label>
             <select id="original-tags-attached" name="original-tags-attached">
               <option value="">Select</option>
               <option value="yes">Yes</option>
@@ -1215,8 +1190,18 @@
           </div>
 
           <div class="field">
-            <label for="estimated-retail-price">Estimated retail price</label>
+            <label for="estimated-retail-price">Estimated Retail Price</label>
             <input id="estimated-retail-price" name="estimated-retail-price" type="number" min="0" step="0.01" placeholder="120.00">
+          </div>
+
+          <div class="field">
+            <label for="price">Listed Price</label>
+            <input id="price" name="price" type="number" min="0" step="0.01" placeholder="120.00" required>
+          </div>
+
+          <div class="field">
+            <label for="sold-price">Sold Price</label>
+            <input id="sold-price" name="sold-price" type="number" min="0" step="0.01" placeholder="0.00">
           </div>
 
           <div class="field">
@@ -1225,8 +1210,13 @@
           </div>
 
           <div class="field">
-            <label for="shoe-style">Shoe style</label>
+            <label for="shoe-style">Shoe Style / Platform</label>
             <input id="shoe-style" name="shoe-style" type="text" placeholder="Platform, Low top, Running...">
+          </div>
+
+          <div class="field-stack">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" placeholder="Air Jordan 1 Retro High OG Chicago, red white black..."></textarea>
           </div>
 
           <div class="field-stack">
@@ -1241,11 +1231,26 @@
               <option value="true">Sold</option>
             </select>
           </div>
+
+          <div class="field">
+            <label for="notes">Notes</label>
+            <input id="notes" name="notes" type="text" placeholder="Condition, flaws, release year, SKU...">
+          </div>
         </div>
 
         <details class="collapsible" style="margin-top:16px;">
           <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
           <div class="form-grid" style="padding-top:16px;">
+            <div class="field">
+              <label for="gender">Category 2</label>
+              <select id="gender" name="gender">
+                <option value="">Select</option>
+                <option value="mens">Mens</option>
+                <option value="womens">Womens</option>
+                <option value="kids">Kids</option>
+              </select>
+            </div>
+
             <div class="field">
               <label for="materials">Materials</label>
               <input id="materials" name="materials" type="text" placeholder="Leather, Mesh, Suede...">
@@ -1265,7 +1270,7 @@
 
         <div class="prompt-box" id="required-copy">
           <strong>Current requirement</strong>
-          <p>If there is no box, brand, category 2, and price must be entered manually or filled by AI lookup from the shoe photos. Description can also feed Brand Style Name.</p>
+          <p>If there is no box, brand, category, and listed price must be entered manually or filled by AI lookup from the shoe photos. Description can also feed Brand Style Name.</p>
         </div>
 
         <div class="button-row">
@@ -1317,9 +1322,10 @@
         <div>Sold</div>
         <div data-sort-key="brand">Brand</div>
         <div data-sort-key="description">Description</div>
-        <div>Cat</div>
+        <div>Category</div>
+        <div>Category 2</div>
         <div data-sort-key="size">Size</div>
-        <div data-sort-key="price">Price</div>
+        <div data-sort-key="price">Listed Price</div>
         <div>Attachments</div>
         <div>Actions</div>
       </div>
@@ -1348,7 +1354,7 @@
   <div class="modal hidden" id="edit-modal" aria-hidden="true">
     <div class="edit-modal-card">
       <button class="modal-close" type="button" id="edit-close" aria-label="Close edit">x</button>
-      <div class="eyebrow">Edit shoe</div>
+      <div class="eyebrow">Item Details</div>
         <form id="edit-form">
         <div class="toggle-row" id="edit-box-toggle" style="margin-bottom:14px;">
           <button class="toggle-pill active" type="button" data-edit-box-value="yes">Box</button>
@@ -1356,24 +1362,7 @@
         </div>
         <div class="edit-grid">
           <div class="field">
-            <label for="edit-brand">Brand</label>
-            <input id="edit-brand" type="text">
-          </div>
-          <div class="field">
-            <label for="edit-size">Size</label>
-            <input id="edit-size" type="text">
-          </div>
-          <div class="field">
-            <label for="edit-gender">Category</label>
-            <select id="edit-gender">
-              <option value="">Select</option>
-              <option value="mens">Mens</option>
-              <option value="womens">Womens</option>
-              <option value="kids">Kids</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="edit-category-2">Category 2</label>
+            <label for="edit-category-2">Category</label>
             <select id="edit-category-2">
               <option value="">Select</option>
               <option value="Boots">Boots</option>
@@ -1383,24 +1372,20 @@
               <option value="Sneakers">Sneakers</option>
             </select>
           </div>
-          <div class="field" style="grid-column:1/-1;">
-            <label for="edit-description">Description</label>
-            <textarea id="edit-description"></textarea>
+          <div class="field">
+            <label for="edit-brand">Brand</label>
+            <input id="edit-brand" type="text">
           </div>
           <div class="field">
-            <label for="edit-price">Price</label>
-            <input id="edit-price" type="number" min="0" step="0.01">
-          </div>
-          <div class="field">
-            <label for="edit-notes">Notes</label>
-            <input id="edit-notes" type="text">
+            <label for="edit-size">Size</label>
+            <input id="edit-size" type="text">
           </div>
           <div class="field">
             <label for="edit-condition">Condition</label>
             <input id="edit-condition" type="text">
           </div>
           <div class="field">
-            <label for="edit-original-tags-attached">Original tags attached</label>
+            <label for="edit-original-tags-attached">Original Tags Attached</label>
             <select id="edit-original-tags-attached">
               <option value="">Select</option>
               <option value="yes">Yes</option>
@@ -1408,16 +1393,28 @@
             </select>
           </div>
           <div class="field">
-            <label for="edit-estimated-retail-price">Estimated retail price</label>
+            <label for="edit-estimated-retail-price">Estimated Retail Price</label>
             <input id="edit-estimated-retail-price" type="number" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label for="edit-price">Listed Price</label>
+            <input id="edit-price" type="number" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label for="edit-sold-price">Sold Price</label>
+            <input id="edit-sold-price" type="number" min="0" step="0.01">
           </div>
           <div class="field">
             <label for="edit-colors">Colors</label>
             <input id="edit-colors" type="text">
           </div>
           <div class="field">
-            <label for="edit-shoe-style">Shoe style</label>
+            <label for="edit-shoe-style">Shoe Style / Platform</label>
             <input id="edit-shoe-style" type="text">
+          </div>
+          <div class="field" style="grid-column:1/-1;">
+            <label for="edit-description">Description</label>
+            <textarea id="edit-description"></textarea>
           </div>
           <div class="field" style="grid-column:1/-1;">
             <label for="edit-brand-style-name">Brand Style Name</label>
@@ -1430,10 +1427,23 @@
               <option value="true">Sold</option>
             </select>
           </div>
+          <div class="field">
+            <label for="edit-notes">Notes</label>
+            <input id="edit-notes" type="text">
+          </div>
         </div>
           <details class="collapsible" style="margin-top:16px;">
             <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
             <div class="edit-grid" style="padding-top:16px;">
+              <div class="field">
+                <label for="edit-gender">Category 2</label>
+                <select id="edit-gender">
+                  <option value="">Select</option>
+                  <option value="mens">Mens</option>
+                  <option value="womens">Womens</option>
+                  <option value="kids">Kids</option>
+                </select>
+              </div>
               <div class="field">
                 <label for="edit-materials">Materials</label>
                 <input id="edit-materials" type="text">
@@ -1558,6 +1568,7 @@
       condition: document.getElementById('condition'),
       originalTagsAttached: document.getElementById('original-tags-attached'),
       estimatedRetailPrice: document.getElementById('estimated-retail-price'),
+      soldPrice: document.getElementById('sold-price'),
       colors: document.getElementById('colors'),
       shoeStyle: document.getElementById('shoe-style'),
       brandStyleName: document.getElementById('brand-style-name'),
@@ -1619,6 +1630,7 @@
       editCondition: document.getElementById('edit-condition'),
       editOriginalTagsAttached: document.getElementById('edit-original-tags-attached'),
       editEstimatedRetailPrice: document.getElementById('edit-estimated-retail-price'),
+      editSoldPrice: document.getElementById('edit-sold-price'),
       editColors: document.getElementById('edit-colors'),
       editShoeStyle: document.getElementById('edit-shoe-style'),
       editBrandStyleName: document.getElementById('edit-brand-style-name'),
@@ -1983,11 +1995,11 @@
     function updateModeCopy() {
       if (state.hasBox) {
         elements.aiModeCopy.textContent = 'Box mode is active, so AI will try to read brand, size, and description from the box photos before you save.';
-        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>With box selected, you can read the label with AI or type the fields manually. Price is still required before saving.</p>';
+        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>With box selected, you can read the label with AI or type the fields manually. Listed Price is still required before saving.</p>';
         elements.aiFillButton.textContent = 'Read box details with AI';
       } else {
         elements.aiModeCopy.textContent = 'No-box mode is active, so AI will infer brand, size, and description from the shoe photos if you choose the lookup action.';
-        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>If there is no box, brand, size, and description must be entered manually or filled by AI lookup from the shoe photos. Price is still required either way.</p>';
+        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>If there is no box, brand, category, and listed price must be entered manually or filled by AI lookup from the shoe photos. Description can also feed Brand Style Name.</p>';
         elements.aiFillButton.textContent = 'Lookup shoe details with AI';
       }
     }
@@ -2057,6 +2069,7 @@
         condition: elements.condition.value.trim(),
         originalTagsAttached: elements.originalTagsAttached.value.trim(),
         estimatedRetailPrice: Number(elements.estimatedRetailPrice.value || 0),
+        soldPrice: Number(elements.soldPrice.value || 0),
         colors: elements.colors.value.trim(),
         shoeStyle: elements.shoeStyle.value.trim(),
         brandStyleName,
@@ -2075,7 +2088,7 @@
         throw new Error('Price is required.');
       }
       if (!draft.brand || !draft.category2 || !draft.price) {
-        throw new Error('Brand, Category 2, and price are required before saving.');
+        throw new Error('Brand, Category, and listed price are required before saving.');
       }
       return draft;
     }
@@ -2196,6 +2209,7 @@
           condition: draft.condition || null,
           original_tags_attached: draft.originalTagsAttached || null,
           estimated_retail_price: draft.estimatedRetailPrice || null,
+          sold_price: draft.soldPrice || null,
           colors: draft.colors || null,
           shoe_style: draft.shoeStyle || null,
           brand_style_name: draft.brandStyleName || null,
@@ -2287,6 +2301,7 @@
             item.description,
             item.notes,
             item.size,
+            item.category_2,
             item.gender,
             ...genderTerms,
             item.has_box ? 'box' : 'no box',
@@ -2349,8 +2364,9 @@
             ? `<span class="inventory-tag boxed ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">Box</span>`
             : '<span class="inventory-tag empty">&nbsp;</span>'
         ].join('');
-        const categoryShort = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : item.gender === 'kids' ? 'K' : '-';
-        const categoryPill = item.gender ? `<span class="gender-pill ${item.gender}">${categoryShort}</span>` : categoryShort;
+        const category2Short = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : item.gender === 'kids' ? 'K' : '-';
+        const category2Pill = item.gender ? `<span class="gender-pill ${item.gender}">${category2Short}</span>` : category2Short;
+        const categoryDisplay = item.category_2 || '-';
         const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : item.gender === 'kids' ? 'gender-kids' : '';
         const soldPill = item.sold ? `<span class="inventory-tag sold">Sold</span>` : '';
         const priceAiClass = item.price_ai_used ? 'mini-button price-ai-used' : 'mini-button';
@@ -2378,15 +2394,19 @@
                 <div class="inventory-meta">${escapeHtml(item.description || 'No description')}</div>
               </div>
               <div class="inventory-cell">
-                <div class="mini-label">Cat</div>
-                <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div>${categoryPill}</div></button>
+                <div class="mini-label">Category</div>
+                <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div>${escapeHtml(categoryDisplay)}</div></button>
+              </div>
+              <div class="inventory-cell">
+                <div class="mini-label">Category 2</div>
+                <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div>${category2Pill}</div></button>
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Size</div>
                 <p>${escapeHtml(item.size || '-')}</p>
               </div>
               <div class="inventory-cell">
-                <div class="mini-label">Price</div>
+                <div class="mini-label">Listed Price</div>
                 <div class="price">${currency(item.price)}</div>
               </div>
               <div class="inventory-cell">
@@ -2419,7 +2439,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,category_2,gender,price,notes,sold,condition,original_tags_attached,estimated_retail_price,colors,shoe_style,brand_style_name,materials,made_in,serial_number,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,brand,description,size,category_2,gender,price,notes,sold,condition,original_tags_attached,estimated_retail_price,sold_price,colors,shoe_style,brand_style_name,materials,made_in,serial_number,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -2597,6 +2617,7 @@
       elements.editCondition.value = item.condition || '';
       elements.editOriginalTagsAttached.value = item.original_tags_attached || '';
       elements.editEstimatedRetailPrice.value = item.estimated_retail_price ?? '';
+      elements.editSoldPrice.value = item.sold_price ?? '';
       elements.editColors.value = item.colors || '';
       elements.editShoeStyle.value = item.shoe_style || '';
       elements.editBrandStyleName.value = item.brand_style_name || item.description || '';
@@ -2653,6 +2674,7 @@
           condition: elements.editCondition.value.trim() || null,
           original_tags_attached: elements.editOriginalTagsAttached.value.trim() || null,
           estimated_retail_price: Number(elements.editEstimatedRetailPrice.value || 0) || null,
+          sold_price: Number(elements.editSoldPrice.value || 0) || null,
           colors: elements.editColors.value.trim() || null,
           shoe_style: elements.editShoeStyle.value.trim() || null,
           brand_style_name: editBrandStyleName || null,
@@ -2664,7 +2686,7 @@
           source_method: state.editHasBox ? 'box' : 'no_box'
         };
         if (!payload.brand || !payload.category_2 || !payload.price) {
-          throw new Error('Brand, Category 2, and price are required.');
+          throw new Error('Brand, Category, and listed price are required.');
         }
         const { error } = await supabaseClient.from(APP_CONFIG.inventoryTable).update(payload).eq('id', state.editingId);
         if (error) throw error;
@@ -2707,6 +2729,7 @@
         condition: item.condition || null,
         original_tags_attached: item.original_tags_attached || null,
         estimated_retail_price: item.estimated_retail_price || null,
+        sold_price: item.sold_price || null,
         colors: item.colors || null,
         shoe_style: item.shoe_style || null,
         brand_style_name: item.brand_style_name || item.description || null,
@@ -2787,7 +2810,8 @@
                 <div style="font:14px Arial,sans-serif;line-height:1.6;color:#444;">
                   <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
                   <div><strong>Details:</strong> ${escapeHtml(`${currency(item.price)} | ${item.has_box ? 'Box' : 'No box'} | ${item.notes || 'No notes'}`)}</div>
-                  <div><strong>Category:</strong> ${escapeHtml(item.gender ? (item.gender === 'womens' ? 'Womens' : item.gender === 'kids' ? 'Kids' : 'Mens') : 'Unspecified')}</div>
+                  <div><strong>Category:</strong> ${escapeHtml(item.category_2 || 'Unspecified')}</div>
+                  <div><strong>Category 2:</strong> ${escapeHtml(item.gender ? (item.gender === 'womens' ? 'Womens' : item.gender === 'kids' ? 'Kids' : 'Mens') : 'Unspecified')}</div>
                 </div>
               </div>
               <div style="width:360px;">
@@ -2844,9 +2868,11 @@
             <div style="font:700 12px Arial,sans-serif;color:#23170f;line-height:1.35;">${escapeHtml(item.brand || '')}</div>
             <div style="font:12px Arial,sans-serif;color:#4f443b;line-height:1.35;">${escapeHtml(item.brand_style_name || item.description || '')}</div>
             <div style="font:11px Arial,sans-serif;color:#6c5d52;line-height:1.45;">
-              <div><strong>Category:</strong> ${escapeHtml(categoryLabel)} / ${escapeHtml(item.category_2 || '-')}</div>
+              <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
+              <div><strong>Category 2:</strong> ${escapeHtml(categoryLabel)}</div>
               <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
-              <div><strong>Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
+              <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
+              <div><strong>Sold Price:</strong> ${escapeHtml(item.sold_price ? currency(item.sold_price) : '-')}</div>
               <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
               <div><strong>Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
             </div>
@@ -2880,15 +2906,16 @@
     function exportXlsReport() {
       const exportItems = sortedInventory();
       const lines = [
-        ['Brand', 'Brand Style Name', 'Description', 'Size', 'Category', 'Category 2', 'Price', 'Condition', 'Box', 'Notes', 'Saved'],
+        ['Brand', 'Brand Style Name', 'Description', 'Size', 'Category', 'Category 2', 'Listed Price', 'Sold Price', 'Condition', 'Box', 'Notes', 'Saved'],
         ...exportItems.map((item) => [
           item.brand || '',
           item.brand_style_name || '',
           item.description || '',
           item.size || '',
-          item.gender || '',
           item.category_2 || '',
+          item.gender || '',
           String(item.price ?? ''),
+          String(item.sold_price ?? ''),
           item.condition || '',
           item.has_box ? 'Yes' : 'No',
           item.notes || '',
@@ -2943,8 +2970,8 @@
           const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 8) : [];
           const description = [
             item.brand_style_name || item.description || '',
-            item.gender ? `Category: ${item.gender}` : '',
-            item.category_2 ? `Sub category: ${item.category_2}` : '',
+            item.category_2 ? `Category: ${item.category_2}` : '',
+            item.gender ? `Category 2: ${item.gender}` : '',
             item.has_box ? 'Includes box.' : 'No box.',
             item.notes || ''
           ].filter(Boolean).join(' ');
@@ -2985,8 +3012,8 @@
             item.brand_style_name || item.description || '',
             item.notes || '',
             item.has_box ? 'Includes original box.' : 'No box.',
-            item.gender ? `Category: ${item.gender}.` : '',
-            item.category_2 ? `Sub category: ${item.category_2}.` : ''
+            item.category_2 ? `Category: ${item.category_2}.` : '',
+            item.gender ? `Category 2: ${item.gender}.` : ''
           ].filter(Boolean).join(' ');
           return [
             sku,
