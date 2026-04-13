@@ -1592,7 +1592,6 @@
       cropMode: false,
       cropStart: null,
       cropRect: null,
-      cropPointerId: null,
       isSaving: false,
       isAiRunning: false,
       aiUsedForCurrentDraft: false,
@@ -1797,7 +1796,6 @@
       state.cropMode = false;
       state.cropStart = null;
       state.cropRect = null;
-      state.cropPointerId = null;
       updateCropUi();
     }
 
@@ -2781,8 +2779,7 @@
       state.cropMode = true;
       state.cropStart = null;
       state.cropRect = null;
-      state.cropPointerId = null;
-      elements.viewerStatus.textContent = 'Drag to select crop area';
+      elements.viewerStatus.textContent = 'Tap the first corner of the crop area';
       updateCropUi();
     });
     elements.cancelCropButton.addEventListener('click', () => {
@@ -2800,39 +2797,20 @@
         showBanner('error', 'Crop failed', error?.message || String(error));
       }
     });
-    function handleCropPointerMove(event) {
-      if (!state.cropMode || !state.cropStart) return;
-      if (state.cropPointerId !== null && event.pointerId !== state.cropPointerId) return;
-      const point = getPointOnImage(event);
-      if (!point) return;
-      setCropRectFromPoints(state.cropStart, point);
-    }
-
-    function finishCropDrag(event) {
-      if (!state.cropMode) return;
-      if (event && state.cropPointerId !== null && event.pointerId !== state.cropPointerId) return;
-      state.cropStart = null;
-      state.cropPointerId = null;
-      window.removeEventListener('pointermove', handleCropPointerMove);
-      window.removeEventListener('pointerup', finishCropDrag);
-      window.removeEventListener('pointercancel', finishCropDrag);
-      updateCropUi();
-    }
-
     elements.cropOverlay.addEventListener('pointerdown', (event) => {
       if (!state.cropMode) return;
       const point = getPointOnImage(event);
       if (!point) return;
       event.preventDefault();
-      state.cropStart = point;
-      state.cropRect = { x: point.x, y: point.y, width: 0, height: 0 };
-      state.cropPointerId = event.pointerId;
-      window.removeEventListener('pointermove', handleCropPointerMove);
-      window.removeEventListener('pointerup', finishCropDrag);
-      window.removeEventListener('pointercancel', finishCropDrag);
-      window.addEventListener('pointermove', handleCropPointerMove);
-      window.addEventListener('pointerup', finishCropDrag);
-      window.addEventListener('pointercancel', finishCropDrag);
+      if (!state.cropStart) {
+        state.cropStart = point;
+        state.cropRect = { x: point.x, y: point.y, width: 0, height: 0 };
+        elements.viewerStatus.textContent = 'Tap the opposite corner to finish crop';
+      } else {
+        setCropRectFromPoints(state.cropStart, point);
+        state.cropStart = null;
+        elements.viewerStatus.textContent = 'Crop area selected. Tap Apply Crop';
+      }
       updateCropUi();
     });
     elements.deleteImageButton.addEventListener('click', async () => {
