@@ -1320,6 +1320,7 @@
           <span class="toolbar-label">Export</span>
           <button class="button ghost" type="button" id="report-button">PDF</button>
           <button class="button ghost" type="button" id="review-report-button">Review PDF</button>
+          <button class="button ghost" type="button" id="review-html-button">Review HTML</button>
           <button class="button ghost" type="button" id="xls-button">CSV</button>
           <button class="button ghost" type="button" id="whatnot-button">Whatnot</button>
           <button class="button ghost" type="button" id="depop-button">Depop</button>
@@ -1605,6 +1606,7 @@
       searchClearButton: document.getElementById('search-clear-button'),
       reportButton: document.getElementById('report-button'),
       reviewReportButton: document.getElementById('review-report-button'),
+      reviewHtmlButton: document.getElementById('review-html-button'),
       xlsButton: document.getElementById('xls-button'),
       whatnotButton: document.getElementById('whatnot-button'),
       depopButton: document.getElementById('depop-button'),
@@ -2882,6 +2884,15 @@
         return;
       }
 
+      const html = buildReviewListingHtml(exportItems, exportTotal, { mode: 'popup' });
+      reportWindow.document.write(html);
+      reportWindow.document.close();
+      reportWindow.focus();
+    }
+
+    function buildReviewListingHtml(exportItems, exportTotal, options = {}) {
+      const mode = options.mode === 'download' ? 'download' : 'popup';
+      const printButtonLabel = mode === 'download' ? 'Print / Save as PDF' : 'Print / Save PDF';
       const cards = exportItems.map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
         const photoMarkup = photos.length
@@ -2923,8 +2934,7 @@
           <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
         </article>
       `).join('');
-
-      reportWindow.document.write(`
+      return `
         <html>
           <head>
             <title>Review Listing PDF</title>
@@ -3014,7 +3024,7 @@
           </head>
           <body>
             <div class="print-toolbar">
-              <button onclick="printReviewListing()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">Print / Save PDF</button>
+              <button onclick="printReviewListing()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">${printButtonLabel}</button>
               <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
             </div>
             <h1 style="margin:0 0 8px;">Review Listing</h1>
@@ -3027,9 +3037,22 @@
             </section>
           </body>
         </html>
-      `);
-      reportWindow.document.close();
-      reportWindow.focus();
+      `;
+    }
+
+    function exportReviewListingHtml() {
+      const exportItems = sortedInventory();
+      const exportTotal = exportItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
+      const html = buildReviewListingHtml(exportItems, exportTotal, { mode: 'download' });
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `review-listing-${new Date().toISOString().slice(0, 10)}.html`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
     }
 
     function exportXlsReport() {
@@ -3171,6 +3194,7 @@
 
     elements.reportButton.addEventListener('click', exportPdfReport);
     elements.reviewReportButton.addEventListener('click', exportReviewListingPdf);
+    elements.reviewHtmlButton.addEventListener('click', exportReviewListingHtml);
     elements.xlsButton.addEventListener('click', exportXlsReport);
     elements.whatnotButton.addEventListener('click', exportWhatnotCsv);
     elements.depopButton.addEventListener('click', exportDepopCsv);
