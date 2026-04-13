@@ -600,10 +600,10 @@
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 78px 120px minmax(160px, 1.2fr) 76px 76px 76px 110px 132px 86px;
+      grid-template-columns: 78px 120px minmax(220px, 1.35fr) 76px 76px 110px 132px 86px;
       gap: 10px;
       align-items: center;
-      min-width: 980px;
+      min-width: 900px;
     }
 
     .inventory-cell {
@@ -612,7 +612,7 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 78px 120px minmax(160px, 1.2fr) 76px 76px 76px 110px 132px 86px;
+      grid-template-columns: 78px 120px minmax(220px, 1.35fr) 76px 76px 110px 132px 86px;
       gap: 10px;
       align-items: center;
       padding: 0 16px 10px;
@@ -995,7 +995,7 @@
         display: none;
       }
 
-      .inventory-line { min-width: 980px; }
+      .inventory-line { min-width: 900px; }
 
       .photo-strip {
         justify-content: flex-start;
@@ -1341,7 +1341,6 @@
         <div data-sort-key="brand">Brand</div>
         <div data-sort-key="description">Description</div>
         <div>Category</div>
-        <div>Category 2</div>
         <div data-sort-key="size">Size</div>
         <div data-sort-key="price">Listed Price</div>
         <div>Attachments</div>
@@ -2393,8 +2392,6 @@
             ? `<span class="inventory-tag boxed ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">Box</span>`
             : '<span class="inventory-tag empty">&nbsp;</span>'
         ].join('');
-        const category2Short = item.gender === 'womens' ? 'W' : item.gender === 'mens' ? 'M' : item.gender === 'kids' ? 'K' : '-';
-        const category2Pill = item.gender ? `<span class="gender-pill ${item.gender}">${category2Short}</span>` : category2Short;
         const categoryDisplay = item.category_2 || '-';
         const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : item.gender === 'kids' ? 'gender-kids' : '';
         const soldPill = item.sold ? `<span class="inventory-tag sold">Sold</span>` : '';
@@ -2422,10 +2419,6 @@
               <div class="inventory-cell">
                 <div class="mini-label">Category</div>
                 <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div>${escapeHtml(categoryDisplay)}</div></button>
-              </div>
-              <div class="inventory-cell">
-                <div class="mini-label">Category 2</div>
-                <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div>${category2Pill}</div></button>
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Size</div>
