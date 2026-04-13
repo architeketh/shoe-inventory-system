@@ -1804,7 +1804,9 @@
       const hasRect = Boolean(state.cropRect && state.cropRect.width >= 12 && state.cropRect.height >= 12);
       const displayed = getDisplayedImageRect();
       const overlayRect = elements.cropOverlay.getBoundingClientRect();
+      const awaitingSecondPoint = Boolean(active && state.cropStart);
       elements.cropOverlay.classList.toggle('active', active);
+      elements.cropOverlay.style.pointerEvents = active && (awaitingSecondPoint || !hasRect) ? 'auto' : 'none';
       elements.cropButton.classList.toggle('hidden', active);
       elements.cancelCropButton.classList.toggle('hidden', !active);
       elements.applyCropButton.classList.toggle('hidden', !active);
