@@ -1318,8 +1318,6 @@
         </div>
         <div class="toolbar-compact">
           <span class="toolbar-label">Export</span>
-          <button class="button ghost" type="button" id="report-button">PDF</button>
-          <button class="button ghost" type="button" id="review-report-button">Review PDF</button>
           <button class="button ghost" type="button" id="review-html-button">Review Tab</button>
           <button class="button ghost" type="button" id="xls-button">CSV</button>
           <button class="button ghost" type="button" id="whatnot-button">Whatnot</button>
@@ -1604,8 +1602,6 @@
       sortSelect: document.getElementById('sort-select'),
       searchInput: document.getElementById('search-input'),
       searchClearButton: document.getElementById('search-clear-button'),
-      reportButton: document.getElementById('report-button'),
-      reviewReportButton: document.getElementById('review-report-button'),
       reviewHtmlButton: document.getElementById('review-html-button'),
       xlsButton: document.getElementById('xls-button'),
       whatnotButton: document.getElementById('whatnot-button'),
@@ -3168,8 +3164,6 @@
       alert("Depop prep CSV exported. Match the columns to Depop's current bulk listing template before import.");
     }
 
-    elements.reportButton.addEventListener('click', exportPdfReport);
-    elements.reviewReportButton.addEventListener('click', exportReviewListingPdf);
     elements.reviewHtmlButton.addEventListener('click', exportReviewListingHtml);
     elements.xlsButton.addEventListener('click', exportXlsReport);
     elements.whatnotButton.addEventListener('click', exportWhatnotCsv);
