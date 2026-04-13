@@ -2887,22 +2887,23 @@
         const photoMarkup = photos.length
           ? photos.map((url) => `<img src="${url}" style="width:100%;aspect-ratio:1 / 1;object-fit:cover;border-radius:8px;border:1px solid #e4d8cb;display:block;" />`).join('')
           : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;">No photos</div>';
-        const categoryLabel = item.gender ? (item.gender === 'womens' ? 'Womens' : item.gender === 'kids' ? 'Kids' : 'Mens') : 'Unspecified';
         return `
           <article style="border:1px solid #dbcfc2;border-radius:14px;padding:10px;background:#fff;display:flex;flex-direction:column;gap:8px;break-inside:avoid;">
             <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:6px;">
               ${photoMarkup}
             </div>
-            <div style="font:700 12px Arial,sans-serif;color:#23170f;line-height:1.35;">${escapeHtml(item.brand || '')}</div>
-            <div style="font:12px Arial,sans-serif;color:#4f443b;line-height:1.35;">${escapeHtml(item.brand_style_name || item.description || '')}</div>
             <div style="font:11px Arial,sans-serif;color:#6c5d52;line-height:1.45;">
               <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
-              <div><strong>Category 2:</strong> ${escapeHtml(categoryLabel)}</div>
+              <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
               <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
-              <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
-              <div><strong>Sold Price:</strong> ${escapeHtml(item.sold_price ? currency(item.sold_price) : '-')}</div>
               <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
-              <div><strong>Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
+              <div><strong>Original Tags Attached:</strong> ${escapeHtml(item.original_tags_attached || '-')}</div>
+              <div><strong>Estimated Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
+              <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
+              <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
+              <div><strong>Shoe Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
+              <div><strong>Description:</strong> ${escapeHtml(item.description || '-')}</div>
+              <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
             </div>
           </article>
         `;
