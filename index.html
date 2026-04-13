@@ -2149,19 +2149,23 @@
       try {
         const image = await loadImageElement(objectUrl);
         const canvas = document.createElement('canvas');
-        canvas.width = Math.min(cropWidth, image.naturalWidth || image.width);
-        canvas.height = Math.min(cropHeight, image.naturalHeight || image.height);
+        canvas.width = image.naturalWidth || image.width;
+        canvas.height = image.naturalHeight || image.height;
         const context = canvas.getContext('2d');
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        const destX = Math.max(0, Math.round((canvas.width - cropWidth) / 2));
+        const destY = Math.max(0, Math.round((canvas.height - cropHeight) / 2));
         context.drawImage(
           image,
           cropX,
           cropY,
           cropWidth,
           cropHeight,
-          0,
-          0,
-          canvas.width,
-          canvas.height
+          destX,
+          destY,
+          cropWidth,
+          cropHeight
         );
         const croppedBlob = await new Promise((resolve, reject) => {
           canvas.toBlob((outputBlob) => {
