@@ -1514,6 +1514,7 @@
       </div>
       <div class="button-row">
         <button class="button secondary" type="button" id="price-ai-apply-button">Use recommended price</button>
+        <button class="button secondary" type="button" id="price-ai-retail-apply-button">Use retail pricing</button>
         <button class="button ghost" type="button" id="price-ai-cancel-button">Close</button>
       </div>
     </div>
@@ -1629,6 +1630,7 @@
       priceAiSources: document.getElementById('price-ai-sources'),
       priceAiSummary: document.getElementById('price-ai-summary'),
       priceAiApplyButton: document.getElementById('price-ai-apply-button'),
+      priceAiRetailApplyButton: document.getElementById('price-ai-retail-apply-button'),
       priceAiCancelButton: document.getElementById('price-ai-cancel-button'),
       editModal: document.getElementById('edit-modal'),
       editClose: document.getElementById('edit-close'),
@@ -1965,6 +1967,7 @@
       elements.priceAiStatus.className = 'form-status';
       elements.priceAiStatus.textContent = message;
       elements.priceAiApplyButton.disabled = true;
+      elements.priceAiRetailApplyButton.disabled = true;
       elements.priceAiQuick.textContent = '--';
       elements.priceAiRecommended.textContent = '--';
       elements.priceAiHigh.textContent = '--';
@@ -1975,14 +1978,17 @@
     }
 
     function renderPriceAiResult(result) {
+      const hasRecommended = Number.isFinite(Number(result?.recommended_price));
+      const hasRetail = Number.isFinite(Number(result?.retail_price)) && Number(result?.retail_price) > 0;
       state.lastPriceRecommendation = result;
       elements.priceAiStatus.className = 'form-status success';
-      elements.priceAiStatus.textContent = 'Market recommendation ready. Review it, then optionally apply the recommended price.';
-      elements.priceAiApplyButton.disabled = !Number.isFinite(Number(result?.recommended_price));
+      elements.priceAiStatus.textContent = 'Market recommendation ready. Review it, then optionally apply the recommended or retail price.';
+      elements.priceAiApplyButton.disabled = !hasRecommended;
+      elements.priceAiRetailApplyButton.disabled = !hasRetail;
       elements.priceAiQuick.textContent = currency(result?.quick_sale_price || 0);
       elements.priceAiRecommended.textContent = currency(result?.recommended_price || 0);
       elements.priceAiHigh.textContent = currency(result?.high_ask_price || 0);
-      elements.priceAiRetail.textContent = Number.isFinite(Number(result?.retail_price)) && Number(result?.retail_price) > 0 ? currency(result.retail_price) : '--';
+      elements.priceAiRetail.textContent = hasRetail ? currency(result.retail_price) : '--';
       elements.priceAiRange.textContent = `Comp range: ${currency(result?.comp_range_low || 0)} - ${currency(result?.comp_range_high || 0)}`;
       elements.priceAiSources.textContent = `Sources: ${Array.isArray(result?.sources) && result.sources.length ? result.sources.join(', ') : 'Not provided'}`;
       elements.priceAiSummary.textContent = `Summary: ${result?.summary || 'No summary provided.'}`;
@@ -2004,6 +2010,7 @@
       elements.priceAiModal.classList.add('hidden');
       elements.priceAiModal.setAttribute('aria-hidden', 'true');
       elements.priceAiApplyButton.disabled = true;
+      elements.priceAiRetailApplyButton.disabled = true;
     }
 
     function updateModeCopy() {
@@ -2593,6 +2600,16 @@
       elements.editPrice.value = recommended.toFixed(2);
       elements.editStatus.className = 'form-status success';
       elements.editStatus.textContent = 'Recommended price applied. Save changes to keep it.';
+    });
+    elements.priceAiRetailApplyButton.addEventListener('click', () => {
+      const retail = Number(state.lastPriceRecommendation?.retail_price);
+      const itemId = state.pricingItemId;
+      if (!Number.isFinite(retail) || retail <= 0 || !itemId) return;
+      closePriceAiModal();
+      startEdit(itemId);
+      elements.editEstimatedRetailPrice.value = retail.toFixed(2);
+      elements.editStatus.className = 'form-status success';
+      elements.editStatus.textContent = 'Retail pricing applied to Estimated Retail Price. Save changes to keep it.';
     });
     elements.priceAiModal.addEventListener('click', (event) => {
       if (event.target === elements.priceAiModal) closePriceAiModal();
