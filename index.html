@@ -634,19 +634,18 @@
       color: var(--sage);
     }
 
-    .photo-strip {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 10px;
-      justify-content: flex-start;
+    .photo-preview-wrap {
+      display: grid;
+      gap: 6px;
+      justify-items: start;
     }
 
     .photo-thumb {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 60px;
-      height: 60px;
+      width: 78px;
+      height: 78px;
       padding: 0;
       cursor: pointer;
       border-radius: 14px;
@@ -655,10 +654,24 @@
       background: #fff;
     }
 
+    .photo-thumb.primary {
+      width: 94px;
+      height: 94px;
+      background: #fffdf9;
+    }
+
     .photo-thumb img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
+      background: #fff;
+    }
+
+    .photo-count {
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
     .attachments-empty {
@@ -1037,10 +1050,6 @@
 
       .inventory-line { min-width: 900px; }
 
-      .photo-strip {
-        justify-content: flex-start;
-      }
-
       .inventory-line .inventory-actions .mini-button[data-price-ai-id] {
         min-width: 42px;
         padding: 8px 10px;
@@ -1399,6 +1408,7 @@
       <div class="viewer-toolbar">
         <span class="pill" id="viewer-status">Original</span>
         <div class="viewer-toolbar-actions">
+          <button class="button ghost" type="button" id="set-main-image-button">Set Main Image</button>
           <button class="button ghost" type="button" id="delete-image-button">Delete Image</button>
           <button class="button ghost" type="button" id="crop-button">Crop</button>
           <button class="button ghost hidden" type="button" id="cancel-crop-button">Cancel Crop</button>
@@ -1692,6 +1702,7 @@
       modalPrev: document.getElementById('modal-prev'),
       modalNext: document.getElementById('modal-next'),
       viewerStatus: document.getElementById('viewer-status'),
+      setMainImageButton: document.getElementById('set-main-image-button'),
       deleteImageButton: document.getElementById('delete-image-button'),
       cropButton: document.getElementById('crop-button'),
       cancelCropButton: document.getElementById('cancel-crop-button'),
@@ -1803,6 +1814,8 @@
     function renderGalleryImage() {
       if (!state.galleryUrls.length) return;
       elements.modalImage.src = state.galleryUrls[state.galleryIndex];
+      elements.setMainImageButton.disabled = state.galleryIndex === 0;
+      elements.setMainImageButton.textContent = state.galleryIndex === 0 ? 'Main Image' : 'Set Main Image';
       const pending = state.pendingWhiteBgReplacement;
       const isPendingProcessed =
         pending &&
@@ -2095,6 +2108,39 @@
         closePhotoModal();
       }
       showBanner('success', 'Image deleted', 'The image was removed from this shoe.');
+    }
+
+    async function setCurrentPhotoAsMain() {
+      if (!SUPABASE_READY || !state.galleryItemId || !state.galleryUrls.length) return;
+      const item = state.inventory.find((entry) => entry.id === state.galleryItemId);
+      if (!item) return;
+      const currentIndex = state.galleryIndex;
+      if (currentIndex <= 0) return;
+      if (state.pendingWhiteBgReplacement && state.pendingWhiteBgReplacement.itemId === item.id) {
+        alert('Finish the current Replace Original step before changing the main image.');
+        return;
+      }
+
+      const nextUrls = [...(item.photo_urls || [])];
+      const nextPaths = [...(item.photo_paths || [])];
+      const [selectedUrl] = nextUrls.splice(currentIndex, 1);
+      const [selectedPath] = nextPaths.splice(currentIndex, 1);
+      nextUrls.unshift(selectedUrl);
+      nextPaths.unshift(selectedPath);
+
+      const { error } = await supabaseClient
+        .from(APP_CONFIG.inventoryTable)
+        .update({ photo_urls: nextUrls, photo_paths: nextPaths })
+        .eq('id', item.id);
+      if (error) throw error;
+
+      await loadInventory();
+      const refreshed = state.inventory.find((entry) => entry.id === item.id);
+      if (refreshed && Array.isArray(refreshed.photo_urls)) {
+        openPhotoModal(refreshed.photo_urls, 0, refreshed.id);
+        elements.viewerStatus.textContent = 'Main image updated';
+      }
+      showBanner('success', 'Main image updated', 'This photo is now the main display image on the inventory card.');
     }
 
     async function makeCurrentPhotoWhiteBg() {
@@ -2648,7 +2694,7 @@
         const priceAiClass = item.price_ai_used ? 'mini-button price-ai-used' : 'mini-button';
 
           const photoStrip = photos.length
-            ? `<div class="photo-strip">${photos.map((url, index) => `<button class="photo-thumb" type="button" data-photo-item="${item.id}" data-photo-index="${index}"><img src="${url}" alt="Saved photo ${index + 1}"></button>`).join('')}</div>`
+            ? `<div class="photo-preview-wrap"><button class="photo-thumb primary" type="button" data-photo-item="${item.id}" data-photo-index="0"><img src="${photos[0]}" alt="Main saved photo"></button><div class="photo-count">${photos.length} ${photos.length === 1 ? 'photo' : 'photos'}</div></div>`
             : '<div class="attachments-empty">No photos</div>';
 
         return `
@@ -2859,6 +2905,13 @@
       state.cropRect = null;
       elements.viewerStatus.textContent = 'Tap the first corner of the crop area';
       updateCropUi();
+    });
+    elements.setMainImageButton.addEventListener('click', async () => {
+      try {
+        await setCurrentPhotoAsMain();
+      } catch (error) {
+        showBanner('error', 'Main image update failed', error?.message || String(error));
+      }
     });
     elements.cancelCropButton.addEventListener('click', () => {
       resetCropState();
