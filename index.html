@@ -3323,6 +3323,22 @@
                 return y - finalLines.length * lineHeight;
               }
 
+              function drawImageContained(page, image, box) {
+                const imageWidth = image.width || 1;
+                const imageHeight = image.height || 1;
+                const scale = Math.min(box.width / imageWidth, box.height / imageHeight);
+                const drawWidth = imageWidth * scale;
+                const drawHeight = imageHeight * scale;
+                const drawX = box.x + (box.width - drawWidth) / 2;
+                const drawY = box.y + (box.height - drawHeight) / 2;
+                page.drawImage(image, {
+                  x: drawX,
+                  y: drawY,
+                  width: drawWidth,
+                  height: drawHeight
+                });
+              }
+
               async function createPdf() {
                 const button = document.getElementById('create-pdf-button');
                 const originalLabel = button.textContent;
@@ -3333,14 +3349,14 @@
                   const pdfDoc = await PDFDocument.create();
                   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
                   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-                  const pageWidth = 792;
-                  const pageHeight = 612;
+                  const pageWidth = 612;
+                  const pageHeight = 792;
                   const margin = 24;
                   const gutter = 18;
                   const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
-                  const cardHeight = 176;
+                  const cardHeight = 230;
                   const topY = pageHeight - margin;
-                  const imageHeight = 42;
+                  const imageHeight = 44;
                   const imageGap = 6;
                   const labelSize = 8;
                   const valueSize = 8;
@@ -3382,8 +3398,8 @@
                         borderRadius: 10
                       });
 
-                      const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 3) : [];
-                      const imageWidth = (cardWidth - 24 - imageGap * 2) / 3;
+                      const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
+                      const imageWidth = (cardWidth - 24 - imageGap) / 2;
                       for (let imgIndex = 0; imgIndex < photos.length; imgIndex += 1) {
                         const url = photos[imgIndex];
                         let embedded = imageCache.get(url);
@@ -3391,10 +3407,12 @@
                           embedded = await embedReviewImage(pdfDoc, url);
                           if (embedded) imageCache.set(url, embedded);
                         }
-                        const imageX = x + 12 + imgIndex * (imageWidth + imageGap);
-                        const imageY = yTop - 12 - imageHeight;
+                        const imageColumn = imgIndex % 2;
+                        const imageRow = Math.floor(imgIndex / 2);
+                        const imageX = x + 12 + imageColumn * (imageWidth + imageGap);
+                        const imageY = yTop - 12 - imageHeight - imageRow * (imageHeight + imageGap);
                         if (embedded) {
-                          page.drawImage(embedded, {
+                          drawImageContained(page, embedded, {
                             x: imageX,
                             y: imageY,
                             width: imageWidth,
@@ -3420,7 +3438,7 @@
                         }
                       }
 
-                      let textY = yTop - 10 - imageHeight - 8;
+                      let textY = yTop - 12 - imageHeight * 2 - imageGap - 8;
                       const textX = x + 12;
                       const textWidth = cardWidth - 24;
                       const rows = [
