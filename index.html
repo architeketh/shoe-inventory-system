@@ -3264,13 +3264,37 @@
                   const response = await fetch(url, { mode: 'cors' });
                   if (!response.ok) return null;
                   const blob = await response.blob();
-                  const bytes = await blob.arrayBuffer();
-                  const type = String(blob.type || '').toLowerCase();
-                  if (type.includes('png')) return await pdfDoc.embedPng(bytes);
-                  if (type.includes('jpeg') || type.includes('jpg')) return await pdfDoc.embedJpg(bytes);
-                  const lowerUrl = String(url || '').toLowerCase();
-                  if (lowerUrl.endsWith('.png')) return await pdfDoc.embedPng(bytes);
-                  return await pdfDoc.embedJpg(bytes);
+                  const objectUrl = URL.createObjectURL(blob);
+                  try {
+                    const image = await new Promise((resolve, reject) => {
+                      const img = new Image();
+                      img.crossOrigin = 'anonymous';
+                      img.onload = () => resolve(img);
+                      img.onerror = () => reject(new Error('Could not load image for PDF.'));
+                      img.src = objectUrl;
+                    });
+                    const maxDimension = 1200;
+                    const width = image.naturalWidth || image.width;
+                    const height = image.naturalHeight || image.height;
+                    const scale = Math.min(1, maxDimension / Math.max(width, height));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(width * scale));
+                    canvas.height = Math.max(1, Math.round(height * scale));
+                    const context = canvas.getContext('2d');
+                    context.fillStyle = '#ffffff';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                    const normalizedBlob = await new Promise((resolve, reject) => {
+                      canvas.toBlob((outputBlob) => {
+                        if (outputBlob) resolve(outputBlob);
+                        else reject(new Error('Could not normalize image for PDF.'));
+                      }, 'image/jpeg', 0.9);
+                    });
+                    const bytes = await normalizedBlob.arrayBuffer();
+                    return await pdfDoc.embedJpg(bytes);
+                  } finally {
+                    URL.revokeObjectURL(objectUrl);
+                  }
                 } catch (error) {
                   return null;
                 }
@@ -3309,18 +3333,18 @@
                   const pdfDoc = await PDFDocument.create();
                   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
                   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-                  const pageWidth = 612;
-                  const pageHeight = 792;
+                  const pageWidth = 792;
+                  const pageHeight = 612;
                   const margin = 24;
                   const gutter = 18;
                   const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
-                  const cardHeight = 230;
+                  const cardHeight = 176;
                   const topY = pageHeight - margin;
-                  const imageHeight = 58;
+                  const imageHeight = 42;
                   const imageGap = 6;
                   const labelSize = 8;
                   const valueSize = 8;
-                  const lineHeight = 9.5;
+                  const lineHeight = 8.5;
                   const textColor = rgb(0.26, 0.22, 0.18);
                   const borderColor = rgb(0.86, 0.82, 0.76);
                   const bgColor = rgb(1, 1, 1);
@@ -3330,7 +3354,7 @@
 
                   for (let pageIndex = 0; pageIndex < pagesNeeded; pageIndex += 1) {
                     const page = pdfDoc.addPage([pageWidth, pageHeight]);
-                    page.drawText('Review Listing', {
+                      page.drawText('Review Listing', {
                       x: margin,
                       y: pageHeight - 18,
                       size: 18,
@@ -3396,7 +3420,7 @@
                         }
                       }
 
-                      let textY = yTop - 12 - imageHeight - 10;
+                      let textY = yTop - 10 - imageHeight - 8;
                       const textX = x + 12;
                       const textWidth = cardWidth - 24;
                       const rows = [
