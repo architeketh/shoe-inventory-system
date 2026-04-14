@@ -600,7 +600,7 @@
 
     .inventory-line {
       display: grid;
-      grid-template-columns: 78px 120px minmax(220px, 1.35fr) 76px 76px 110px 132px 86px;
+      grid-template-columns: 78px 110px minmax(250px, 1.5fr) 68px 68px 96px 112px 128px;
       gap: 10px;
       align-items: center;
       min-width: 900px;
@@ -612,7 +612,7 @@
 
     .inventory-head {
       display: grid;
-      grid-template-columns: 78px 120px minmax(220px, 1.35fr) 76px 76px 110px 132px 86px;
+      grid-template-columns: 78px 110px minmax(250px, 1.5fr) 68px 68px 96px 112px 128px;
       gap: 10px;
       align-items: center;
       padding: 0 16px 10px;
@@ -675,6 +675,9 @@
     }
 
     .inventory-actions.end {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
       align-items: stretch;
     }
 
