@@ -3354,9 +3354,9 @@
                   const margin = 24;
                   const gutter = 18;
                   const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
-                  const cardHeight = 230;
+                  const cardHeight = 212;
                   const topY = pageHeight - margin;
-                  const imageHeight = 44;
+                  const imageHeight = 54;
                   const imageGap = 6;
                   const labelSize = 8;
                   const valueSize = 8;
@@ -3399,7 +3399,7 @@
                       });
 
                       const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
-                      const imageWidth = (cardWidth - 24 - imageGap) / 2;
+                      const imageWidth = (cardWidth - 24 - imageGap * 3) / 4;
                       for (let imgIndex = 0; imgIndex < photos.length; imgIndex += 1) {
                         const url = photos[imgIndex];
                         let embedded = imageCache.get(url);
@@ -3407,10 +3407,8 @@
                           embedded = await embedReviewImage(pdfDoc, url);
                           if (embedded) imageCache.set(url, embedded);
                         }
-                        const imageColumn = imgIndex % 2;
-                        const imageRow = Math.floor(imgIndex / 2);
-                        const imageX = x + 12 + imageColumn * (imageWidth + imageGap);
-                        const imageY = yTop - 12 - imageHeight - imageRow * (imageHeight + imageGap);
+                        const imageX = x + 12 + imgIndex * (imageWidth + imageGap);
+                        const imageY = yTop - 12 - imageHeight;
                         if (embedded) {
                           drawImageContained(page, embedded, {
                             x: imageX,
@@ -3438,7 +3436,7 @@
                         }
                       }
 
-                      let textY = yTop - 12 - imageHeight * 2 - imageGap - 8;
+                      let textY = yTop - 12 - imageHeight - 10;
                       const textX = x + 12;
                       const textWidth = cardWidth - 24;
                       const rows = [
