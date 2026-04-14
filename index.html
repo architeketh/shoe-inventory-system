@@ -3156,6 +3156,7 @@
 
     function buildReviewListingHtml(exportItems, exportTotal, options = {}) {
       const printButtonLabel = 'Create PDF';
+      const reviewDataJson = JSON.stringify(exportItems).replace(/</g, '\\u003c');
       const cards = exportItems.map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
         const photoMarkup = photos.length
@@ -3187,6 +3188,7 @@
           <head>
             <title>Review Listing PDF</title>
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"><\/script>
             <style>
               body {
                 font-family: Arial, sans-serif;
@@ -3255,19 +3257,209 @@
               }
             </style>
             <script>
-              function printReviewListing() {
-                const body = document.body;
-                body.classList.add('print-mode');
-                setTimeout(() => window.print(), 50);
+              const reviewItems = ${reviewDataJson};
+
+              async function embedReviewImage(pdfDoc, url) {
+                try {
+                  const response = await fetch(url, { mode: 'cors' });
+                  if (!response.ok) return null;
+                  const blob = await response.blob();
+                  const bytes = await blob.arrayBuffer();
+                  const type = String(blob.type || '').toLowerCase();
+                  if (type.includes('png')) return await pdfDoc.embedPng(bytes);
+                  if (type.includes('jpeg') || type.includes('jpg')) return await pdfDoc.embedJpg(bytes);
+                  const lowerUrl = String(url || '').toLowerCase();
+                  if (lowerUrl.endsWith('.png')) return await pdfDoc.embedPng(bytes);
+                  return await pdfDoc.embedJpg(bytes);
+                } catch (error) {
+                  return null;
+                }
               }
-              window.addEventListener('afterprint', () => {
-                document.body.classList.remove('print-mode');
-              });
+
+              function drawWrappedText(page, text, options) {
+                const { font, size, color, x, y, maxWidth, lineHeight, maxLines } = options;
+                const words = String(text || '').split(/\s+/).filter(Boolean);
+                if (!words.length) return y;
+                const lines = [];
+                let current = '';
+                for (const word of words) {
+                  const candidate = current ? current + ' ' + word : word;
+                  if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+                    current = candidate;
+                  } else {
+                    if (current) lines.push(current);
+                    current = word;
+                  }
+                }
+                if (current) lines.push(current);
+                const finalLines = typeof maxLines === 'number' ? lines.slice(0, maxLines) : lines;
+                finalLines.forEach((line, index) => {
+                  page.drawText(line, { x, y: y - index * lineHeight, size, font, color });
+                });
+                return y - finalLines.length * lineHeight;
+              }
+
+              async function createPdf() {
+                const button = document.getElementById('create-pdf-button');
+                const originalLabel = button.textContent;
+                button.disabled = true;
+                button.textContent = 'Building PDF...';
+                try {
+                  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+                  const pdfDoc = await PDFDocument.create();
+                  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+                  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                  const pageWidth = 612;
+                  const pageHeight = 792;
+                  const margin = 24;
+                  const gutter = 18;
+                  const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
+                  const cardHeight = 340;
+                  const topY = pageHeight - margin;
+                  const imageHeight = 104;
+                  const imageGap = 8;
+                  const labelSize = 9;
+                  const valueSize = 9;
+                  const lineHeight = 12;
+                  const textColor = rgb(0.26, 0.22, 0.18);
+                  const borderColor = rgb(0.86, 0.82, 0.76);
+                  const bgColor = rgb(1, 1, 1);
+
+                  const pagesNeeded = Math.max(1, Math.ceil(reviewItems.length / 4));
+                  const imageCache = new Map();
+
+                  for (let pageIndex = 0; pageIndex < pagesNeeded; pageIndex += 1) {
+                    const page = pdfDoc.addPage([pageWidth, pageHeight]);
+                    page.drawText('Review Listing', {
+                      x: margin,
+                      y: pageHeight - 18,
+                      size: 18,
+                      font: fontBold,
+                      color: rgb(0.12, 0.08, 0.05)
+                    });
+
+                    for (let slot = 0; slot < 4; slot += 1) {
+                      const item = reviewItems[pageIndex * 4 + slot];
+                      if (!item) continue;
+                      const column = slot % 2;
+                      const row = Math.floor(slot / 2);
+                      const x = margin + column * (cardWidth + gutter);
+                      const yTop = topY - 28 - row * (cardHeight + 16);
+                      const yBottom = yTop - cardHeight;
+
+                      page.drawRectangle({
+                        x,
+                        y: yBottom,
+                        width: cardWidth,
+                        height: cardHeight,
+                        color: bgColor,
+                        borderColor,
+                        borderWidth: 1,
+                        borderRadius: 10
+                      });
+
+                      const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 2) : [];
+                      const imageWidth = (cardWidth - 24 - imageGap) / 2;
+                      for (let imgIndex = 0; imgIndex < photos.length; imgIndex += 1) {
+                        const url = photos[imgIndex];
+                        let embedded = imageCache.get(url);
+                        if (!embedded) {
+                          embedded = await embedReviewImage(pdfDoc, url);
+                          if (embedded) imageCache.set(url, embedded);
+                        }
+                        const imageX = x + 12 + imgIndex * (imageWidth + imageGap);
+                        const imageY = yTop - 12 - imageHeight;
+                        if (embedded) {
+                          page.drawImage(embedded, {
+                            x: imageX,
+                            y: imageY,
+                            width: imageWidth,
+                            height: imageHeight
+                          });
+                        } else {
+                          page.drawRectangle({
+                            x: imageX,
+                            y: imageY,
+                            width: imageWidth,
+                            height: imageHeight,
+                            borderColor,
+                            borderWidth: 1,
+                            color: rgb(0.97, 0.95, 0.92)
+                          });
+                          page.drawText('No image', {
+                            x: imageX + 16,
+                            y: imageY + imageHeight / 2 - 5,
+                            size: 9,
+                            font: fontRegular,
+                            color: rgb(0.5, 0.45, 0.4)
+                          });
+                        }
+                      }
+
+                      let textY = yTop - 12 - imageHeight - 14;
+                      const textX = x + 12;
+                      const textWidth = cardWidth - 24;
+                      const rows = [
+                        ['Category', item.category_2 || '-'],
+                        ['Brand', item.brand || '-'],
+                        ['Size', item.size || '-'],
+                        ['Condition', item.condition || 'Not set'],
+                        ['Original Tags Attached', item.original_tags_attached || '-'],
+                        ['Estimated Retail Price', item.estimated_retail_price ? ('$' + Number(item.estimated_retail_price).toFixed(2)) : '-'],
+                        ['Listed Price', '$' + Number(item.price || 0).toFixed(2)],
+                        ['Colors', item.colors || '-'],
+                        ['Shoe Style', item.shoe_style || '-'],
+                        ['Description', item.description || '-'],
+                        ["Brand's Style Name", item.brand_style_name || '-']
+                      ];
+
+                      for (const [label, value] of rows) {
+                        page.drawText(label + ':', {
+                          x: textX,
+                          y: textY,
+                          size: labelSize,
+                          font: fontBold,
+                          color: textColor
+                        });
+                        const labelWidth = fontBold.widthOfTextAtSize(label + ': ', labelSize);
+                        textY = drawWrappedText(page, value, {
+                          font: fontRegular,
+                          size: valueSize,
+                          color: textColor,
+                          x: textX + labelWidth,
+                          y: textY,
+                          maxWidth: textWidth - labelWidth,
+                          lineHeight,
+                          maxLines: label === 'Description' || label === "Brand's Style Name" ? 2 : 1
+                        }) - 2;
+                      }
+                    }
+                  }
+
+                  const bytes = await pdfDoc.save();
+                  const blob = new Blob([bytes], { type: 'application/pdf' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = 'review-listing-' + new Date().toISOString().slice(0, 10) + '.pdf';
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                  URL.revokeObjectURL(url);
+                  button.textContent = 'PDF Ready';
+                  setTimeout(() => { button.textContent = originalLabel; button.disabled = false; }, 1200);
+                  return;
+                } catch (error) {
+                  alert('PDF generation failed: ' + (error?.message || String(error)));
+                }
+                button.textContent = originalLabel;
+                button.disabled = false;
+              }
             <\/script>
           </head>
           <body>
             <div class="print-toolbar">
-              <button onclick="printReviewListing()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">${printButtonLabel}</button>
+              <button id="create-pdf-button" onclick="createPdf()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">${printButtonLabel}</button>
               <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
             </div>
             <h1 style="margin:0 0 8px;">Review Listing</h1>
