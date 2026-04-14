@@ -3160,7 +3160,7 @@
       const cards = exportItems.map((item) => {
         const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
         const photoMarkup = photos.length
-          ? photos.map((url) => `<img class="review-photo" src="${url}" loading="lazy" decoding="async" />`).join('')
+          ? photos.map((url) => `<img class="review-photo" src="${url}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />`).join('')
           : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;">No photos</div>';
         return `
           <article class="review-card">
@@ -3354,10 +3354,10 @@
                   const margin = 24;
                   const gutter = 18;
                   const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
-                  const cardHeight = 212;
+                  const cardHeight = 214;
                   const topY = pageHeight - margin;
-                  const imageHeight = 54;
-                  const imageGap = 6;
+                  const imageHeight = 58;
+                  const imageGap = 4;
                   const labelSize = 8;
                   const valueSize = 8;
                   const lineHeight = 8.5;
