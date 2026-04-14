@@ -3351,13 +3351,13 @@
                   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
                   const pageWidth = 612;
                   const pageHeight = 792;
-                  const margin = 24;
+                  const margin = 30;
                   const gutter = 18;
                   const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
                   const cardHeight = 212;
                   const topY = pageHeight - margin;
                   const imageHeight = 64;
-                  const imageGap = 1;
+                  const imageGap = 0;
                   const labelSize = 8;
                   const valueSize = 8;
                   const lineHeight = 8.5;
@@ -3436,7 +3436,7 @@
                         }
                       }
 
-                      let textY = yTop - 10 - imageHeight - 12;
+                      let textY = yTop - 10 - imageHeight - 16;
                       const textX = x + 10;
                       const textWidth = cardWidth - 20;
                       const rows = [
