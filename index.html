@@ -3339,6 +3339,32 @@
                 });
               }
 
+              function drawRoundedCard(page, box, options) {
+                const radius = options.radius || 10;
+                const x = box.x;
+                const y = box.y;
+                const width = box.width;
+                const height = box.height;
+                const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+                const path = [
+                  'M', x + r, y,
+                  'L', x + width - r, y,
+                  'Q', x + width, y, x + width, y + r,
+                  'L', x + width, y + height - r,
+                  'Q', x + width, y + height, x + width - r, y + height,
+                  'L', x + r, y + height,
+                  'Q', x, y + height, x, y + height - r,
+                  'L', x, y + r,
+                  'Q', x, y, x + r, y,
+                  'Z'
+                ].join(' ');
+                page.drawSvgPath(path, {
+                  color: options.color,
+                  borderColor: options.borderColor,
+                  borderWidth: options.borderWidth || 1
+                });
+              }
+
               async function createPdf() {
                 const button = document.getElementById('create-pdf-button');
                 const originalLabel = button.textContent;
@@ -3387,15 +3413,16 @@
                       const yTop = topY - 28 - row * (cardHeight + 10);
                       const yBottom = yTop - cardHeight;
 
-                      page.drawRectangle({
+                      drawRoundedCard(page, {
                         x,
                         y: yBottom,
                         width: cardWidth,
-                        height: cardHeight,
+                        height: cardHeight
+                      }, {
                         color: bgColor,
                         borderColor,
                         borderWidth: 1,
-                        borderRadius: 10
+                        radius: 10
                       });
 
                       const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
