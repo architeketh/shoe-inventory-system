@@ -869,6 +869,17 @@
       box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
     }
 
+    .single-card-modal-card {
+      position: relative;
+      width: min(100%, 760px);
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      padding: 20px;
+      border-radius: 24px;
+      background: rgba(255, 252, 247, 0.98);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+    }
+
     .price-ai-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1404,6 +1415,14 @@
     </div>
   </div>
 
+  <div class="modal hidden" id="single-card-modal" aria-hidden="true">
+    <div class="single-card-modal-card">
+      <button class="modal-close" type="button" id="single-card-close" aria-label="Close card view">x</button>
+      <div class="eyebrow">Single Card View</div>
+      <div id="single-card-content"></div>
+    </div>
+  </div>
+
   <div class="modal hidden" id="edit-modal" aria-hidden="true">
     <div class="edit-modal-card">
       <button class="modal-close" type="button" id="edit-close" aria-label="Close edit">x</button>
@@ -1690,6 +1709,9 @@
       priceAiApplyButton: document.getElementById('price-ai-apply-button'),
       priceAiRetailApplyButton: document.getElementById('price-ai-retail-apply-button'),
       priceAiCancelButton: document.getElementById('price-ai-cancel-button'),
+      singleCardModal: document.getElementById('single-card-modal'),
+      singleCardClose: document.getElementById('single-card-close'),
+      singleCardContent: document.getElementById('single-card-content'),
       editModal: document.getElementById('edit-modal'),
       editClose: document.getElementById('edit-close'),
       editForm: document.getElementById('edit-form'),
@@ -2659,6 +2681,7 @@
               </div>
               <div class="inventory-cell">
                 <div class="inventory-actions end">
+                  <button class="mini-button" type="button" data-card-id="${item.id}">Card</button>
                   <button class="mini-button" type="button" data-edit-id="${item.id}">Edit</button>
                   <button class="mini-button" type="button" data-duplicate-id="${item.id}">Copy</button>
                   <button class="mini-button" type="button" data-delete-id="${item.id}">Delete</button>
@@ -2668,6 +2691,47 @@
           </article>
         `;
       }).join('');
+    }
+
+    function renderSingleCard(item) {
+      const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
+      const photoMarkup = photos.length
+        ? photos.map((url) => `<img src="${url}" style="width:100%;aspect-ratio:1 / 1;object-fit:cover;border-radius:8px;border:1px solid #e4d8cb;display:block;" />`).join('')
+        : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;min-height:120px;">No photos</div>';
+      return `
+        <article class="detail-card" style="padding:14px;">
+          <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px;margin-bottom:12px;">
+            ${photoMarkup}
+          </div>
+          <div style="font:11px Arial,sans-serif;color:#6c5d52;line-height:1.55;">
+            <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
+            <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
+            <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
+            <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
+            <div><strong>Original Tags Attached:</strong> ${escapeHtml(item.original_tags_attached || '-')}</div>
+            <div><strong>Estimated Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
+            <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
+            <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
+            <div><strong>Shoe Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
+            <div><strong>Description:</strong> ${escapeHtml(item.description || '-')}</div>
+            <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
+          </div>
+        </article>
+      `;
+    }
+
+    function openSingleCardModal(id) {
+      const item = state.inventory.find((entry) => entry.id === id);
+      if (!item) return;
+      elements.singleCardContent.innerHTML = renderSingleCard(item);
+      elements.singleCardModal.classList.remove('hidden');
+      elements.singleCardModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeSingleCardModal() {
+      elements.singleCardModal.classList.add('hidden');
+      elements.singleCardModal.setAttribute('aria-hidden', 'true');
+      elements.singleCardContent.innerHTML = '';
     }
 
     async function loadInventory() {
@@ -2752,6 +2816,11 @@
       renderInventory();
     });
     elements.inventoryList.addEventListener('click', (event) => {
+      const cardButton = event.target.closest('[data-card-id]');
+      if (cardButton) {
+        openSingleCardModal(cardButton.dataset.cardId);
+        return;
+      }
       const editButton = event.target.closest('[data-edit-id]');
       if (editButton) {
         startEdit(editButton.dataset.editId);
@@ -3683,6 +3752,10 @@
     });
     elements.editModal.addEventListener('click', (event) => {
       if (event.target === elements.editModal) closeEditModal();
+    });
+    elements.singleCardClose.addEventListener('click', closeSingleCardModal);
+    elements.singleCardModal.addEventListener('click', (event) => {
+      if (event.target === elements.singleCardModal) closeSingleCardModal();
     });
     syncResponsiveLabels();
     updateModeCopy();
