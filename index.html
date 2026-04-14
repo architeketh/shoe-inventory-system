@@ -3314,18 +3314,18 @@
                   const margin = 24;
                   const gutter = 18;
                   const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
-                  const cardHeight = 340;
+                  const cardHeight = 230;
                   const topY = pageHeight - margin;
-                  const imageHeight = 104;
-                  const imageGap = 8;
-                  const labelSize = 9;
-                  const valueSize = 9;
-                  const lineHeight = 12;
+                  const imageHeight = 58;
+                  const imageGap = 6;
+                  const labelSize = 8;
+                  const valueSize = 8;
+                  const lineHeight = 9.5;
                   const textColor = rgb(0.26, 0.22, 0.18);
                   const borderColor = rgb(0.86, 0.82, 0.76);
                   const bgColor = rgb(1, 1, 1);
 
-                  const pagesNeeded = Math.max(1, Math.ceil(reviewItems.length / 4));
+                  const pagesNeeded = Math.max(1, Math.ceil(reviewItems.length / 6));
                   const imageCache = new Map();
 
                   for (let pageIndex = 0; pageIndex < pagesNeeded; pageIndex += 1) {
@@ -3338,13 +3338,13 @@
                       color: rgb(0.12, 0.08, 0.05)
                     });
 
-                    for (let slot = 0; slot < 4; slot += 1) {
-                      const item = reviewItems[pageIndex * 4 + slot];
+                    for (let slot = 0; slot < 6; slot += 1) {
+                      const item = reviewItems[pageIndex * 6 + slot];
                       if (!item) continue;
                       const column = slot % 2;
                       const row = Math.floor(slot / 2);
                       const x = margin + column * (cardWidth + gutter);
-                      const yTop = topY - 28 - row * (cardHeight + 16);
+                      const yTop = topY - 28 - row * (cardHeight + 10);
                       const yBottom = yTop - cardHeight;
 
                       page.drawRectangle({
@@ -3358,8 +3358,8 @@
                         borderRadius: 10
                       });
 
-                      const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 2) : [];
-                      const imageWidth = (cardWidth - 24 - imageGap) / 2;
+                      const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 3) : [];
+                      const imageWidth = (cardWidth - 24 - imageGap * 2) / 3;
                       for (let imgIndex = 0; imgIndex < photos.length; imgIndex += 1) {
                         const url = photos[imgIndex];
                         let embedded = imageCache.get(url);
@@ -3396,7 +3396,7 @@
                         }
                       }
 
-                      let textY = yTop - 12 - imageHeight - 14;
+                      let textY = yTop - 12 - imageHeight - 10;
                       const textX = x + 12;
                       const textWidth = cardWidth - 24;
                       const rows = [
@@ -3430,7 +3430,7 @@
                           y: textY,
                           maxWidth: textWidth - labelWidth,
                           lineHeight,
-                          maxLines: label === 'Description' || label === "Brand's Style Name" ? 2 : 1
+                          maxLines: 1
                         }) - 2;
                       }
                     }
