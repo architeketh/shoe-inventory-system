@@ -1288,6 +1288,11 @@
           </div>
 
           <div class="field">
+            <label for="purchased-price">Purchased Price</label>
+            <input id="purchased-price" name="purchased-price" type="number" min="0" step="0.01" placeholder="0.00">
+          </div>
+
+          <div class="field">
             <label for="colors">Colors</label>
             <input id="colors" name="colors" type="text" placeholder="Pink, Black, White...">
           </div>
@@ -1390,6 +1395,7 @@
           <button class="button ghost" type="button" id="xls-button">CSV</button>
           <button class="button ghost" type="button" id="whatnot-button">Whatnot</button>
           <button class="button ghost" type="button" id="depop-button">Depop</button>
+          <button class="button ghost" type="button" id="profit-button">Profit</button>
         </div>
         <button class="button secondary" type="button" id="refresh-button">Sync Data</button>
       </div>
@@ -1410,7 +1416,7 @@
       </div>
       <div id="inventory-list" class="inventory-list"></div>
       <div id="inventory-summary" class="inventory-summary">0 pairs total · $0.00</div>
-      <div class="report-note">Review Tab, CSV, Whatnot, and Depop exports follow the current filter/search view. Review Tab opens listing cards for quick scanning and PDF creation.</div>
+      <div class="report-note">Review Tab, CSV, Whatnot, Depop, and Profit exports follow the current filter/search view. Review Tab opens listing cards for quick scanning and PDF creation. Profit export includes sold items only.</div>
     </section>
   </div>
 
@@ -1504,6 +1510,10 @@
           <div class="field">
             <label for="edit-sold-price">Sold Price</label>
             <input id="edit-sold-price" type="number" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label for="edit-purchased-price">Purchased Price</label>
+            <input id="edit-purchased-price" type="number" min="0" step="0.01">
           </div>
           <div class="field">
             <label for="edit-colors">Colors</label>
@@ -1678,6 +1688,7 @@
       originalTagsAttached: document.getElementById('original-tags-attached'),
       estimatedRetailPrice: document.getElementById('estimated-retail-price'),
       soldPrice: document.getElementById('sold-price'),
+      purchasedPrice: document.getElementById('purchased-price'),
       colors: document.getElementById('colors'),
       shoeStyle: document.getElementById('shoe-style'),
       brandStyleName: document.getElementById('brand-style-name'),
@@ -1703,6 +1714,7 @@
       xlsButton: document.getElementById('xls-button'),
       whatnotButton: document.getElementById('whatnot-button'),
       depopButton: document.getElementById('depop-button'),
+      profitButton: document.getElementById('profit-button'),
       refreshButton: document.getElementById('refresh-button'),
       formStatus: document.getElementById('form-status'),
       photoModal: document.getElementById('photo-modal'),
@@ -1752,6 +1764,7 @@
       editOriginalTagsAttached: document.getElementById('edit-original-tags-attached'),
       editEstimatedRetailPrice: document.getElementById('edit-estimated-retail-price'),
       editSoldPrice: document.getElementById('edit-sold-price'),
+      editPurchasedPrice: document.getElementById('edit-purchased-price'),
       editColors: document.getElementById('edit-colors'),
       editShoeStyle: document.getElementById('edit-shoe-style'),
       editBrandStyleName: document.getElementById('edit-brand-style-name'),
@@ -2405,6 +2418,7 @@
         originalTagsAttached: elements.originalTagsAttached.value.trim(),
         estimatedRetailPrice: Number(elements.estimatedRetailPrice.value || 0),
         soldPrice: Number(elements.soldPrice.value || 0),
+        purchasedPrice: Number(elements.purchasedPrice.value || 0),
         colors: elements.colors.value.trim(),
         shoeStyle: elements.shoeStyle.value.trim(),
         brandStyleName,
@@ -2545,6 +2559,7 @@
           original_tags_attached: draft.originalTagsAttached || null,
           estimated_retail_price: draft.estimatedRetailPrice || null,
           sold_price: draft.soldPrice || null,
+          purchased_price: draft.purchasedPrice || null,
           colors: draft.colors || null,
           shoe_style: draft.shoeStyle || null,
           brand_style_name: draft.brandStyleName || null,
@@ -2808,7 +2823,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,category_2,gender,price,notes,sold,condition,original_tags_attached,estimated_retail_price,sold_price,colors,shoe_style,brand_style_name,materials,made_in,serial_number,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,brand,description,size,category_2,gender,price,notes,sold,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,colors,shoe_style,brand_style_name,materials,made_in,serial_number,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -3048,6 +3063,7 @@
       elements.editOriginalTagsAttached.value = item.original_tags_attached || '';
       elements.editEstimatedRetailPrice.value = item.estimated_retail_price ?? '';
       elements.editSoldPrice.value = item.sold_price ?? '';
+      elements.editPurchasedPrice.value = item.purchased_price ?? '';
       elements.editColors.value = item.colors || '';
       elements.editShoeStyle.value = item.shoe_style || '';
       elements.editBrandStyleName.value = item.brand_style_name || item.description || '';
@@ -3105,6 +3121,7 @@
           original_tags_attached: elements.editOriginalTagsAttached.value.trim() || null,
           estimated_retail_price: Number(elements.editEstimatedRetailPrice.value || 0) || null,
           sold_price: Number(elements.editSoldPrice.value || 0) || null,
+          purchased_price: Number(elements.editPurchasedPrice.value || 0) || null,
           colors: elements.editColors.value.trim() || null,
           shoe_style: elements.editShoeStyle.value.trim() || null,
           brand_style_name: editBrandStyleName || null,
@@ -3160,6 +3177,7 @@
         original_tags_attached: item.original_tags_attached || null,
         estimated_retail_price: item.estimated_retail_price || null,
         sold_price: item.sold_price || null,
+        purchased_price: item.purchased_price || null,
         colors: item.colors || null,
         shoe_style: item.shoe_style || null,
         brand_style_name: item.brand_style_name || item.description || null,
@@ -3706,6 +3724,30 @@
       URL.revokeObjectURL(url);
     }
 
+    function exportProfitCsv() {
+      const exportItems = sortedInventory().filter((item) => item.sold);
+      const lines = [
+        ['Brand', 'Description', 'Size', 'Category', 'Purchased Price', 'Sold Price', 'Profit'],
+        ...exportItems.map((item) => {
+          const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
+          const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
+          const purchasedPrice = Number(item.purchased_price || 0);
+          const soldPrice = Number(item.sold_price || 0);
+          return [
+            item.brand || '',
+            item.description || '',
+            item.size || '',
+            item.category_2 || '',
+            hasPurchased ? purchasedPrice.toFixed(2) : '',
+            hasSold ? soldPrice.toFixed(2) : '',
+            hasPurchased && hasSold ? (soldPrice - purchasedPrice).toFixed(2) : ''
+          ];
+        })
+      ];
+      downloadCsv(`profit-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
+      alert('Profit CSV exported for sold items in the current view.');
+    }
+
     function buildTitle(item, maxLength = 80) {
       const parts = [item.brand, item.description, item.size ? `Size ${item.size}` : ''].filter(Boolean);
       const title = parts.join(' ').replace(/\s+/g, ' ').trim();
@@ -3803,6 +3845,7 @@
     elements.xlsButton.addEventListener('click', exportXlsReport);
     elements.whatnotButton.addEventListener('click', exportWhatnotCsv);
     elements.depopButton.addEventListener('click', exportDepopCsv);
+    elements.profitButton.addEventListener('click', exportProfitCsv);
     document.getElementById('edit-box-toggle').addEventListener('click', (event) => {
       const button = event.target.closest('[data-edit-box-value]');
       if (!button) return;
