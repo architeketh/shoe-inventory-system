@@ -1416,7 +1416,7 @@
       </div>
       <div id="inventory-list" class="inventory-list"></div>
       <div id="inventory-summary" class="inventory-summary">0 pairs total · $0.00</div>
-      <div class="report-note">Review Tab, CSV, Whatnot, Depop, and Profit exports follow the current filter/search view. Review Tab opens listing cards for quick scanning and PDF creation. Profit export includes sold items only.</div>
+      <div class="report-note">Review Tab, CSV, Whatnot, Depop, and Profit exports follow the current filter/search view. Review Tab opens listing cards for quick scanning and PDF creation. Profit opens a report tab for the full current view with PDF and CSV options.</div>
     </section>
   </div>
 
@@ -3805,28 +3805,373 @@
       URL.revokeObjectURL(url);
     }
 
-    function exportProfitCsv() {
-      const exportItems = sortedInventory().filter((item) => item.sold);
-      const lines = [
-        ['Brand', 'Description', 'Size', 'Category', 'Purchased Price', 'Sold Price', 'Profit'],
-        ...exportItems.map((item) => {
+    function buildProfitReportLines(items) {
+      return [
+        ['Status', 'Brand', 'Description', 'Size', 'Category', 'Purchased Price', 'Listed Price', 'Sold Price', 'Profit'],
+        ...items.map((item) => {
           const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
           const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
           const purchasedPrice = Number(item.purchased_price || 0);
+          const listedPrice = Number(item.price || 0);
           const soldPrice = Number(item.sold_price || 0);
           return [
+            item.sold ? 'Sold' : 'For sale',
             item.brand || '',
             item.description || '',
             item.size || '',
             item.category_2 || '',
             hasPurchased ? purchasedPrice.toFixed(2) : '',
+            listedPrice ? listedPrice.toFixed(2) : '',
             hasSold ? soldPrice.toFixed(2) : '',
             hasPurchased && hasSold ? (soldPrice - purchasedPrice).toFixed(2) : ''
           ];
         })
       ];
-      downloadCsv(`profit-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
-      alert('Profit CSV exported for sold items in the current view.');
+    }
+
+    function buildProfitReportHtml(exportItems) {
+      const profitDataJson = JSON.stringify(exportItems).replace(/</g, '\\u003c');
+      const totalListed = exportItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
+      const totalSold = exportItems.reduce((sum, item) => sum + Number(item.sold_price || 0), 0);
+      const totalProfit = exportItems.reduce((sum, item) => {
+        const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
+        const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
+        return sum + (hasPurchased && hasSold ? Number(item.sold_price || 0) - Number(item.purchased_price || 0) : 0);
+      }, 0);
+      const cards = exportItems.map((item) => {
+        const photo = Array.isArray(item.photo_urls) && item.photo_urls.length ? item.photo_urls[0] : '';
+        const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
+        const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
+        const profitValue = hasPurchased && hasSold ? Number(item.sold_price || 0) - Number(item.purchased_price || 0) : null;
+        return `
+          <article class="profit-card">
+            <div class="profit-photo-wrap">
+              ${photo ? `<img class="profit-photo" src="${photo}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />` : '<div class="profit-photo-empty">No photo</div>'}
+            </div>
+            <div class="profit-copy">
+              <div><strong>Status:</strong> ${escapeHtml(item.sold ? 'Sold' : 'For sale')}</div>
+              <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
+              <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
+              <div><strong>Description:</strong> ${escapeHtml(item.description || '-')}</div>
+              <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
+              <div><strong>Purchased Price:</strong> ${escapeHtml(hasPurchased ? currency(item.purchased_price) : '-')}</div>
+              <div><strong>Listed Price:</strong> ${escapeHtml(item.price ? currency(item.price) : '-')}</div>
+              <div><strong>Sold Price:</strong> ${escapeHtml(hasSold ? currency(item.sold_price) : '-')}</div>
+              <div><strong>Profit:</strong> ${escapeHtml(profitValue !== null ? currency(profitValue) : '-') }</div>
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      return `
+        <html>
+          <head>
+            <title>Profit Report</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"><\/script>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+                color: #222;
+                background: #faf8f5;
+              }
+              .print-toolbar {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+                margin-bottom: 16px;
+              }
+              .profit-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 14px;
+                align-items: start;
+              }
+              .profit-card {
+                border: 1px solid #dbcfc2;
+                border-radius: 14px;
+                padding: 10px;
+                background: #fff;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+              }
+              .profit-photo-wrap {
+                border-radius: 10px;
+                overflow: hidden;
+                border: 1px solid #e4d8cb;
+                background: #fff;
+                aspect-ratio: 1 / 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              }
+              .profit-photo {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                display: block;
+                background: #fff;
+              }
+              .profit-photo-empty {
+                color: #8a7766;
+                font-size: 12px;
+              }
+              .profit-copy {
+                font: 11px Arial, sans-serif;
+                color: #6c5d52;
+                line-height: 1.5;
+              }
+              @media (max-width: 900px) {
+                .profit-grid {
+                  grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+              }
+              @media (max-width: 640px) {
+                body {
+                  padding: 14px;
+                }
+                .profit-grid {
+                  grid-template-columns: 1fr;
+                }
+              }
+            </style>
+            <script>
+              const profitItems = ${profitDataJson};
+
+              async function embedProfitImage(pdfDoc, url) {
+                try {
+                  const response = await fetch(url, { mode: 'cors' });
+                  if (!response.ok) return null;
+                  const blob = await response.blob();
+                  const objectUrl = URL.createObjectURL(blob);
+                  try {
+                    const image = await new Promise((resolve, reject) => {
+                      const img = new Image();
+                      img.crossOrigin = 'anonymous';
+                      img.onload = () => resolve(img);
+                      img.onerror = () => reject(new Error('Could not load image for PDF.'));
+                      img.src = objectUrl;
+                    });
+                    const canvas = document.createElement('canvas');
+                    const width = image.naturalWidth || image.width;
+                    const height = image.naturalHeight || image.height;
+                    const maxDimension = 1200;
+                    const scale = Math.min(1, maxDimension / Math.max(width, height));
+                    canvas.width = Math.max(1, Math.round(width * scale));
+                    canvas.height = Math.max(1, Math.round(height * scale));
+                    const context = canvas.getContext('2d');
+                    context.fillStyle = '#ffffff';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                    const normalizedBlob = await new Promise((resolve, reject) => {
+                      canvas.toBlob((outputBlob) => {
+                        if (outputBlob) resolve(outputBlob);
+                        else reject(new Error('Could not normalize image for PDF.'));
+                      }, 'image/jpeg', 0.9);
+                    });
+                    const bytes = await normalizedBlob.arrayBuffer();
+                    return await pdfDoc.embedJpg(bytes);
+                  } finally {
+                    URL.revokeObjectURL(objectUrl);
+                  }
+                } catch (error) {
+                  return null;
+                }
+              }
+
+              function drawImageContained(page, image, box) {
+                const imageWidth = image.width || 1;
+                const imageHeight = image.height || 1;
+                const scale = Math.min(box.width / imageWidth, box.height / imageHeight);
+                const drawWidth = imageWidth * scale;
+                const drawHeight = imageHeight * scale;
+                const drawX = box.x + (box.width - drawWidth) / 2;
+                const drawY = box.y + (box.height - drawHeight) / 2;
+                page.drawImage(image, { x: drawX, y: drawY, width: drawWidth, height: drawHeight });
+              }
+
+              async function createProfitPdf() {
+                const button = document.getElementById('create-profit-pdf-button');
+                const originalLabel = button.textContent;
+                button.disabled = true;
+                button.textContent = 'Building PDF...';
+                try {
+                  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+                  const pdfDoc = await PDFDocument.create();
+                  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+                  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                  const pageWidth = 612;
+                  const pageHeight = 792;
+                  const margin = 28;
+                  const gutter = 18;
+                  const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
+                  const cardHeight = 226;
+                  const imageHeight = 70;
+                  const pagesNeeded = Math.max(1, Math.ceil(profitItems.length / 6));
+                  const imageCache = new Map();
+
+                  for (let pageIndex = 0; pageIndex < pagesNeeded; pageIndex += 1) {
+                    const page = pdfDoc.addPage([pageWidth, pageHeight]);
+                    page.drawText('Profit Report', {
+                      x: margin,
+                      y: pageHeight - 18,
+                      size: 18,
+                      font: fontBold,
+                      color: rgb(0.12, 0.08, 0.05)
+                    });
+
+                    for (let slot = 0; slot < 6; slot += 1) {
+                      const item = profitItems[pageIndex * 6 + slot];
+                      if (!item) continue;
+                      const column = slot % 2;
+                      const row = Math.floor(slot / 2);
+                      const x = margin + column * (cardWidth + gutter);
+                      const yTop = pageHeight - margin - 28 - row * (cardHeight + 10);
+                      const yBottom = yTop - cardHeight;
+
+                      page.drawRectangle({
+                        x,
+                        y: yBottom,
+                        width: cardWidth,
+                        height: cardHeight,
+                        color: rgb(1, 1, 1),
+                        borderColor: rgb(0.86, 0.82, 0.76),
+                        borderWidth: 1
+                      });
+
+                      const photo = Array.isArray(item.photo_urls) && item.photo_urls.length ? item.photo_urls[0] : '';
+                      if (photo) {
+                        let embedded = imageCache.get(photo);
+                        if (!embedded) {
+                          embedded = await embedProfitImage(pdfDoc, photo);
+                          if (embedded) imageCache.set(photo, embedded);
+                        }
+                        if (embedded) {
+                          drawImageContained(page, embedded, { x: x + 10, y: yTop - 10 - imageHeight, width: cardWidth - 20, height: imageHeight });
+                        }
+                      }
+
+                      const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
+                      const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
+                      const profitValue = hasPurchased && hasSold ? Number(item.sold_price || 0) - Number(item.purchased_price || 0) : null;
+                      const rows = [
+                        ['Status', item.sold ? 'Sold' : 'For sale'],
+                        ['Category', item.category_2 || '-'],
+                        ['Brand', item.brand || '-'],
+                        ['Description', item.description || '-'],
+                        ['Size', item.size || '-'],
+                        ['Purchased', hasPurchased ? ('$' + Number(item.purchased_price).toFixed(2)) : '-'],
+                        ['Listed', item.price ? ('$' + Number(item.price).toFixed(2)) : '-'],
+                        ['Sold', hasSold ? ('$' + Number(item.sold_price).toFixed(2)) : '-'],
+                        ['Profit', profitValue !== null ? ('$' + profitValue.toFixed(2)) : '-']
+                      ];
+
+                      let textY = yTop - 10 - imageHeight - 16;
+                      rows.forEach(([label, value]) => {
+                        page.drawText(label + ':', {
+                          x: x + 10,
+                          y: textY,
+                          size: 8,
+                          font: fontBold,
+                          color: rgb(0.26, 0.22, 0.18)
+                        });
+                        page.drawText(String(value), {
+                          x: x + 74,
+                          y: textY,
+                          size: 8,
+                          font: fontRegular,
+                          color: rgb(0.26, 0.22, 0.18),
+                          maxWidth: cardWidth - 84
+                        });
+                        textY -= 14;
+                      });
+                    }
+                  }
+
+                  const bytes = await pdfDoc.save();
+                  const blob = new Blob([bytes], { type: 'application/pdf' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = 'profit-report-' + new Date().toISOString().slice(0, 10) + '.pdf';
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                  setTimeout(() => URL.revokeObjectURL(url), 60000);
+                } finally {
+                  button.textContent = originalLabel;
+                  button.disabled = false;
+                }
+              }
+
+              function downloadProfitCsv() {
+                const lines = [
+                  ['Status', 'Brand', 'Description', 'Size', 'Category', 'Purchased Price', 'Listed Price', 'Sold Price', 'Profit'],
+                  ...profitItems.map((item) => {
+                    const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
+                    const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
+                    const purchasedPrice = Number(item.purchased_price || 0);
+                    const listedPrice = Number(item.price || 0);
+                    const soldPrice = Number(item.sold_price || 0);
+                    return [
+                      item.sold ? 'Sold' : 'For sale',
+                      item.brand || '',
+                      item.description || '',
+                      item.size || '',
+                      item.category_2 || '',
+                      hasPurchased ? purchasedPrice.toFixed(2) : '',
+                      listedPrice ? listedPrice.toFixed(2) : '',
+                      hasSold ? soldPrice.toFixed(2) : '',
+                      hasPurchased && hasSold ? (soldPrice - purchasedPrice).toFixed(2) : ''
+                    ];
+                  })
+                ];
+                const csv = lines.map((row) => row.map((value) => '"' + String(value ?? '').replace(/"/g, '""') + '"').join(',')).join('\\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'profit-report-' + new Date().toISOString().slice(0, 10) + '.csv';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 60000);
+              }
+            <\/script>
+          </head>
+          <body>
+            <div class="print-toolbar">
+              <button id="create-profit-pdf-button" onclick="createProfitPdf()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">Create PDF</button>
+              <button onclick="downloadProfitCsv()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Download CSV</button>
+              <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
+            </div>
+            <h1 style="margin:0 0 8px;">Profit Report</h1>
+            <div style="margin-bottom:6px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} | ${exportItems.length} pair(s) in current view</div>
+            <div style="margin-bottom:4px;color:#555;">Listed total: ${escapeHtml(currency(totalListed))}</div>
+            <div style="margin-bottom:4px;color:#555;">Sold total: ${escapeHtml(currency(totalSold))}</div>
+            <div style="margin-bottom:16px;color:#555;">Tracked profit total: ${escapeHtml(currency(totalProfit))}</div>
+            <section class="profit-grid">
+              ${cards || '<p>No inventory available.</p>'}
+            </section>
+          </body>
+        </html>
+      `;
+    }
+
+    function exportProfitReport() {
+      const exportItems = sortedInventory();
+      const html = buildProfitReportHtml(exportItems);
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const reportTab = window.open(url, '_blank');
+      if (!reportTab) {
+        alert('Allow pop-ups to open the profit report.');
+        URL.revokeObjectURL(url);
+        return;
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
     function buildTitle(item, maxLength = 80) {
@@ -3926,7 +4271,7 @@
     elements.xlsButton.addEventListener('click', exportXlsReport);
     elements.whatnotButton.addEventListener('click', exportWhatnotCsv);
     elements.depopButton.addEventListener('click', exportDepopCsv);
-    elements.profitButton.addEventListener('click', exportProfitCsv);
+    elements.profitButton.addEventListener('click', exportProfitReport);
     document.getElementById('edit-box-toggle').addEventListener('click', (event) => {
       const button = event.target.closest('[data-edit-box-value]');
       if (!button) return;
