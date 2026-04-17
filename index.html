@@ -1551,6 +1551,7 @@
       <div class="viewer-toolbar">
         <span class="pill" id="viewer-status">Original</span>
         <div class="viewer-toolbar-actions">
+          <button class="button ghost" type="button" id="add-image-button">Add Image</button>
           <button class="button ghost" type="button" id="set-main-image-button">Set Main Image</button>
           <button class="button ghost" type="button" id="delete-image-button">Delete Image</button>
           <button class="button ghost" type="button" id="crop-button">Crop</button>
@@ -1567,6 +1568,7 @@
           <div class="crop-mask hidden" id="crop-mask"></div>
         </div>
       </div>
+      <input class="sr-only" id="modal-add-image-input" type="file" accept="image/*" multiple>
       <button class="viewer-arrow next" type="button" id="modal-next" aria-label="Next photo">&#8250;</button>
     </div>
   </div>
@@ -1879,11 +1881,13 @@
       photoModal: document.getElementById('photo-modal'),
       modalImage: document.getElementById('modal-image'),
       modalImageStage: document.getElementById('modal-image-stage'),
+      modalAddImageInput: document.getElementById('modal-add-image-input'),
       cropOverlay: document.getElementById('crop-overlay'),
       cropMask: document.getElementById('crop-mask'),
       modalPrev: document.getElementById('modal-prev'),
       modalNext: document.getElementById('modal-next'),
       viewerStatus: document.getElementById('viewer-status'),
+      addImageButton: document.getElementById('add-image-button'),
       setMainImageButton: document.getElementById('set-main-image-button'),
       deleteImageButton: document.getElementById('delete-image-button'),
       cropButton: document.getElementById('crop-button'),
@@ -2449,6 +2453,54 @@
         elements.viewerStatus.textContent = 'Main image updated';
       }
       showBanner('success', 'Main image updated', 'This photo is now the main display image on the inventory card.');
+    }
+
+    async function addImagesToCurrentItem(files) {
+      if (!SUPABASE_READY || !state.galleryItemId) return;
+      const item = state.inventory.find((entry) => entry.id === state.galleryItemId);
+      if (!item) return;
+
+      const incomingFiles = Array.from(files || []).filter(Boolean);
+      if (!incomingFiles.length) return;
+
+      const currentCount = Array.isArray(item.photo_urls) ? item.photo_urls.length : 0;
+      const availableSlots = Math.max(0, 6 - currentCount);
+      if (!availableSlots) {
+        alert('This shoe already has 6 images. Delete one before adding another.');
+        return;
+      }
+
+      const filesToUpload = incomingFiles.slice(0, availableSlots);
+      if (incomingFiles.length > availableSlots) {
+        alert(`Only ${availableSlots} more image${availableSlots === 1 ? '' : 's'} could be added. The extra photos were skipped.`);
+      }
+
+      elements.addImageButton.disabled = true;
+      elements.addImageButton.textContent = 'Adding...';
+      elements.viewerStatus.textContent = 'Uploading new image...';
+
+      try {
+        const uploads = await uploadPhotos(filesToUpload);
+        const nextUrls = [...(item.photo_urls || []), ...uploads.map((entry) => entry.url)];
+        const nextPaths = [...(item.photo_paths || []), ...uploads.map((entry) => entry.path)];
+        const { error } = await supabaseClient
+          .from(APP_CONFIG.inventoryTable)
+          .update({ photo_urls: nextUrls, photo_paths: nextPaths })
+          .eq('id', item.id);
+        if (error) throw error;
+
+        await loadInventory();
+        const refreshed = state.inventory.find((entry) => entry.id === item.id);
+        if (refreshed && Array.isArray(refreshed.photo_urls) && refreshed.photo_urls.length) {
+          openPhotoModal(refreshed.photo_urls, refreshed.photo_urls.length - 1, refreshed.id);
+          elements.viewerStatus.textContent = 'Image added';
+        }
+        showBanner('success', 'Image added', `${filesToUpload.length} image${filesToUpload.length === 1 ? '' : 's'} added to this shoe.`);
+      } finally {
+        elements.addImageButton.disabled = false;
+        elements.addImageButton.textContent = 'Add Image';
+        elements.modalAddImageInput.value = '';
+      }
     }
 
     async function makeCurrentPhotoWhiteBg() {
@@ -3247,6 +3299,17 @@
         await setCurrentPhotoAsMain();
       } catch (error) {
         showBanner('error', 'Main image update failed', error?.message || String(error));
+      }
+    });
+    elements.addImageButton.addEventListener('click', () => {
+      elements.modalAddImageInput.click();
+    });
+    elements.modalAddImageInput.addEventListener('change', async (event) => {
+      try {
+        await addImagesToCurrentItem(event.target.files);
+      } catch (error) {
+        elements.viewerStatus.textContent = 'Add image failed';
+        showBanner('error', 'Add image failed', error?.message || String(error));
       }
     });
     elements.cancelCropButton.addEventListener('click', () => {
