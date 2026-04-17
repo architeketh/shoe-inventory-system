@@ -3831,6 +3831,8 @@
 
     function buildProfitReportHtml(exportItems) {
       const profitDataJson = JSON.stringify(exportItems).replace(/</g, '\\u003c');
+      const purchasedItems = exportItems.filter((item) => item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '');
+      const totalPurchased = purchasedItems.reduce((sum, item) => sum + Number(item.purchased_price || 0), 0);
       const totalListed = exportItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
       const totalSold = exportItems.reduce((sum, item) => sum + Number(item.sold_price || 0), 0);
       const totalProfit = exportItems.reduce((sum, item) => {
@@ -4149,6 +4151,7 @@
             </div>
             <h1 style="margin:0 0 8px;">Profit Report</h1>
             <div style="margin-bottom:6px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} | ${exportItems.length} pair(s) in current view</div>
+            <div style="margin-bottom:4px;color:#555;">Purchased total: ${escapeHtml(currency(totalPurchased))} across ${purchasedItems.length} shoe(s)</div>
             <div style="margin-bottom:4px;color:#555;">Listed total: ${escapeHtml(currency(totalListed))}</div>
             <div style="margin-bottom:4px;color:#555;">Sold total: ${escapeHtml(currency(totalSold))}</div>
             <div style="margin-bottom:16px;color:#555;">Tracked profit total: ${escapeHtml(currency(totalProfit))}</div>
