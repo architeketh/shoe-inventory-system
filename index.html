@@ -479,6 +479,13 @@
       border: 1px solid rgba(191, 90, 42, 0.16);
     }
 
+    .button.sync-ok {
+      background: linear-gradient(135deg, #4da86f 0%, #2f7f51 100%);
+      color: #fff;
+      border: 1px solid rgba(47, 127, 81, 0.2);
+      box-shadow: 0 14px 24px rgba(47, 127, 81, 0.18);
+    }
+
     .button.ghost {
       background: rgba(255, 255, 255, 0.82);
       color: var(--sage);
@@ -1993,6 +2000,8 @@
       elements.inventoryStatusUpdated.textContent = `Updated: ${formatStatusTimestamp(state.lastInventorySyncAt)}`;
       elements.inventoryStatusSync.textContent = `Sync status: ${syncMessage}`;
       elements.footerSyncPill.textContent = `Sync status: ${syncMessage}`;
+      const syncOk = /^Synced\b/i.test(String(syncMessage || ''));
+      elements.refreshButton.classList.toggle('sync-ok', syncOk);
     }
 
     function showFormStatus(type, message) {
