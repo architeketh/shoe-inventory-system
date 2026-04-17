@@ -2416,6 +2416,10 @@
       return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
     }
 
+    function getSiblingGroupKey(item) {
+      return normalizeSiblingKey(item?.brand_style_name || '');
+    }
+
     function stripSizeFromText(text, size) {
       let normalized = normalizeSiblingKey(text);
       const sizeToken = normalizeSiblingKey(size);
@@ -2445,14 +2449,17 @@
     function getSiblingPricingInsight(item, result = null) {
       if (!item) return null;
       const styleKey = getSiblingStyleKey(item);
+      const groupKey = getSiblingGroupKey(item);
       if (!styleKey) return null;
       const siblings = state.inventory.filter((entry) => {
         if (!entry || entry.id === item.id) return false;
         const entryStyleKey = getSiblingStyleKey(entry);
+        const entryGroupKey = getSiblingGroupKey(entry);
         const categoryMatches = String(entry.category_2 || '') === String(item.category_2 || '');
         const pricingConditionMatches = !item.pricing_condition || !entry.pricing_condition || String(entry.pricing_condition || '') === String(item.pricing_condition || '');
+        const sameGroup = groupKey && entryGroupKey ? entryGroupKey === groupKey : siblingTextMatches(entryStyleKey, styleKey);
         return normalizeSiblingKey(entry.brand) === normalizeSiblingKey(item.brand)
-          && siblingTextMatches(entryStyleKey, styleKey)
+          && sameGroup
           && categoryMatches
           && pricingConditionMatches
           && Boolean(entry.has_box) === Boolean(item.has_box);
