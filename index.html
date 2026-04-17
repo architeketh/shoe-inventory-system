@@ -563,8 +563,25 @@
     }
 
     .inventory-card {
+      position: relative;
       padding: 14px 16px;
       overflow-x: auto;
+    }
+
+    .review-status-dot {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      border: 2px solid rgba(255, 255, 255, 0.92);
+      box-shadow: 0 0 0 1px rgba(140, 119, 102, 0.18);
+      background: #d7483e;
+    }
+
+    .review-status-dot.reviewed {
+      background: #2f8f58;
     }
 
     .inventory-card.gender-womens {
@@ -1321,6 +1338,14 @@
           </div>
 
           <div class="field">
+            <label for="reviewed">Reviewed</label>
+            <select id="reviewed" name="reviewed">
+              <option value="false">No</option>
+              <option value="true">Yes</option>
+            </select>
+          </div>
+
+          <div class="field">
             <label for="notes">Notes</label>
             <input id="notes" name="notes" type="text" placeholder="Condition, flaws, release year, SKU...">
           </div>
@@ -1539,6 +1564,13 @@
             </select>
           </div>
           <div class="field">
+            <label for="edit-reviewed">Reviewed</label>
+            <select id="edit-reviewed">
+              <option value="false">No</option>
+              <option value="true">Yes</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="edit-notes">Notes</label>
             <input id="edit-notes" type="text">
           </div>
@@ -1686,6 +1718,7 @@
       price: document.getElementById('price'),
       notes: document.getElementById('notes'),
       sold: document.getElementById('sold'),
+      reviewed: document.getElementById('reviewed'),
       condition: document.getElementById('condition'),
       originalTagsAttached: document.getElementById('original-tags-attached'),
       estimatedRetailPrice: document.getElementById('estimated-retail-price'),
@@ -1764,6 +1797,7 @@
       editPrice: document.getElementById('edit-price'),
       editNotes: document.getElementById('edit-notes'),
       editSold: document.getElementById('edit-sold'),
+      editReviewed: document.getElementById('edit-reviewed'),
       editCondition: document.getElementById('edit-condition'),
       editOriginalTagsAttached: document.getElementById('edit-original-tags-attached'),
       editEstimatedRetailPrice: document.getElementById('edit-estimated-retail-price'),
@@ -2458,6 +2492,7 @@
         price: Number(elements.price.value || 0),
         notes: elements.notes.value.trim(),
         sold: elements.sold.value === 'true',
+        reviewed: elements.reviewed.value === 'true',
         condition: elements.condition.value.trim(),
         originalTagsAttached: elements.originalTagsAttached.value.trim(),
         estimatedRetailPrice: Number(elements.estimatedRetailPrice.value || 0),
@@ -2599,6 +2634,7 @@
           price: draft.price,
           notes: draft.notes || null,
           sold: draft.sold,
+          reviewed: draft.reviewed,
           condition: draft.condition || null,
           original_tags_attached: draft.originalTagsAttached || null,
           estimated_retail_price: draft.estimatedRetailPrice || null,
@@ -2762,6 +2798,7 @@
         const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : item.gender === 'kids' ? 'gender-kids' : '';
         const soldPill = item.sold ? `<span class="inventory-tag sold">Sold</span>` : '';
         const priceAiClass = item.price_ai_used ? 'mini-button price-ai-used' : 'mini-button';
+        const reviewedDotClass = item.reviewed ? 'review-status-dot reviewed' : 'review-status-dot';
 
           const photoStrip = photos.length
             ? `<div class="photo-preview-wrap"><button class="photo-thumb primary" type="button" data-photo-item="${item.id}" data-photo-index="0"><img src="${photos[0]}" alt="Main saved photo"></button><div class="photo-count">${photos.length} ${photos.length === 1 ? 'photo' : 'photos'}</div></div>`
@@ -2769,6 +2806,7 @@
 
         return `
             <article class="inventory-card ${cardClass}">
+              <span class="${reviewedDotClass}" aria-label="${item.reviewed ? 'Reviewed' : 'Not reviewed'}" title="${item.reviewed ? 'Reviewed' : 'Not reviewed'}"></span>
               <div class="inventory-line">
                 <div class="inventory-cell">
                   <div class="inventory-actions">
@@ -2867,7 +2905,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,category_2,gender,price,notes,sold,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,colors,shoe_style,brand_style_name,materials,made_in,serial_number,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,brand,description,size,category_2,gender,price,notes,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,colors,shoe_style,brand_style_name,materials,made_in,serial_number,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -3122,6 +3160,7 @@
       elements.editPrice.value = item.price ?? '';
       elements.editNotes.value = item.notes || '';
       elements.editSold.value = item.sold ? 'true' : 'false';
+      elements.editReviewed.value = item.reviewed ? 'true' : 'false';
       elements.editCondition.value = item.condition || '';
       elements.editOriginalTagsAttached.value = item.original_tags_attached || '';
       elements.editEstimatedRetailPrice.value = item.estimated_retail_price ?? '';
@@ -3180,6 +3219,7 @@
           price: editedPrice,
           notes: elements.editNotes.value.trim() || null,
           sold: elements.editSold.value === 'true',
+          reviewed: elements.editReviewed.value === 'true',
           condition: elements.editCondition.value.trim() || null,
           original_tags_attached: elements.editOriginalTagsAttached.value.trim() || null,
           estimated_retail_price: Number(elements.editEstimatedRetailPrice.value || 0) || null,
@@ -3236,6 +3276,7 @@
         price: item.price,
         notes: item.notes || null,
         sold: Boolean(item.sold),
+        reviewed: Boolean(item.reviewed),
         condition: item.condition || null,
         original_tags_attached: item.original_tags_attached || null,
         estimated_retail_price: item.estimated_retail_price || null,
