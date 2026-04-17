@@ -802,7 +802,7 @@
 
     .bottom-sticky-top {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr) auto auto;
       gap: 10px;
       align-items: center;
     }
@@ -1510,7 +1510,6 @@
           <button class="button ghost" type="button" id="depop-button">Depop</button>
           <button class="button ghost" type="button" id="profit-button">Net Income</button>
         </div>
-        <button class="button secondary" type="button" id="refresh-button">Sync Data</button>
       </div>
       <div class="section-head">
         <div>
@@ -1531,10 +1530,11 @@
     </section>
   </div>
 
-  <div class="bottom-sticky-card">
+<div class="bottom-sticky-card">
     <div class="bottom-sticky-top">
       <div id="inventory-summary" class="inventory-summary">0 pairs total · $0.00</div>
       <div id="footer-sync-pill" class="bottom-sync-pill">Sync status: Waiting for first sync...</div>
+      <button class="button secondary" type="button" id="refresh-button">Sync Data</button>
     </div>
     <div class="report-note">Review Tab, CSV, Whatnot, Depop, and Net Income exports follow the current filter/search view. Review Tab opens listing cards for quick scanning and PDF creation. Net Income opens a report tab for the full current view with PDF and CSV options.</div>
   </div>
