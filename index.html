@@ -2416,8 +2416,30 @@
       return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
     }
 
+    function stripSizeFromText(text, size) {
+      let normalized = normalizeSiblingKey(text);
+      const sizeToken = normalizeSiblingKey(size);
+      if (sizeToken) {
+        const pattern = new RegExp(`\\b${sizeToken.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+        normalized = normalized.replace(pattern, ' ').replace(/\s+/g, ' ').trim();
+      }
+      normalized = normalized
+        .replace(/\bsize\b/g, ' ')
+        .replace(/\b(us|wmns|womens|women|mens|men|kids|kid|gs|ps|td)\b/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return normalized;
+    }
+
     function getSiblingStyleKey(item) {
-      return normalizeSiblingKey(item?.brand_style_name || item?.description || '');
+      const primary = stripSizeFromText(item?.brand_style_name || '', item?.size);
+      if (primary) return primary;
+      return stripSizeFromText(item?.description || '', item?.size);
+    }
+
+    function siblingTextMatches(a, b) {
+      if (!a || !b) return false;
+      return a === b || a.includes(b) || b.includes(a);
     }
 
     function getSiblingPricingInsight(item, result = null) {
@@ -2426,10 +2448,13 @@
       if (!styleKey) return null;
       const siblings = state.inventory.filter((entry) => {
         if (!entry || entry.id === item.id) return false;
+        const entryStyleKey = getSiblingStyleKey(entry);
+        const categoryMatches = String(entry.category_2 || '') === String(item.category_2 || '');
+        const pricingConditionMatches = !item.pricing_condition || !entry.pricing_condition || String(entry.pricing_condition || '') === String(item.pricing_condition || '');
         return normalizeSiblingKey(entry.brand) === normalizeSiblingKey(item.brand)
-          && getSiblingStyleKey(entry) === styleKey
-          && String(entry.category_2 || '') === String(item.category_2 || '')
-          && String(entry.pricing_condition || '') === String(item.pricing_condition || '')
+          && siblingTextMatches(entryStyleKey, styleKey)
+          && categoryMatches
+          && pricingConditionMatches
           && Boolean(entry.has_box) === Boolean(item.has_box);
       });
       const pricedSiblings = siblings.filter((entry) => Number(entry.price || 0) > 0);
@@ -3272,16 +3297,22 @@
     elements.priceAiMatchSiblingButton.addEventListener('click', () => {
       const item = state.inventory.find((entry) => entry.id === state.pricingItemId);
       const siblingInsight = getSiblingPricingInsight(item, state.lastPriceRecommendation);
-      const itemId = state.pricingItemId;
       const targetPrice = Number(siblingInsight?.targetPrice || 0);
-      if (!itemId || !Number.isFinite(targetPrice) || targetPrice <= 0) return;
-      closePriceAiModal();
-      startEdit(itemId);
-      state.editPriceAiUsed = false;
-      state.editAppliedPriceAiValue = null;
-      elements.editPrice.value = targetPrice.toFixed(2);
-      elements.editStatus.className = 'form-status success';
-      elements.editStatus.textContent = `Sibling pricing matched at ${currency(targetPrice)}. Save changes to keep it.`;
+      if (!item || !Number.isFinite(targetPrice) || targetPrice <= 0) {
+        elements.priceAiStatus.className = 'form-status error';
+        elements.priceAiStatus.textContent = 'No matching sibling pricing was found for this shoe yet.';
+        return;
+      }
+      const nextResult = {
+        ...(state.lastPriceRecommendation || {}),
+        recommended_price: targetPrice,
+        quick_sale_price: Number(state.lastPriceRecommendation?.quick_sale_price || targetPrice),
+        summary: `Matched sibling pricing from ${siblingInsight.pricedCount} sibling pair(s). Save or apply if this looks right.`
+      };
+      state.lastPriceRecommendation = nextResult;
+      renderPriceAiResult(nextResult, { cached: true });
+      elements.priceAiStatus.className = 'form-status success';
+      elements.priceAiStatus.textContent = `Sibling pricing matched at ${currency(targetPrice)} from ${siblingInsight.pricedCount} sibling pair(s). Use recommended price to apply it.`;
     });
     elements.priceAiRefreshButton.addEventListener('click', async () => {
       const item = state.inventory.find((entry) => entry.id === state.pricingItemId);
