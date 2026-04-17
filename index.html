@@ -1687,17 +1687,15 @@
       <div class="price-ai-meta">
         <span id="price-ai-range">Comp range: --</span>
         <span id="price-ai-sources">Sources: --</span>
-        <span id="price-ai-siblings">Sibling pricing: --</span>
         <span id="price-ai-summary">Summary: --</span>
       </div>
       <div class="form-status" style="margin-top:12px;">
-        AI pricing uses brand, style/description, size, category, box status, pricing condition, photos, and any saved sibling pairs. Results can change when comps, photos, or item details change.
+        AI pricing uses brand, style/description, size, category, box status, pricing condition, and photos. Results can change when comps, photos, or item details change.
       </div>
       <div class="button-row">
         <button class="button secondary" type="button" id="price-ai-apply-button">Use recommended price</button>
         <button class="button secondary" type="button" id="price-ai-retail-apply-button">Use retail pricing</button>
         <button class="button secondary" type="button" id="price-ai-apply-both-button">Use both prices</button>
-        <button class="button secondary" type="button" id="price-ai-match-sibling-button">Match sibling pricing</button>
         <button class="button ghost" type="button" id="price-ai-refresh-button">Refresh pricing</button>
         <button class="button ghost" type="button" id="price-ai-cancel-button">Close</button>
       </div>
@@ -1832,12 +1830,10 @@
       priceAiRetail: document.getElementById('price-ai-retail'),
       priceAiRange: document.getElementById('price-ai-range'),
       priceAiSources: document.getElementById('price-ai-sources'),
-      priceAiSiblings: document.getElementById('price-ai-siblings'),
       priceAiSummary: document.getElementById('price-ai-summary'),
       priceAiApplyButton: document.getElementById('price-ai-apply-button'),
       priceAiRetailApplyButton: document.getElementById('price-ai-retail-apply-button'),
       priceAiApplyBothButton: document.getElementById('price-ai-apply-both-button'),
-      priceAiMatchSiblingButton: document.getElementById('price-ai-match-sibling-button'),
       priceAiRefreshButton: document.getElementById('price-ai-refresh-button'),
       priceAiCancelButton: document.getElementById('price-ai-cancel-button'),
       singleCardModal: document.getElementById('single-card-modal'),
@@ -2400,7 +2396,6 @@
       elements.priceAiApplyButton.disabled = true;
       elements.priceAiRetailApplyButton.disabled = true;
       elements.priceAiApplyBothButton.disabled = true;
-      elements.priceAiMatchSiblingButton.disabled = true;
       elements.priceAiRefreshButton.disabled = true;
       elements.priceAiQuick.textContent = '--';
       elements.priceAiRecommended.textContent = '--';
@@ -2408,86 +2403,7 @@
       elements.priceAiRetail.textContent = '--';
       elements.priceAiRange.textContent = 'Comp range: --';
       elements.priceAiSources.textContent = 'Sources: --';
-      elements.priceAiSiblings.textContent = 'Sibling pricing: --';
       elements.priceAiSummary.textContent = 'Summary: --';
-    }
-
-    function normalizeSiblingKey(value) {
-      return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
-    }
-
-    function getSiblingGroupKey(item) {
-      return normalizeSiblingKey(item?.brand_style_name || '');
-    }
-
-    function stripSizeFromText(text, size) {
-      let normalized = normalizeSiblingKey(text);
-      const sizeToken = normalizeSiblingKey(size);
-      if (sizeToken) {
-        const pattern = new RegExp(`\\b${sizeToken.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
-        normalized = normalized.replace(pattern, ' ').replace(/\s+/g, ' ').trim();
-      }
-      normalized = normalized
-        .replace(/\bsize\b/g, ' ')
-        .replace(/\b(us|wmns|womens|women|mens|men|kids|kid|gs|ps|td)\b/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      return normalized;
-    }
-
-    function getSiblingStyleKey(item) {
-      const primary = stripSizeFromText(item?.brand_style_name || '', item?.size);
-      if (primary) return primary;
-      return stripSizeFromText(item?.description || '', item?.size);
-    }
-
-    function siblingTextMatches(a, b) {
-      if (!a || !b) return false;
-      return a === b || a.includes(b) || b.includes(a);
-    }
-
-    function getSiblingPricingInsight(item, result = null) {
-      if (!item) return null;
-      const styleKey = getSiblingStyleKey(item);
-      const groupKey = getSiblingGroupKey(item);
-      if (!styleKey) return null;
-      const siblings = state.inventory.filter((entry) => {
-        if (!entry || entry.id === item.id) return false;
-        const entryStyleKey = getSiblingStyleKey(entry);
-        const entryGroupKey = getSiblingGroupKey(entry);
-        const categoryMatches = String(entry.category_2 || '') === String(item.category_2 || '');
-        const pricingConditionMatches = !item.pricing_condition || !entry.pricing_condition || String(entry.pricing_condition || '') === String(item.pricing_condition || '');
-        const sameGroup = groupKey && entryGroupKey ? entryGroupKey === groupKey : siblingTextMatches(entryStyleKey, styleKey);
-        return normalizeSiblingKey(entry.brand) === normalizeSiblingKey(item.brand)
-          && sameGroup
-          && categoryMatches
-          && pricingConditionMatches
-          && Boolean(entry.has_box) === Boolean(item.has_box);
-      });
-      const pricedSiblings = siblings.filter((entry) => Number(entry.price || 0) > 0);
-      if (!pricedSiblings.length) {
-        return {
-          count: siblings.length,
-          pricedCount: 0,
-          targetPrice: null,
-          warning: '',
-          label: siblings.length ? `${siblings.length} sibling pair(s), none priced yet` : 'No sibling pairs found'
-        };
-      }
-      const sortedPrices = pricedSiblings.map((entry) => Number(entry.price || 0)).sort((a, b) => a - b);
-      const medianIndex = Math.floor(sortedPrices.length / 2);
-      const targetPrice = sortedPrices.length % 2
-        ? sortedPrices[medianIndex]
-        : (sortedPrices[medianIndex - 1] + sortedPrices[medianIndex]) / 2;
-      const recommended = Number(result?.recommended_price || item.price || 0);
-      const mismatch = recommended > 0 && Math.abs(recommended - targetPrice) > Math.max(10, targetPrice * 0.2);
-      return {
-        count: siblings.length,
-        pricedCount: pricedSiblings.length,
-        targetPrice,
-        warning: mismatch ? `Sibling mismatch: saved sibling pricing centers around ${currency(targetPrice)}.` : '',
-        label: `${pricedSiblings.length} priced sibling pair(s) | target ${currency(targetPrice)}`
-      };
     }
 
     function getPriceAiSignature(item) {
@@ -2546,16 +2462,13 @@
       const hasRetail = Number.isFinite(Number(result?.retail_price)) && Number(result?.retail_price) > 0;
       const fromCache = Boolean(options.cached);
       const locked = Boolean(options.locked);
-      const item = state.inventory.find((entry) => entry.id === state.pricingItemId);
-      const siblingInsight = getSiblingPricingInsight(item, result);
-      const note = [buildPriceAiConfidenceNote(result), siblingInsight?.warning || ''].filter(Boolean).join(' ');
+      const note = buildPriceAiConfidenceNote(result);
       state.lastPriceRecommendation = result;
       elements.priceAiStatus.className = 'form-status success';
       elements.priceAiStatus.textContent = `${locked ? 'Pricing is locked. Showing saved pricing values only.' : fromCache ? 'Showing saved market recommendation. Refresh pricing if photos, pricing condition, or details changed.' : 'Market recommendation ready. Review it, then optionally apply the recommended or retail price.'}${note && !locked ? ` ${note}` : ''}`;
       elements.priceAiApplyButton.disabled = !hasRecommended;
       elements.priceAiRetailApplyButton.disabled = !hasRetail;
       elements.priceAiApplyBothButton.disabled = !(hasRecommended && hasRetail);
-      elements.priceAiMatchSiblingButton.disabled = locked || !siblingInsight || !Number.isFinite(Number(siblingInsight.targetPrice || 0));
       elements.priceAiRefreshButton.disabled = locked ? true : false;
       elements.priceAiQuick.textContent = currency(result?.quick_sale_price || 0);
       elements.priceAiRecommended.textContent = currency(result?.recommended_price || 0);
@@ -2563,7 +2476,6 @@
       elements.priceAiRetail.textContent = hasRetail ? currency(result.retail_price) : '--';
       elements.priceAiRange.textContent = `Comp range: ${currency(result?.comp_range_low || 0)} - ${currency(result?.comp_range_high || 0)}`;
       elements.priceAiSources.textContent = `Sources: ${Array.isArray(result?.sources) && result.sources.length ? result.sources.join(', ') : 'Not provided'}`;
-      elements.priceAiSiblings.textContent = `Sibling pricing: ${siblingInsight ? siblingInsight.label : 'No sibling pairs found'}`;
       elements.priceAiSummary.textContent = `Summary: ${result?.summary || 'No summary provided.'}`;
     }
 
@@ -3300,26 +3212,6 @@
       elements.editEstimatedRetailPrice.value = retail.toFixed(2);
       elements.editStatus.className = 'form-status success';
       elements.editStatus.textContent = 'Recommended and retail pricing applied together. Save changes to keep them.';
-    });
-    elements.priceAiMatchSiblingButton.addEventListener('click', () => {
-      const item = state.inventory.find((entry) => entry.id === state.pricingItemId);
-      const siblingInsight = getSiblingPricingInsight(item, state.lastPriceRecommendation);
-      const targetPrice = Number(siblingInsight?.targetPrice || 0);
-      if (!item || !Number.isFinite(targetPrice) || targetPrice <= 0) {
-        elements.priceAiStatus.className = 'form-status error';
-        elements.priceAiStatus.textContent = 'No matching sibling pricing was found for this shoe yet.';
-        return;
-      }
-      const nextResult = {
-        ...(state.lastPriceRecommendation || {}),
-        recommended_price: targetPrice,
-        quick_sale_price: Number(state.lastPriceRecommendation?.quick_sale_price || targetPrice),
-        summary: `Matched sibling pricing from ${siblingInsight.pricedCount} sibling pair(s). Save or apply if this looks right.`
-      };
-      state.lastPriceRecommendation = nextResult;
-      renderPriceAiResult(nextResult, { cached: true });
-      elements.priceAiStatus.className = 'form-status success';
-      elements.priceAiStatus.textContent = `Sibling pricing matched at ${currency(targetPrice)} from ${siblingInsight.pricedCount} sibling pair(s). Use recommended price to apply it.`;
     });
     elements.priceAiRefreshButton.addEventListener('click', async () => {
       const item = state.inventory.find((entry) => entry.id === state.pricingItemId);
