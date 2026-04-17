@@ -1558,6 +1558,7 @@
           <button class="button ghost hidden" type="button" id="apply-crop-button">Apply Crop</button>
           <button class="button ghost hidden" type="button" id="replace-original-button">Replace Original</button>
           <button class="button secondary" type="button" id="white-bg-button">White BG</button>
+          <button class="button secondary" type="button" id="keep-box-bg-button">Keep Box BG</button>
         </div>
       </div>
       <button class="viewer-arrow prev" type="button" id="modal-prev" aria-label="Previous photo">&#8249;</button>
@@ -1890,6 +1891,7 @@
       cancelCropButton: document.getElementById('cancel-crop-button'),
       applyCropButton: document.getElementById('apply-crop-button'),
       whiteBgButton: document.getElementById('white-bg-button'),
+      keepBoxBgButton: document.getElementById('keep-box-bg-button'),
       replaceOriginalButton: document.getElementById('replace-original-button'),
       priceAiModal: document.getElementById('price-ai-modal'),
       priceAiClose: document.getElementById('price-ai-close'),
@@ -2111,6 +2113,8 @@
       elements.viewerStatus.textContent = 'Original';
       elements.whiteBgButton.disabled = false;
       elements.whiteBgButton.textContent = 'White BG';
+      elements.keepBoxBgButton.disabled = false;
+      elements.keepBoxBgButton.textContent = 'Keep Box BG';
       resetCropState();
       renderGalleryImage();
       elements.photoModal.classList.remove('hidden');
@@ -2185,7 +2189,7 @@
       });
     }
 
-    async function flattenTransparentBlobToWhite(blob, sourceBlob = null) {
+    async function flattenTransparentBlobToWhite(blob, sourceBlob = null, options = {}) {
       const objectUrl = URL.createObjectURL(blob);
       const sourceObjectUrl = sourceBlob ? URL.createObjectURL(sourceBlob) : null;
       try {
@@ -2218,7 +2222,8 @@
           }
 
           if (bottomEdge >= 0) {
-            const preserveStartY = Math.max(0, Math.min(canvas.height - 1, bottomEdge - Math.round(canvas.height * 0.015)));
+            const preserveStartOffset = options.keepBox ? 0 : Math.round(canvas.height * 0.015);
+            const preserveStartY = Math.max(0, Math.min(canvas.height - 1, bottomEdge - preserveStartOffset));
             const sourceCanvas = document.createElement('canvas');
             sourceCanvas.width = canvas.width;
             sourceCanvas.height = canvas.height;
@@ -2235,7 +2240,9 @@
                 const b = sourceImageData.data[index + 2];
                 const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
                 const darkestChannel = Math.min(r, g, b);
-                const shouldPreserve = luminance < 242 || darkestChannel < 215;
+                const shouldPreserve = options.keepBox
+                  ? y >= preserveStartY || luminance < 248 || darkestChannel < 235
+                  : luminance < 242 || darkestChannel < 215;
                 if (!shouldPreserve) continue;
                 finalImageData.data[index] = r;
                 finalImageData.data[index + 1] = g;
@@ -2258,6 +2265,68 @@
       } finally {
         URL.revokeObjectURL(objectUrl);
         if (sourceObjectUrl) URL.revokeObjectURL(sourceObjectUrl);
+      }
+    }
+
+    async function processCurrentPhotoWhiteBg(mode = 'standard') {
+      if (!SUPABASE_READY) {
+        alert('Supabase must be configured before processing images.');
+        return;
+      }
+      if (state.isWhiteBgRunning || !state.galleryUrls.length || !state.galleryItemId) return;
+
+      const item = state.inventory.find((entry) => entry.id === state.galleryItemId);
+      if (!item) return;
+
+      const keepBox = mode === 'keep-box';
+      const idleLabel = keepBox ? 'Keep Box BG' : 'White BG';
+      const processingLabel = keepBox ? 'Processing box-safe white background...' : 'Processing white background...';
+      const successTitle = keepBox ? 'Keep Box background created' : 'White background created';
+      const successBody = keepBox
+        ? 'A processed copy was added with stronger box preservation. If it looks good, tap Replace Original.'
+        : 'A processed copy was added. If it looks good, tap Replace Original.';
+      const suffix = keepBox ? 'keepbox' : 'whitebg';
+
+      state.isWhiteBgRunning = true;
+      elements.whiteBgButton.disabled = true;
+      elements.keepBoxBgButton.disabled = true;
+      elements.whiteBgButton.textContent = keepBox ? 'White BG' : 'Processing...';
+      elements.keepBoxBgButton.textContent = keepBox ? 'Processing...' : 'Keep Box BG';
+      elements.viewerStatus.textContent = processingLabel;
+
+      try {
+        const sourceUrl = state.galleryUrls[state.galleryIndex];
+        const response = await fetch(sourceUrl);
+        if (!response.ok) throw new Error('Could not fetch the current image.');
+        const sourceBlob = await response.blob();
+        const resizedBlob = await resizeImageBlob(sourceBlob);
+        const { removeBackground } = await getBackgroundRemovalModule();
+        const transparentBlob = await removeBackground(resizedBlob);
+        const whiteBlob = await flattenTransparentBlobToWhite(transparentBlob, resizedBlob, { keepBox });
+        const processed = await uploadProcessedViewerPhoto(whiteBlob, item, suffix);
+        await loadInventory();
+        const refreshed = state.inventory.find((entry) => entry.id === item.id);
+        if (refreshed && Array.isArray(refreshed.photo_urls)) {
+          state.pendingWhiteBgReplacement = {
+            itemId: refreshed.id,
+            originalIndex: state.galleryIndex,
+            processedUrl: processed.url,
+            processedPath: processed.path,
+            sourceAction: keepBox ? 'keep-box-bg' : 'white-bg'
+          };
+          openPhotoModal(refreshed.photo_urls, refreshed.photo_urls.length - 1, refreshed.id);
+          elements.viewerStatus.textContent = 'Review processed image';
+        }
+        showBanner('success', successTitle, successBody);
+      } catch (error) {
+        elements.viewerStatus.textContent = `${idleLabel} failed`;
+        showBanner('error', `${idleLabel} failed`, error?.message || String(error));
+      } finally {
+        state.isWhiteBgRunning = false;
+        elements.whiteBgButton.disabled = false;
+        elements.keepBoxBgButton.disabled = false;
+        elements.whiteBgButton.textContent = 'White BG';
+        elements.keepBoxBgButton.textContent = 'Keep Box BG';
       }
     }
 
@@ -2396,52 +2465,7 @@
     }
 
     async function makeCurrentPhotoWhiteBg() {
-      if (!SUPABASE_READY) {
-        alert('Supabase must be configured before processing images.');
-        return;
-      }
-      if (state.isWhiteBgRunning || !state.galleryUrls.length || !state.galleryItemId) return;
-
-        const item = state.inventory.find((entry) => entry.id === state.galleryItemId);
-        if (!item) return;
-
-      state.isWhiteBgRunning = true;
-      elements.whiteBgButton.disabled = true;
-      elements.whiteBgButton.textContent = 'Processing...';
-      elements.viewerStatus.textContent = 'Processing white background...';
-
-      try {
-        const sourceUrl = state.galleryUrls[state.galleryIndex];
-        const response = await fetch(sourceUrl);
-        if (!response.ok) throw new Error('Could not fetch the current image.');
-        const sourceBlob = await response.blob();
-        const resizedBlob = await resizeImageBlob(sourceBlob);
-        const { removeBackground } = await getBackgroundRemovalModule();
-        const transparentBlob = await removeBackground(resizedBlob);
-        const whiteBlob = await flattenTransparentBlobToWhite(transparentBlob, resizedBlob);
-        const processed = await uploadProcessedViewerPhoto(whiteBlob, item, 'whitebg');
-        await loadInventory();
-        const refreshed = state.inventory.find((entry) => entry.id === item.id);
-        if (refreshed && Array.isArray(refreshed.photo_urls)) {
-          state.pendingWhiteBgReplacement = {
-            itemId: refreshed.id,
-            originalIndex: state.galleryIndex,
-            processedUrl: processed.url,
-            processedPath: processed.path,
-            sourceAction: 'white-bg'
-          };
-          openPhotoModal(refreshed.photo_urls, refreshed.photo_urls.length - 1, refreshed.id);
-          elements.viewerStatus.textContent = 'Review processed image';
-        }
-        showBanner('success', 'White background created', 'A processed copy was added. If it looks good, tap Replace Original.');
-      } catch (error) {
-        elements.viewerStatus.textContent = 'White BG failed';
-        showBanner('error', 'White background failed', error?.message || String(error));
-      } finally {
-        state.isWhiteBgRunning = false;
-        elements.whiteBgButton.disabled = false;
-        elements.whiteBgButton.textContent = 'White BG';
-      }
+      await processCurrentPhotoWhiteBg('standard');
     }
 
     async function applyCropToCurrentPhoto() {
@@ -3280,6 +3304,7 @@
       }
     });
     elements.whiteBgButton.addEventListener('click', makeCurrentPhotoWhiteBg);
+    elements.keepBoxBgButton.addEventListener('click', () => processCurrentPhotoWhiteBg('keep-box'));
     elements.replaceOriginalButton.addEventListener('click', async () => {
       try {
         elements.replaceOriginalButton.disabled = true;
