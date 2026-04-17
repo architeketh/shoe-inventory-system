@@ -782,6 +782,45 @@
       letter-spacing: -0.02em;
     }
 
+    .bottom-sticky-card {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      width: min(calc(100% - 24px), 1180px);
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(255, 252, 247, 0.96);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 18px 48px rgba(20, 12, 6, 0.16);
+      z-index: 40;
+    }
+
+    .bottom-sticky-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .bottom-sync-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--accent-deep);
+      font: 700 0.78rem/1.2 var(--mono);
+      text-align: center;
+      white-space: nowrap;
+    }
+
     .modal {
       position: fixed;
       inset: 0;
@@ -1160,6 +1199,23 @@
       .price-ai-grid {
         grid-template-columns: 1fr;
       }
+
+      .bottom-sticky-card {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        transform: none;
+        width: auto;
+        padding: 12px;
+      }
+
+      .bottom-sticky-top {
+        grid-template-columns: 1fr;
+      }
+
+      .bottom-sync-pill {
+        white-space: normal;
+      }
     }
   </style>
 </head>
@@ -1471,9 +1527,15 @@
         <div>Actions</div>
       </div>
       <div id="inventory-list" class="inventory-list"></div>
-      <div id="inventory-summary" class="inventory-summary">0 pairs total · $0.00</div>
-      <div class="report-note">Review Tab, CSV, Whatnot, Depop, and Net Income exports follow the current filter/search view. Review Tab opens listing cards for quick scanning and PDF creation. Net Income opens a report tab for the full current view with PDF and CSV options.</div>
     </section>
+  </div>
+
+  <div class="bottom-sticky-card">
+    <div class="bottom-sticky-top">
+      <div id="inventory-summary" class="inventory-summary">0 pairs total · $0.00</div>
+      <div id="footer-sync-pill" class="bottom-sync-pill">Sync status: Waiting for first sync...</div>
+    </div>
+    <div class="report-note">Review Tab, CSV, Whatnot, Depop, and Net Income exports follow the current filter/search view. Review Tab opens listing cards for quick scanning and PDF creation. Net Income opens a report tab for the full current view with PDF and CSV options.</div>
   </div>
 
   <div class="modal hidden" id="photo-modal" aria-hidden="true">
@@ -1795,6 +1857,7 @@
       inventoryStatusVersion: document.getElementById('inventory-status-version'),
       inventoryStatusUpdated: document.getElementById('inventory-status-updated'),
       inventoryStatusSync: document.getElementById('inventory-status-sync'),
+      footerSyncPill: document.getElementById('footer-sync-pill'),
       sortSelect: document.getElementById('sort-select'),
       searchInput: document.getElementById('search-input'),
       searchClearButton: document.getElementById('search-clear-button'),
@@ -1928,6 +1991,7 @@
       elements.inventoryStatusVersion.textContent = `Mobile Build ${APP_CONFIG.appVersion}`;
       elements.inventoryStatusUpdated.textContent = `Updated: ${formatStatusTimestamp(state.lastInventorySyncAt)}`;
       elements.inventoryStatusSync.textContent = `Sync status: ${syncMessage}`;
+      elements.footerSyncPill.textContent = `Sync status: ${syncMessage}`;
     }
 
     function showFormStatus(type, message) {
