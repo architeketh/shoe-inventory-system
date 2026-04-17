@@ -704,6 +704,18 @@
       align-items: flex-start;
     }
 
+    .price-ai-meta-note {
+      font-size: 0.7rem;
+      line-height: 1.3;
+      color: var(--muted);
+      white-space: normal;
+    }
+
+    .price-ai-meta-note.locked {
+      color: var(--sage);
+      font-weight: 700;
+    }
+
     .inventory-actions.end {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1310,6 +1322,23 @@
           </div>
 
           <div class="field">
+            <label for="pricing-condition">Pricing Condition</label>
+            <select id="pricing-condition" name="pricing-condition">
+              <option value="">Select</option>
+              <option value="used">Used</option>
+              <option value="refurbished">Refurbished</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="pricing-locked">Pricing Locked</label>
+            <select id="pricing-locked" name="pricing-locked">
+              <option value="false">No</option>
+              <option value="true">Yes</option>
+            </select>
+          </div>
+
+          <div class="field">
             <label for="colors">Colors</label>
             <input id="colors" name="colors" type="text" placeholder="Pink, Black, White...">
           </div>
@@ -1541,6 +1570,21 @@
             <input id="edit-purchased-price" type="number" min="0" step="0.01">
           </div>
           <div class="field">
+            <label for="edit-pricing-condition">Pricing Condition</label>
+            <select id="edit-pricing-condition">
+              <option value="">Select</option>
+              <option value="used">Used</option>
+              <option value="refurbished">Refurbished</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="edit-pricing-locked">Pricing Locked</label>
+            <select id="edit-pricing-locked">
+              <option value="false">No</option>
+              <option value="true">Yes</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="edit-colors">Colors</label>
             <input id="edit-colors" type="text">
           </div>
@@ -1724,6 +1768,8 @@
       estimatedRetailPrice: document.getElementById('estimated-retail-price'),
       soldPrice: document.getElementById('sold-price'),
       purchasedPrice: document.getElementById('purchased-price'),
+      pricingCondition: document.getElementById('pricing-condition'),
+      pricingLocked: document.getElementById('pricing-locked'),
       colors: document.getElementById('colors'),
       shoeStyle: document.getElementById('shoe-style'),
       brandStyleName: document.getElementById('brand-style-name'),
@@ -1803,6 +1849,8 @@
       editEstimatedRetailPrice: document.getElementById('edit-estimated-retail-price'),
       editSoldPrice: document.getElementById('edit-sold-price'),
       editPurchasedPrice: document.getElementById('edit-purchased-price'),
+      editPricingCondition: document.getElementById('edit-pricing-condition'),
+      editPricingLocked: document.getElementById('edit-pricing-locked'),
       editColors: document.getElementById('edit-colors'),
       editShoeStyle: document.getElementById('edit-shoe-style'),
       editBrandStyleName: document.getElementById('edit-brand-style-name'),
@@ -1828,6 +1876,13 @@
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return value;
       return date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    function formatShortDate(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
 
     function escapeHtml(value) {
@@ -2352,6 +2407,7 @@
         category_2: item?.category_2 || '',
         gender: item?.gender || '',
         has_box: Boolean(item?.has_box),
+        pricing_condition: item?.pricing_condition || '',
         notes: item?.notes || '',
         sold: Boolean(item?.sold),
         price: Number(item?.price || 0),
@@ -2364,6 +2420,23 @@
       const entry = state.priceAiCache[item.id];
       if (!entry) return null;
       return entry.signature === getPriceAiSignature(item) ? entry : null;
+    }
+
+    function buildStoredPriceAiFallback(item) {
+      const recommended = Number(item?.price || 0);
+      const retail = Number(item?.estimated_retail_price || 0);
+      return {
+        quick_sale_price: recommended,
+        recommended_price: recommended,
+        high_ask_price: recommended,
+        retail_price: retail > 0 ? retail : 0,
+        comp_range_low: recommended,
+        comp_range_high: recommended,
+        sources: ['Saved values'],
+        summary: item?.pricing_locked
+          ? 'Pricing is locked. Unlock the item in Item Details before refreshing.'
+          : 'Saved values shown.'
+      };
     }
 
     function buildPriceAiConfidenceNote(result) {
@@ -2381,14 +2454,15 @@
       const hasRecommended = Number.isFinite(Number(result?.recommended_price));
       const hasRetail = Number.isFinite(Number(result?.retail_price)) && Number(result?.retail_price) > 0;
       const fromCache = Boolean(options.cached);
+      const locked = Boolean(options.locked);
       const note = buildPriceAiConfidenceNote(result);
       state.lastPriceRecommendation = result;
       elements.priceAiStatus.className = 'form-status success';
-      elements.priceAiStatus.textContent = `${fromCache ? 'Showing saved market recommendation. Refresh pricing if photos or details changed.' : 'Market recommendation ready. Review it, then optionally apply the recommended or retail price.'}${note ? ` ${note}` : ''}`;
+      elements.priceAiStatus.textContent = `${locked ? 'Pricing is locked. Showing saved pricing values only.' : fromCache ? 'Showing saved market recommendation. Refresh pricing if photos, pricing condition, or details changed.' : 'Market recommendation ready. Review it, then optionally apply the recommended or retail price.'}${note && !locked ? ` ${note}` : ''}`;
       elements.priceAiApplyButton.disabled = !hasRecommended;
       elements.priceAiRetailApplyButton.disabled = !hasRetail;
       elements.priceAiApplyBothButton.disabled = !(hasRecommended && hasRetail);
-      elements.priceAiRefreshButton.disabled = false;
+      elements.priceAiRefreshButton.disabled = locked ? true : false;
       elements.priceAiQuick.textContent = currency(result?.quick_sale_price || 0);
       elements.priceAiRecommended.textContent = currency(result?.recommended_price || 0);
       elements.priceAiHigh.textContent = currency(result?.high_ask_price || 0);
@@ -2498,6 +2572,8 @@
         estimatedRetailPrice: Number(elements.estimatedRetailPrice.value || 0),
         soldPrice: Number(elements.soldPrice.value || 0),
         purchasedPrice: Number(elements.purchasedPrice.value || 0),
+        pricingCondition: elements.pricingCondition.value.trim(),
+        pricingLocked: elements.pricingLocked.value === 'true',
         colors: elements.colors.value.trim(),
         shoeStyle: elements.shoeStyle.value.trim(),
         brandStyleName,
@@ -2640,6 +2716,8 @@
           estimated_retail_price: draft.estimatedRetailPrice || null,
           sold_price: draft.soldPrice || null,
           purchased_price: draft.purchasedPrice || null,
+          pricing_condition: draft.pricingCondition || null,
+          pricing_locked: draft.pricingLocked,
           colors: draft.colors || null,
           shoe_style: draft.shoeStyle || null,
           brand_style_name: draft.brandStyleName || null,
@@ -2799,6 +2877,8 @@
         const soldPill = item.sold ? `<span class="inventory-tag sold">Sold</span>` : '';
         const priceAiClass = item.price_ai_used ? 'mini-button price-ai-used' : 'mini-button';
         const reviewedDotClass = item.reviewed ? 'review-status-dot reviewed' : 'review-status-dot';
+        const pricedNote = item.price_ai_last_run_at ? `Priced ${escapeHtml(formatShortDate(item.price_ai_last_run_at))}` : 'Not priced';
+        const lockNote = item.pricing_locked ? '<div class="price-ai-meta-note locked">Locked</div>' : '';
 
           const photoStrip = photos.length
             ? `<div class="photo-preview-wrap"><button class="photo-thumb primary" type="button" data-photo-item="${item.id}" data-photo-index="0"><img src="${photos[0]}" alt="Main saved photo"></button><div class="photo-count">${photos.length} ${photos.length === 1 ? 'photo' : 'photos'}</div></div>`
@@ -2812,6 +2892,8 @@
                   <div class="inventory-actions">
                     <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div class="pill-row">${tags}</div></button>
                     <button class="${priceAiClass}" type="button" data-price-ai-id="${item.id}"><span class="desktop-label">Price AI</span><span class="mobile-label">AI</span></button>
+                    ${lockNote}
+                    <div class="price-ai-meta-note">${pricedNote}</div>
                   </div>
                 </div>
               <div class="inventory-cell">
@@ -2905,7 +2987,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,category_2,gender,price,notes,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,colors,shoe_style,brand_style_name,materials,made_in,serial_number,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,brand,description,size,category_2,gender,price,notes,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,pricing_condition,pricing_locked,price_ai_last_run_at,colors,shoe_style,brand_style_name,materials,made_in,serial_number,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -3166,6 +3248,8 @@
       elements.editEstimatedRetailPrice.value = item.estimated_retail_price ?? '';
       elements.editSoldPrice.value = item.sold_price ?? '';
       elements.editPurchasedPrice.value = item.purchased_price ?? '';
+      elements.editPricingCondition.value = item.pricing_condition || '';
+      elements.editPricingLocked.value = item.pricing_locked ? 'true' : 'false';
       elements.editColors.value = item.colors || '';
       elements.editShoeStyle.value = item.shoe_style || '';
       elements.editBrandStyleName.value = item.brand_style_name || item.description || '';
@@ -3225,6 +3309,8 @@
           estimated_retail_price: Number(elements.editEstimatedRetailPrice.value || 0) || null,
           sold_price: Number(elements.editSoldPrice.value || 0) || null,
           purchased_price: Number(elements.editPurchasedPrice.value || 0) || null,
+          pricing_condition: elements.editPricingCondition.value.trim() || null,
+          pricing_locked: elements.editPricingLocked.value === 'true',
           colors: elements.editColors.value.trim() || null,
           shoe_style: elements.editShoeStyle.value.trim() || null,
           brand_style_name: editBrandStyleName || null,
@@ -3282,6 +3368,9 @@
         estimated_retail_price: item.estimated_retail_price || null,
         sold_price: item.sold_price || null,
         purchased_price: item.purchased_price || null,
+        pricing_condition: item.pricing_condition || null,
+        pricing_locked: Boolean(item.pricing_locked),
+        price_ai_last_run_at: item.price_ai_last_run_at || null,
         colors: item.colors || null,
         shoe_style: item.shoe_style || null,
         brand_style_name: item.brand_style_name || item.description || null,
@@ -3312,6 +3401,11 @@
       }
       if (state.isPriceAiRunning) return;
 
+      if (item?.pricing_locked) {
+        renderPriceAiResult(buildStoredPriceAiFallback(item), { cached: true, locked: true });
+        return;
+      }
+
       const cachedEntry = !forceRefresh ? getCachedPriceAiEntry(item) : null;
       if (cachedEntry?.result) {
         renderPriceAiResult(cachedEntry.result, { cached: true });
@@ -3332,6 +3426,7 @@
             has_box: item.has_box,
             notes: item.notes,
             sold: item.sold,
+            pricing_condition: item.pricing_condition,
             price: item.price,
             photo_urls: Array.isArray(item.photo_urls) ? item.photo_urls : []
           }
@@ -3340,10 +3435,17 @@
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
         const result = data || {};
+        const pricedAt = new Date().toISOString();
         state.priceAiCache[item.id] = {
           signature: getPriceAiSignature(item),
-          result
+          result,
+          pricedAt
         };
+        await supabaseClient
+          .from(APP_CONFIG.inventoryTable)
+          .update({ price_ai_last_run_at: pricedAt })
+          .eq('id', item.id);
+        await loadInventory();
         renderPriceAiResult(result, { cached: false });
       } catch (error) {
         elements.priceAiStatus.className = 'form-status error';
