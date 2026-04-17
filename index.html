@@ -1612,6 +1612,8 @@
       <div class="button-row">
         <button class="button secondary" type="button" id="price-ai-apply-button">Use recommended price</button>
         <button class="button secondary" type="button" id="price-ai-retail-apply-button">Use retail pricing</button>
+        <button class="button secondary" type="button" id="price-ai-apply-both-button">Use both prices</button>
+        <button class="button ghost" type="button" id="price-ai-refresh-button">Refresh pricing</button>
         <button class="button ghost" type="button" id="price-ai-cancel-button">Close</button>
       </div>
     </div>
@@ -1651,10 +1653,10 @@
       isPriceAiRunning: false,
       pricingItemId: null,
       lastPriceRecommendation: null,
+      priceAiCache: {},
       editPriceAiUsed: false,
       editOriginalPrice: null,
-      editAppliedPriceAiValue: null
-      ,
+      editAppliedPriceAiValue: null,
       isWhiteBgRunning: false,
       backgroundRemovalModule: null,
       pendingWhiteBgReplacement: null
@@ -1745,6 +1747,8 @@
       priceAiSummary: document.getElementById('price-ai-summary'),
       priceAiApplyButton: document.getElementById('price-ai-apply-button'),
       priceAiRetailApplyButton: document.getElementById('price-ai-retail-apply-button'),
+      priceAiApplyBothButton: document.getElementById('price-ai-apply-both-button'),
+      priceAiRefreshButton: document.getElementById('price-ai-refresh-button'),
       priceAiCancelButton: document.getElementById('price-ai-cancel-button'),
       singleCardModal: document.getElementById('single-card-modal'),
       singleCardClose: document.getElementById('single-card-close'),
@@ -2295,6 +2299,8 @@
       elements.priceAiStatus.textContent = message;
       elements.priceAiApplyButton.disabled = true;
       elements.priceAiRetailApplyButton.disabled = true;
+      elements.priceAiApplyBothButton.disabled = true;
+      elements.priceAiRefreshButton.disabled = true;
       elements.priceAiQuick.textContent = '--';
       elements.priceAiRecommended.textContent = '--';
       elements.priceAiHigh.textContent = '--';
@@ -2304,14 +2310,51 @@
       elements.priceAiSummary.textContent = 'Summary: --';
     }
 
-    function renderPriceAiResult(result) {
+    function getPriceAiSignature(item) {
+      return JSON.stringify({
+        brand: item?.brand || '',
+        description: item?.description || '',
+        size: item?.size || '',
+        category_2: item?.category_2 || '',
+        gender: item?.gender || '',
+        has_box: Boolean(item?.has_box),
+        notes: item?.notes || '',
+        sold: Boolean(item?.sold),
+        price: Number(item?.price || 0),
+        photo_urls: Array.isArray(item?.photo_urls) ? item.photo_urls : []
+      });
+    }
+
+    function getCachedPriceAiEntry(item) {
+      if (!item?.id) return null;
+      const entry = state.priceAiCache[item.id];
+      if (!entry) return null;
+      return entry.signature === getPriceAiSignature(item) ? entry : null;
+    }
+
+    function buildPriceAiConfidenceNote(result) {
+      const notes = [];
+      const sources = Array.isArray(result?.sources) ? result.sources.filter(Boolean) : [];
+      const recommended = Number(result?.recommended_price || 0);
+      const low = Number(result?.comp_range_low || 0);
+      const high = Number(result?.comp_range_high || 0);
+      if (sources.length < 2) notes.push('light source coverage');
+      if (recommended > 0 && high > low && (high - low) > Math.max(recommended * 0.75, 40)) notes.push('wide comp range');
+      return notes.length ? `Check: ${notes.join(' and ')}.` : '';
+    }
+
+    function renderPriceAiResult(result, options = {}) {
       const hasRecommended = Number.isFinite(Number(result?.recommended_price));
       const hasRetail = Number.isFinite(Number(result?.retail_price)) && Number(result?.retail_price) > 0;
+      const fromCache = Boolean(options.cached);
+      const note = buildPriceAiConfidenceNote(result);
       state.lastPriceRecommendation = result;
       elements.priceAiStatus.className = 'form-status success';
-      elements.priceAiStatus.textContent = 'Market recommendation ready. Review it, then optionally apply the recommended or retail price.';
+      elements.priceAiStatus.textContent = `${fromCache ? 'Showing saved market recommendation. Refresh pricing if photos or details changed.' : 'Market recommendation ready. Review it, then optionally apply the recommended or retail price.'}${note ? ` ${note}` : ''}`;
       elements.priceAiApplyButton.disabled = !hasRecommended;
       elements.priceAiRetailApplyButton.disabled = !hasRetail;
+      elements.priceAiApplyBothButton.disabled = !(hasRecommended && hasRetail);
+      elements.priceAiRefreshButton.disabled = false;
       elements.priceAiQuick.textContent = currency(result?.quick_sale_price || 0);
       elements.priceAiRecommended.textContent = currency(result?.recommended_price || 0);
       elements.priceAiHigh.textContent = currency(result?.high_ask_price || 0);
@@ -2325,7 +2368,6 @@
       state.pricingItemId = item?.id || null;
       state.lastPriceRecommendation = null;
       elements.priceAiTitle.textContent = item ? `Market recommendation for ${item.brand || 'shoe'}` : 'Market recommendation';
-      setPriceAiLoading('Checking market comps...');
       elements.priceAiModal.classList.remove('hidden');
       elements.priceAiModal.setAttribute('aria-hidden', 'false');
     }
@@ -2338,6 +2380,8 @@
       elements.priceAiModal.setAttribute('aria-hidden', 'true');
       elements.priceAiApplyButton.disabled = true;
       elements.priceAiRetailApplyButton.disabled = true;
+      elements.priceAiApplyBothButton.disabled = true;
+      elements.priceAiRefreshButton.disabled = true;
     }
 
     function updateModeCopy() {
@@ -3028,6 +3072,25 @@
       elements.editStatus.className = 'form-status success';
       elements.editStatus.textContent = 'Retail pricing applied to Estimated Retail Price. Save changes to keep it.';
     });
+    elements.priceAiApplyBothButton.addEventListener('click', () => {
+      const recommended = Number(state.lastPriceRecommendation?.recommended_price);
+      const retail = Number(state.lastPriceRecommendation?.retail_price);
+      const itemId = state.pricingItemId;
+      if (!Number.isFinite(recommended) || !Number.isFinite(retail) || retail <= 0 || !itemId) return;
+      closePriceAiModal();
+      startEdit(itemId);
+      state.editPriceAiUsed = true;
+      state.editAppliedPriceAiValue = recommended;
+      elements.editPrice.value = recommended.toFixed(2);
+      elements.editEstimatedRetailPrice.value = retail.toFixed(2);
+      elements.editStatus.className = 'form-status success';
+      elements.editStatus.textContent = 'Recommended and retail pricing applied together. Save changes to keep them.';
+    });
+    elements.priceAiRefreshButton.addEventListener('click', async () => {
+      const item = state.inventory.find((entry) => entry.id === state.pricingItemId);
+      if (!item) return;
+      await requestPriceAi(item, { forceRefresh: true });
+    });
     elements.priceAiModal.addEventListener('click', (event) => {
       if (event.target === elements.priceAiModal) closePriceAiModal();
     });
@@ -3200,17 +3263,22 @@
       showBanner('success', 'Copied', `${item.brand} ${item.description} was copied as a new item.`);
     }
 
-    async function runPriceAi(id) {
-      const item = state.inventory.find((entry) => entry.id === id);
-      if (!item) return;
+    async function requestPriceAi(item, options = {}) {
+      const forceRefresh = Boolean(options.forceRefresh);
       if (!SUPABASE_READY) {
         showBanner('error', 'Price AI unavailable', 'Supabase is not configured.');
         return;
       }
       if (state.isPriceAiRunning) return;
 
+      const cachedEntry = !forceRefresh ? getCachedPriceAiEntry(item) : null;
+      if (cachedEntry?.result) {
+        renderPriceAiResult(cachedEntry.result, { cached: true });
+        return;
+      }
+
       state.isPriceAiRunning = true;
-      openPriceAiModal(item);
+      setPriceAiLoading(forceRefresh ? 'Refreshing market comps...' : 'Checking market comps...');
 
       try {
         const { data, error } = await supabaseClient.functions.invoke(APP_CONFIG.priceAiFunctionName, {
@@ -3230,14 +3298,27 @@
 
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-        renderPriceAiResult(data || {});
+        const result = data || {};
+        state.priceAiCache[item.id] = {
+          signature: getPriceAiSignature(item),
+          result
+        };
+        renderPriceAiResult(result, { cached: false });
       } catch (error) {
         elements.priceAiStatus.className = 'form-status error';
         elements.priceAiStatus.textContent = error?.message || String(error);
         elements.priceAiSummary.textContent = 'Summary: Price AI could not complete the lookup.';
+        elements.priceAiRefreshButton.disabled = false;
       } finally {
         state.isPriceAiRunning = false;
       }
+    }
+
+    async function runPriceAi(id) {
+      const item = state.inventory.find((entry) => entry.id === id);
+      if (!item) return;
+      openPriceAiModal(item);
+      await requestPriceAi(item);
     }
 
     function exportPdfReport() {
