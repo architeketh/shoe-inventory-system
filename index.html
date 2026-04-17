@@ -1395,7 +1395,7 @@
           <button class="button ghost" type="button" id="xls-button">CSV</button>
           <button class="button ghost" type="button" id="whatnot-button">Whatnot</button>
           <button class="button ghost" type="button" id="depop-button">Depop</button>
-          <button class="button ghost" type="button" id="profit-button">Profit</button>
+          <button class="button ghost" type="button" id="profit-button">Net Income</button>
         </div>
         <button class="button secondary" type="button" id="refresh-button">Sync Data</button>
       </div>
@@ -1416,7 +1416,7 @@
       </div>
       <div id="inventory-list" class="inventory-list"></div>
       <div id="inventory-summary" class="inventory-summary">0 pairs total · $0.00</div>
-      <div class="report-note">Review Tab, CSV, Whatnot, Depop, and Profit exports follow the current filter/search view. Review Tab opens listing cards for quick scanning and PDF creation. Profit opens a report tab for the full current view with PDF and CSV options.</div>
+      <div class="report-note">Review Tab, CSV, Whatnot, Depop, and Net Income exports follow the current filter/search view. Review Tab opens listing cards for quick scanning and PDF creation. Net Income opens a report tab for the full current view with PDF and CSV options.</div>
     </section>
   </div>
 
@@ -3807,7 +3807,7 @@
 
     function buildProfitReportLines(items) {
       return [
-        ['Status', 'Brand', 'Description', 'Size', 'Category', 'Purchased Price', 'Listed Price', 'Sold Price', 'Profit'],
+        ['Status', 'Brand', 'Description', 'Size', 'Category', 'Purchased Price', 'Listed Price', 'Sold Price', 'Net Income'],
         ...items.map((item) => {
           const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
           const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
@@ -3859,7 +3859,7 @@
               <div><strong>Purchased Price:</strong> ${escapeHtml(hasPurchased ? currency(item.purchased_price) : '-')}</div>
               <div><strong>Listed Price:</strong> ${escapeHtml(item.price ? currency(item.price) : '-')}</div>
               <div><strong>Sold Price:</strong> ${escapeHtml(hasSold ? currency(item.sold_price) : '-')}</div>
-              <div><strong>Profit:</strong> ${escapeHtml(profitValue !== null ? currency(profitValue) : '-') }</div>
+              <div><strong>Net Income:</strong> ${escapeHtml(profitValue !== null ? currency(profitValue) : '-') }</div>
             </div>
           </article>
         `;
@@ -3868,7 +3868,7 @@
       return `
         <html>
           <head>
-            <title>Profit Report</title>
+            <title>Net Income Report</title>
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"><\/script>
             <style>
@@ -4016,7 +4016,7 @@
 
                   for (let pageIndex = 0; pageIndex < pagesNeeded; pageIndex += 1) {
                     const page = pdfDoc.addPage([pageWidth, pageHeight]);
-                    page.drawText('Profit Report', {
+                    page.drawText('Net Income Report', {
                       x: margin,
                       y: pageHeight - 18,
                       size: 18,
@@ -4067,7 +4067,7 @@
                         ['Purchased', hasPurchased ? ('$' + Number(item.purchased_price).toFixed(2)) : '-'],
                         ['Listed', item.price ? ('$' + Number(item.price).toFixed(2)) : '-'],
                         ['Sold', hasSold ? ('$' + Number(item.sold_price).toFixed(2)) : '-'],
-                        ['Profit', profitValue !== null ? ('$' + profitValue.toFixed(2)) : '-']
+                        ['Net Income', profitValue !== null ? ('$' + profitValue.toFixed(2)) : '-']
                       ];
 
                       let textY = yTop - 10 - imageHeight - 16;
@@ -4097,7 +4097,7 @@
                   const url = URL.createObjectURL(blob);
                   const link = document.createElement('a');
                   link.href = url;
-                  link.download = 'profit-report-' + new Date().toISOString().slice(0, 10) + '.pdf';
+                  link.download = 'net-income-report-' + new Date().toISOString().slice(0, 10) + '.pdf';
                   document.body.appendChild(link);
                   link.click();
                   link.remove();
@@ -4110,7 +4110,7 @@
 
               function downloadProfitCsv() {
                 const lines = [
-                  ['Status', 'Brand', 'Description', 'Size', 'Category', 'Purchased Price', 'Listed Price', 'Sold Price', 'Profit'],
+                  ['Status', 'Brand', 'Description', 'Size', 'Category', 'Purchased Price', 'Listed Price', 'Sold Price', 'Net Income'],
                   ...profitItems.map((item) => {
                     const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
                     const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
@@ -4135,7 +4135,7 @@
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = 'profit-report-' + new Date().toISOString().slice(0, 10) + '.csv';
+                link.download = 'net-income-report-' + new Date().toISOString().slice(0, 10) + '.csv';
                 document.body.appendChild(link);
                 link.click();
                 link.remove();
@@ -4149,12 +4149,12 @@
               <button onclick="downloadProfitCsv()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Download CSV</button>
               <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
             </div>
-            <h1 style="margin:0 0 8px;">Profit Report</h1>
+            <h1 style="margin:0 0 8px;">Net Income Report</h1>
             <div style="margin-bottom:6px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} | ${exportItems.length} pair(s) in current view</div>
             <div style="margin-bottom:4px;color:#555;">Purchased total: ${escapeHtml(currency(totalPurchased))} across ${purchasedItems.length} shoe(s)</div>
             <div style="margin-bottom:4px;color:#555;">Listed total: ${escapeHtml(currency(totalListed))}</div>
             <div style="margin-bottom:4px;color:#555;">Sold total: ${escapeHtml(currency(totalSold))}</div>
-            <div style="margin-bottom:16px;color:#555;">Tracked profit total: ${escapeHtml(currency(totalProfit))}</div>
+            <div style="margin-bottom:16px;color:#555;">Tracked net income total: ${escapeHtml(currency(totalProfit))}</div>
             <section class="profit-grid">
               ${cards || '<p>No inventory available.</p>'}
             </section>
@@ -4170,7 +4170,7 @@
       const url = URL.createObjectURL(blob);
       const reportTab = window.open(url, '_blank');
       if (!reportTab) {
-        alert('Allow pop-ups to open the profit report.');
+        alert('Allow pop-ups to open the net income report.');
         URL.revokeObjectURL(url);
         return;
       }
