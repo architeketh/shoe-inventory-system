@@ -2185,16 +2185,69 @@
       });
     }
 
-    async function flattenTransparentBlobToWhite(blob) {
+    async function flattenTransparentBlobToWhite(blob, sourceBlob = null) {
       const objectUrl = URL.createObjectURL(blob);
+      const sourceObjectUrl = sourceBlob ? URL.createObjectURL(sourceBlob) : null;
       try {
-        const image = await loadImageElement(objectUrl);
+        const [image, sourceImage] = await Promise.all([
+          loadImageElement(objectUrl),
+          sourceObjectUrl ? loadImageElement(sourceObjectUrl) : Promise.resolve(null)
+        ]);
         const canvas = document.createElement('canvas');
         canvas.width = image.naturalWidth || image.width;
         canvas.height = image.naturalHeight || image.height;
         const context = canvas.getContext('2d');
         context.fillStyle = '#ffffff';
         context.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (sourceImage) {
+          const maskCanvas = document.createElement('canvas');
+          maskCanvas.width = canvas.width;
+          maskCanvas.height = canvas.height;
+          const maskContext = maskCanvas.getContext('2d');
+          maskContext.drawImage(image, 0, 0, canvas.width, canvas.height);
+          const alphaData = maskContext.getImageData(0, 0, canvas.width, canvas.height).data;
+
+          let bottomEdge = -1;
+          for (let y = 0; y < canvas.height; y += 1) {
+            for (let x = 0; x < canvas.width; x += 1) {
+              if (alphaData[(y * canvas.width + x) * 4 + 3] > 24) {
+                bottomEdge = y;
+              }
+            }
+          }
+
+          if (bottomEdge >= 0) {
+            const preserveStartY = Math.max(0, Math.min(canvas.height - 1, bottomEdge - Math.round(canvas.height * 0.015)));
+            const sourceCanvas = document.createElement('canvas');
+            sourceCanvas.width = canvas.width;
+            sourceCanvas.height = canvas.height;
+            const sourceContext = sourceCanvas.getContext('2d');
+            sourceContext.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
+            const sourceImageData = sourceContext.getImageData(0, 0, canvas.width, canvas.height);
+            const finalImageData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+            for (let y = preserveStartY; y < canvas.height; y += 1) {
+              for (let x = 0; x < canvas.width; x += 1) {
+                const index = (y * canvas.width + x) * 4;
+                const r = sourceImageData.data[index];
+                const g = sourceImageData.data[index + 1];
+                const b = sourceImageData.data[index + 2];
+                const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                const darkestChannel = Math.min(r, g, b);
+                const shouldPreserve = luminance < 242 || darkestChannel < 215;
+                if (!shouldPreserve) continue;
+                finalImageData.data[index] = r;
+                finalImageData.data[index + 1] = g;
+                finalImageData.data[index + 2] = b;
+                finalImageData.data[index + 3] = 255;
+              }
+            }
+
+            context.putImageData(finalImageData, 0, 0);
+          }
+        }
+
         context.drawImage(image, 0, 0);
         return await new Promise((resolve, reject) => {
           canvas.toBlob((outputBlob) => {
@@ -2204,6 +2257,7 @@
         });
       } finally {
         URL.revokeObjectURL(objectUrl);
+        if (sourceObjectUrl) URL.revokeObjectURL(sourceObjectUrl);
       }
     }
 
@@ -2364,7 +2418,7 @@
         const resizedBlob = await resizeImageBlob(sourceBlob);
         const { removeBackground } = await getBackgroundRemovalModule();
         const transparentBlob = await removeBackground(resizedBlob);
-        const whiteBlob = await flattenTransparentBlobToWhite(transparentBlob);
+        const whiteBlob = await flattenTransparentBlobToWhite(transparentBlob, resizedBlob);
         const processed = await uploadProcessedViewerPhoto(whiteBlob, item, 'whitebg');
         await loadInventory();
         const refreshed = state.inventory.find((entry) => entry.id === item.id);
