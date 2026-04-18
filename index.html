@@ -2707,6 +2707,34 @@
       return notes.length ? `Check: ${notes.join(' and ')}.` : '';
     }
 
+    function simplifyPriceAiSource(source) {
+      const raw = String(source || '').trim();
+      if (!raw) return '';
+      const lower = raw.toLowerCase();
+      if (lower.includes('saved values')) return 'Saved values';
+      if (lower.includes('ebay')) return 'eBay';
+      if (lower.includes('goat')) return 'GOAT';
+      if (lower.includes('stockx')) return 'StockX';
+      if (lower.includes('depop')) return 'Depop';
+      if (lower.includes('zappos')) return 'Zappos';
+      if (lower.includes('dsw')) return 'DSW';
+      if (lower.includes('flight club')) return 'Flight Club';
+      if (lower.includes('stadium goods')) return 'Stadium Goods';
+      const bracketMatch = raw.match(/\[([^\]]+)\]/);
+      if (bracketMatch?.[1]) return bracketMatch[1].replace(/^www\./i, '');
+      const domainMatch = raw.match(/https?:\/\/(?:www\.)?([^\/\s)]+)/i);
+      if (domainMatch?.[1]) return domainMatch[1];
+      return raw.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
+    }
+
+    function formatPriceAiSources(sources) {
+      const cleaned = (Array.isArray(sources) ? sources : [])
+        .map((source) => simplifyPriceAiSource(source))
+        .filter(Boolean);
+      const unique = [...new Set(cleaned)];
+      return unique.length ? unique.join(', ') : 'Not provided';
+    }
+
     function renderPriceAiResult(result, options = {}) {
       const hasRecommended = Number.isFinite(Number(result?.recommended_price));
       const hasRetail = Number.isFinite(Number(result?.retail_price)) && Number(result?.retail_price) > 0;
@@ -2725,7 +2753,7 @@
       elements.priceAiHigh.textContent = currency(result?.high_ask_price || 0);
       elements.priceAiRetail.textContent = hasRetail ? currency(result.retail_price) : '--';
       elements.priceAiRange.textContent = `Comp range: ${currency(result?.comp_range_low || 0)} - ${currency(result?.comp_range_high || 0)}`;
-      elements.priceAiSources.textContent = `Sources: ${Array.isArray(result?.sources) && result.sources.length ? result.sources.join(', ') : 'Not provided'}`;
+      elements.priceAiSources.textContent = `Sources: ${formatPriceAiSources(result?.sources)}`;
       elements.priceAiSummary.textContent = `Summary: ${result?.summary || 'No summary provided.'}`;
     }
 
