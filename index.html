@@ -1548,6 +1548,7 @@
         <div class="toolbar-compact">
           <span class="toolbar-label">Export</span>
           <button class="button ghost" type="button" id="review-html-button">Review Tab</button>
+          <button class="button ghost" type="button" id="platform-report-button">Platform Report</button>
           <button class="button ghost" type="button" id="xls-button">CSV</button>
           <button class="button ghost" type="button" id="whatnot-button">Whatnot</button>
           <button class="button ghost" type="button" id="depop-button">Depop</button>
@@ -1579,7 +1580,7 @@
       <div id="footer-sync-pill" class="bottom-sync-pill">Sync status: Waiting for first sync...</div>
       <button class="button secondary" type="button" id="refresh-button">Sync Data</button>
     </div>
-    <div class="report-note">Review Tab, CSV, Whatnot, Depop, and Net Income exports follow the current filter/search view. Review Tab opens listing cards for quick scanning and PDF creation. Net Income opens a report tab for the full current view with PDF and CSV options.</div>
+    <div class="report-note">Review Tab, Platform Report, CSV, Whatnot, Depop, and Net Income exports follow the current filter/search view. Review Tab opens listing cards for quick scanning and PDF creation. Platform Report opens grouped listing cards by platform. Net Income opens a report tab for the full current view with PDF and CSV options.</div>
   </div>
 
   <div class="modal hidden" id="photo-modal" aria-hidden="true">
@@ -1917,6 +1918,7 @@
       searchInput: document.getElementById('search-input'),
       searchClearButton: document.getElementById('search-clear-button'),
       reviewHtmlButton: document.getElementById('review-html-button'),
+      platformReportButton: document.getElementById('platform-report-button'),
       xlsButton: document.getElementById('xls-button'),
       whatnotButton: document.getElementById('whatnot-button'),
       depopButton: document.getElementById('depop-button'),
@@ -3802,35 +3804,44 @@
       reportWindow.focus();
     }
 
+    const PLATFORM_REPORT_ORDER = ['ThreadUp', 'ebay', 'Depop', 'WhatNot'];
+
+    function getItemPlatforms(item) {
+      if (!Array.isArray(item.platforms_listed)) return [];
+      return PLATFORM_REPORT_ORDER.filter((platform) => item.platforms_listed.includes(platform));
+    }
+
+    function buildReviewCardMarkup(item) {
+      const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
+      const photoMarkup = photos.length
+        ? photos.map((url) => `<img class="review-photo" src="${url}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />`).join('')
+        : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;">No photos</div>';
+      return `
+        <article class="review-card">
+          <div class="review-photo-grid">
+            ${photoMarkup}
+          </div>
+          <div style="font:11px Arial,sans-serif;color:#6c5d52;line-height:1.45;">
+            <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
+            <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
+            <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
+            <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
+            <div><strong>Original Tags Attached:</strong> ${escapeHtml(item.original_tags_attached || '-')}</div>
+            <div><strong>Estimated Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
+            <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
+            <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
+            <div><strong>Shoe Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
+            <div><strong>Description:</strong> ${escapeHtml(item.description || '-')}</div>
+            <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
+          </div>
+        </article>
+      `;
+    }
+
     function buildReviewListingHtml(exportItems, exportTotal, options = {}) {
       const printButtonLabel = 'Create PDF';
       const reviewDataJson = JSON.stringify(exportItems).replace(/</g, '\\u003c');
-      const cards = exportItems.map((item) => {
-        const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
-        const photoMarkup = photos.length
-          ? photos.map((url) => `<img class="review-photo" src="${url}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />`).join('')
-          : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;">No photos</div>';
-        return `
-          <article class="review-card">
-            <div class="review-photo-grid">
-              ${photoMarkup}
-            </div>
-            <div style="font:11px Arial,sans-serif;color:#6c5d52;line-height:1.45;">
-              <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
-              <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
-              <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
-              <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
-              <div><strong>Original Tags Attached:</strong> ${escapeHtml(item.original_tags_attached || '-')}</div>
-              <div><strong>Estimated Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
-              <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
-              <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
-              <div><strong>Shoe Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
-              <div><strong>Description:</strong> ${escapeHtml(item.description || '-')}</div>
-              <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
-            </div>
-          </article>
-        `;
-      }).join('');
+      const cards = exportItems.map((item) => buildReviewCardMarkup(item)).join('');
       return `
         <html>
           <head>
@@ -4168,6 +4179,145 @@
       const reviewTab = window.open(url, '_blank');
       if (!reviewTab) {
         alert('Allow pop-ups to open the review tab.');
+        URL.revokeObjectURL(url);
+        return;
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+
+    function buildPlatformReportHtml(exportItems) {
+      const groups = PLATFORM_REPORT_ORDER.map((platform) => {
+        const items = exportItems.filter((item) => getItemPlatforms(item).includes(platform));
+        return { platform, items };
+      }).filter((group) => group.items.length);
+      const uniqueListedItems = exportItems.filter((item) => getItemPlatforms(item).length);
+      const totalAssignments = groups.reduce((sum, group) => sum + group.items.length, 0);
+      const sections = groups.map((group) => {
+        const sectionTotal = group.items.reduce((sum, item) => sum + Number(item.price || 0), 0);
+        return `
+          <section class="platform-section">
+            <div class="platform-section-head">
+              <h2>${escapeHtml(group.platform)}</h2>
+              <div>${group.items.length} pair(s) | ${escapeHtml(currency(sectionTotal))} listed</div>
+            </div>
+            <div class="review-grid">
+              ${group.items.map((item) => buildReviewCardMarkup(item)).join('')}
+            </div>
+          </section>
+        `;
+      }).join('');
+
+      return `
+        <html>
+          <head>
+            <title>Platform Report</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+                color: #222;
+                background: #faf8f5;
+              }
+              .print-toolbar {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+                margin-bottom: 16px;
+              }
+              .platform-section {
+                margin-top: 24px;
+              }
+              .platform-section:first-of-type {
+                margin-top: 0;
+              }
+              .platform-section-head {
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 12px;
+                margin-bottom: 12px;
+                color: #6c5d52;
+              }
+              .platform-section-head h2 {
+                margin: 0;
+                font-size: 22px;
+                color: #21170f;
+              }
+              .review-grid {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 12px;
+                align-items: start;
+              }
+              .review-card {
+                border: 1px solid #dbcfc2;
+                border-radius: 14px;
+                padding: 10px;
+                background: #fff;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                break-inside: avoid;
+                page-break-inside: avoid;
+              }
+              .review-photo-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 6px;
+              }
+              .review-photo {
+                width: 100%;
+                aspect-ratio: 1 / 1;
+                object-fit: cover;
+                border-radius: 8px;
+                border: 1px solid #e4d8cb;
+                display: block;
+              }
+              @media (max-width: 1100px) {
+                .review-grid {
+                  grid-template-columns: repeat(3, minmax(0, 1fr));
+                }
+              }
+              @media (max-width: 800px) {
+                body {
+                  padding: 14px;
+                }
+                .platform-section-head {
+                  flex-direction: column;
+                  align-items: flex-start;
+                }
+                .review-grid {
+                  grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+              }
+              @media (max-width: 560px) {
+                .review-grid {
+                  grid-template-columns: 1fr;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="print-toolbar">
+              <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
+            </div>
+            <h1 style="margin:0 0 8px;">Platform Report</h1>
+            <div style="margin-bottom:16px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} | ${uniqueListedItems.length} listed shoe(s) in current view | ${totalAssignments} platform listing(s)</div>
+            ${sections || '<p>No platform-listed inventory found in the current view.</p>'}
+          </body>
+        </html>
+      `;
+    }
+
+    function exportPlatformReport() {
+      const exportItems = sortedInventory();
+      const html = buildPlatformReportHtml(exportItems);
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const reportTab = window.open(url, '_blank');
+      if (!reportTab) {
+        alert('Allow pop-ups to open the platform report.');
         URL.revokeObjectURL(url);
         return;
       }
@@ -4684,6 +4834,7 @@
     }
 
     elements.reviewHtmlButton.addEventListener('click', exportReviewListingHtml);
+    elements.platformReportButton.addEventListener('click', exportPlatformReport);
     elements.xlsButton.addEventListener('click', exportXlsReport);
     elements.whatnotButton.addEventListener('click', exportWhatnotCsv);
     elements.depopButton.addEventListener('click', exportDepopCsv);
