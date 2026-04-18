@@ -4418,12 +4418,12 @@
                   const margin = 30;
                   const gutter = 18;
                   const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
-                  const cardHeight = 214;
-                  const imageHeight = 58;
+                  const cardHeight = 220;
+                  const imageHeight = 56;
                   const imageGap = 0;
                   const labelSize = 8;
                   const valueSize = 8;
-                  const lineHeight = 8;
+                  const lineHeight = 9;
                   const textColor = rgb(0.26, 0.22, 0.18);
                   const borderColor = rgb(0.86, 0.82, 0.76);
                   const bgColor = rgb(1, 1, 1);
@@ -4440,7 +4440,7 @@
                     page = pdfDoc.addPage([pageWidth, pageHeight]);
                     page.drawText('Platform Report', {
                       x: margin,
-                      y: pageHeight - 18,
+                      y: pageHeight - 42,
                       size: 18,
                       font: fontBold,
                       color: rgb(0.12, 0.08, 0.05)
@@ -4452,7 +4452,7 @@
                       font: fontRegular,
                       color: rgb(0.42, 0.36, 0.32)
                     });
-                    cursorY = pageHeight - 34;
+                    cursorY = pageHeight - 62;
                   }
 
                   async function drawCard(item, x, yTop) {
@@ -4498,9 +4498,11 @@
                       }
                     }
 
-                    let textY = yTop - 8 - imageHeight - 14;
+                    let textY = yTop - 8 - imageHeight - 18;
                     const textX = x + 10;
                     const textWidth = cardWidth - 20;
+                    const valueInset = 2;
+                    const widthSlack = 10;
                     const rows = [
                       ['Category', item.category_2 || '-'],
                       ['Brand', item.brand || '-'],
@@ -4528,9 +4530,9 @@
                         font: fontRegular,
                         size: valueSize,
                         color: textColor,
-                        x: textX + labelWidth,
+                        x: textX + labelWidth - valueInset,
                         y: textY,
-                        maxWidth: textWidth - labelWidth,
+                        maxWidth: textWidth - labelWidth + widthSlack,
                         lineHeight,
                         maxLines: 1
                       }) - 2;
