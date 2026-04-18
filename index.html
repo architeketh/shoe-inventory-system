@@ -4039,7 +4039,7 @@
                   const imageHeight = 64;
                   const imageGap = 0;
                   const labelSize = 8;
-                  const valueSize = 8;
+                  const valueSize = 7.6;
                   const lineHeight = 8.5;
                   const textColor = rgb(0.26, 0.22, 0.18);
                   const borderColor = rgb(0.86, 0.82, 0.76);
@@ -4403,6 +4403,33 @@
                 });
               }
 
+              async function embedPlatformTextBlock(pdfDoc, rows) {
+                const canvas = document.createElement('canvas');
+                const width = 920;
+                const paddingX = 20;
+                const paddingY = 14;
+                const rowHeight = 24;
+                canvas.width = width;
+                canvas.height = paddingY * 2 + rows.length * rowHeight;
+                const context = canvas.getContext('2d');
+                context.fillStyle = '#ffffff';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.fillStyle = '#43382f';
+                context.font = '500 20px Arial';
+                context.textBaseline = 'top';
+                rows.forEach(([label, value], index) => {
+                  context.fillText(String(label) + ': ' + String(value), paddingX, paddingY + index * rowHeight);
+                });
+                const blob = await new Promise((resolve, reject) => {
+                  canvas.toBlob((outputBlob) => {
+                    if (outputBlob) resolve(outputBlob);
+                    else reject(new Error('Could not render text block for PDF.'));
+                  }, 'image/png');
+                });
+                const bytes = await blob.arrayBuffer();
+                return await pdfDoc.embedPng(bytes);
+              }
+
               async function createPlatformPdf() {
                 const button = document.getElementById('create-platform-pdf-button');
                 const originalLabel = button.textContent;
@@ -4421,13 +4448,10 @@
                   const cardHeight = 220;
                   const imageHeight = 56;
                   const imageGap = 0;
-                  const labelSize = 8;
-                  const valueSize = 8;
-                  const lineHeight = 9;
-                  const textColor = rgb(0.26, 0.22, 0.18);
                   const borderColor = rgb(0.86, 0.82, 0.76);
                   const bgColor = rgb(1, 1, 1);
                   const imageCache = new Map();
+                  const textCache = new Map();
                   const allListedItems = platformGroups.reduce((sum, group) => sum + group.items.length, 0);
                   const rowGap = 8;
                   const sectionGap = 8;
@@ -4498,7 +4522,6 @@
                       }
                     }
 
-                    let textY = yTop - 8 - imageHeight - 18;
                     const textX = x + 10;
                     const textWidth = cardWidth - 20;
                     const rows = [
@@ -4514,19 +4537,18 @@
                       ['Description', item.description || '-'],
                       ["Brand's Style Name", item.brand_style_name || '-']
                     ];
-
-                    for (const [label, value] of rows) {
-                      textY = drawWrappedText(page, String(label) + ': ' + String(value), {
-                        font: fontRegular,
-                        size: valueSize,
-                        color: textColor,
-                        x: textX,
-                        y: textY,
-                        maxWidth: textWidth,
-                        lineHeight,
-                        maxLines: 1
-                      }) - 2;
+                    const textKey = JSON.stringify(rows);
+                    let textBlock = textCache.get(textKey);
+                    if (!textBlock) {
+                      textBlock = await embedPlatformTextBlock(pdfDoc, rows);
+                      textCache.set(textKey, textBlock);
                     }
+                    drawImageContained(page, textBlock, {
+                      x: textX,
+                      y: yBottom + 8,
+                      width: textWidth,
+                      height: cardHeight - imageHeight - 28
+                    });
                   }
 
                   startPage();
