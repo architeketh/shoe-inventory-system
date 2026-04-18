@@ -4516,7 +4516,7 @@
                     ];
 
                     for (const [label, value] of rows) {
-                      textY = drawWrappedText(page, `${label}: ${value}`, {
+                      textY = drawWrappedText(page, String(label) + ': ' + String(value), {
                         font: fontRegular,
                         size: valueSize,
                         color: textColor,
