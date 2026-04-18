@@ -4447,12 +4447,12 @@
                     });
                     page.drawText('${escapeHtml(formatDate(new Date().toISOString()))} | ${uniqueListedItems.length} listed shoe(s) | ' + allListedItems + ' platform listing(s)', {
                       x: margin,
-                      y: pageHeight - 34,
+                      y: 14,
                       size: 9,
                       font: fontRegular,
                       color: rgb(0.42, 0.36, 0.32)
                     });
-                    cursorY = pageHeight - 42;
+                    cursorY = pageHeight - 34;
                   }
 
                   async function drawCard(item, x, yTop) {
