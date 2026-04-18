@@ -2817,7 +2817,10 @@
       elements.secondPriceAiMarket.textContent = marketPrice > 0 ? currency(marketPrice) : '--';
       elements.secondPriceAiRetail.textContent = retailPrice > 0 ? currency(retailPrice) : '--';
       elements.secondPriceAiCompare.textContent = compareText;
-      elements.secondPriceAiSource.textContent = `2nd source: ${result?.source || 'KicksDB'}`;
+      const sourceBits = [result?.source || 'KicksDB'];
+      if (result?.matched_sku) sourceBits.push(`SKU ${result.matched_sku}`);
+      if (result?.search_title) sourceBits.push(`Query: ${result.search_title}`);
+      elements.secondPriceAiSource.textContent = `2nd source: ${sourceBits.join(' | ')}`;
       elements.secondPriceAiSummary.textContent = `2nd summary: ${result?.summary || 'No second-opinion summary provided.'}`;
       elements.secondPriceAiButton.disabled = false;
       elements.secondPriceAiButton.textContent = '2nd Price AI';
