@@ -1855,6 +1855,7 @@
       pricingItemId: null,
       lastPriceRecommendation: null,
       priceAiCache: {},
+      priceAiRequestToken: 0,
       editPriceAiUsed: false,
       editOriginalPrice: null,
       editAppliedPriceAiValue: null,
@@ -2768,7 +2769,6 @@
     function closePriceAiModal() {
       state.pricingItemId = null;
       state.lastPriceRecommendation = null;
-      state.isPriceAiRunning = false;
       elements.priceAiModal.classList.add('hidden');
       elements.priceAiModal.setAttribute('aria-hidden', 'true');
       elements.priceAiApplyButton.disabled = true;
@@ -3741,10 +3741,11 @@
       }
 
       state.isPriceAiRunning = true;
+      const requestToken = ++state.priceAiRequestToken;
       setPriceAiLoading(forceRefresh ? 'Refreshing market comps...' : 'Checking market comps...');
 
       try {
-        const { data, error } = await supabaseClient.functions.invoke(APP_CONFIG.priceAiFunctionName, {
+        const invokePromise = supabaseClient.functions.invoke(APP_CONFIG.priceAiFunctionName, {
           body: {
             brand: item.brand,
             brand_style_name: item.brand_style_name,
@@ -3760,6 +3761,19 @@
             photo_urls: Array.isArray(item.photo_urls) ? item.photo_urls : []
           }
         });
+        const slowNoticePromise = new Promise((resolve) => {
+          window.setTimeout(() => resolve({ slow: true }), 8000);
+        });
+        const firstResult = await Promise.race([invokePromise, slowNoticePromise]);
+        if (firstResult?.slow) {
+          if (requestToken !== state.priceAiRequestToken) return;
+          elements.priceAiStatus.className = 'form-status';
+          elements.priceAiStatus.textContent = 'Price AI is still running. You can close this window and reopen it in a moment if the lookup is taking longer than usual.';
+          elements.priceAiRefreshButton.disabled = true;
+        }
+
+        const { data, error } = await invokePromise;
+        if (requestToken !== state.priceAiRequestToken) return;
 
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
@@ -3775,14 +3789,19 @@
           .update({ price_ai_last_run_at: pricedAt })
           .eq('id', item.id);
         await loadInventory();
-        renderPriceAiResult(result, { cached: false });
+        if (state.pricingItemId === item.id && !elements.priceAiModal.classList.contains('hidden')) {
+          renderPriceAiResult(result, { cached: false });
+        }
       } catch (error) {
+        if (requestToken !== state.priceAiRequestToken) return;
         elements.priceAiStatus.className = 'form-status error';
         elements.priceAiStatus.textContent = error?.message || String(error);
         elements.priceAiSummary.textContent = 'Summary: Price AI could not complete the lookup.';
         elements.priceAiRefreshButton.disabled = false;
       } finally {
-        state.isPriceAiRunning = false;
+        if (requestToken === state.priceAiRequestToken) {
+          state.isPriceAiRunning = false;
+        }
       }
     }
 
