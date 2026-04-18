@@ -1808,7 +1808,7 @@
         <span id="price-ai-summary">Summary: --</span>
       </div>
       <div class="form-status" style="margin-top:12px;">
-        AI pricing uses brand, style/description, size, category, box status, pricing condition, and photos. Results can change when comps, photos, or item details change.
+        AI pricing uses brand, Brand Style Name, style/description, size, category, box status, pricing condition, and photos. Results can change when comps, photos, or item details change.
       </div>
       <div class="button-row">
         <button class="button secondary" type="button" id="price-ai-apply-button">Use recommended price</button>
@@ -2658,6 +2658,7 @@
     function getPriceAiSignature(item) {
       return JSON.stringify({
         brand: item?.brand || '',
+        brand_style_name: item?.brand_style_name || '',
         description: item?.description || '',
         size: item?.size || '',
         category_2: item?.category_2 || '',
@@ -3712,6 +3713,7 @@
         const { data, error } = await supabaseClient.functions.invoke(APP_CONFIG.priceAiFunctionName, {
           body: {
             brand: item.brand,
+            brand_style_name: item.brand_style_name,
             description: item.description,
             size: item.size,
             category_2: item.category_2,
