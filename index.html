@@ -2779,12 +2779,12 @@
 
     function updateModeCopy() {
       if (state.hasBox) {
-        elements.aiModeCopy.textContent = 'Box mode is active, so AI will try to read brand, size, and description from the box photos before you save.';
-        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>With box selected, you can read the label with AI or type the fields manually. Listed Price is still required before saving.</p>';
+        elements.aiModeCopy.textContent = 'Box mode is active, so AI will try to read brand, model, color, size, and Brand Style Name from the box photos before you save.';
+        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>With box selected, AI can use the box label and visible shoe details to fill Brand, Description, Colors, Shoe Style, and Brand Style Name. Listed Price is still required before saving.</p>';
         elements.aiFillButton.textContent = 'Read box details with AI';
       } else {
-        elements.aiModeCopy.textContent = 'No-box mode is active, so AI will infer brand, size, and description from the shoe photos if you choose the lookup action.';
-        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>If there is no box, brand, category, and listed price must be entered manually or filled by AI lookup from the shoe photos. Description can also feed Brand Style Name.</p>';
+        elements.aiModeCopy.textContent = 'No-box mode is active, so AI will infer brand, model, colors, size, and Brand Style Name from the shoe photos and visible tags if you choose the lookup action.';
+        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>If there is no box, AI should use shoe photos, tags, and outsole details to fill Brand, Description, Colors, Shoe Style, and Brand Style Name when possible. Category and Listed Price still need to be confirmed before saving.</p>';
         elements.aiFillButton.textContent = 'Lookup shoe details with AI';
       }
     }
@@ -2932,10 +2932,16 @@
         if (suggestion.brand) elements.brand.value = suggestion.brand;
         if (suggestion.size) elements.size.value = suggestion.size;
         if (suggestion.description) elements.description.value = suggestion.description;
-        if (!elements.brandStyleName.value.trim() && suggestion.description) elements.brandStyleName.value = suggestion.description;
+        if (suggestion.colors) elements.colors.value = suggestion.colors;
+        if (suggestion.shoe_style) elements.shoeStyle.value = suggestion.shoe_style;
+        if (suggestion.brand_style_name) {
+          elements.brandStyleName.value = suggestion.brand_style_name;
+        } else if (!elements.brandStyleName.value.trim() && suggestion.description) {
+          elements.brandStyleName.value = suggestion.description;
+        }
         if (suggestion.notes && !elements.notes.value.trim()) elements.notes.value = suggestion.notes;
         state.aiUsedForCurrentDraft = true;
-        alert('AI filled the available fields. Review them, enter the price, and save.');
+        alert('AI filled the available intake fields. Review Brand, Description, Colors, Shoe Style, Brand Style Name, and Size before saving.');
       } catch (error) {
         const message = error?.message || String(error);
         alert(`AI lookup failed: ${message}`);
