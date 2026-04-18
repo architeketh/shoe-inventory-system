@@ -4418,17 +4418,21 @@
                   const margin = 30;
                   const gutter = 18;
                   const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
-                  const cardHeight = 228;
-                  const imageHeight = 64;
+                  const cardHeight = 214;
+                  const imageHeight = 58;
                   const imageGap = 0;
                   const labelSize = 8;
                   const valueSize = 8;
-                  const lineHeight = 8.5;
+                  const lineHeight = 8;
                   const textColor = rgb(0.26, 0.22, 0.18);
                   const borderColor = rgb(0.86, 0.82, 0.76);
                   const bgColor = rgb(1, 1, 1);
                   const imageCache = new Map();
                   const allListedItems = platformGroups.reduce((sum, group) => sum + group.items.length, 0);
+                  const rowGap = 8;
+                  const sectionGap = 8;
+                  const sectionHeaderHeight = 14;
+                  const firstRowOffset = 14;
 
                   let page;
                   let cursorY;
@@ -4448,7 +4452,7 @@
                       font: fontRegular,
                       color: rgb(0.42, 0.36, 0.32)
                     });
-                    cursorY = pageHeight - margin - 26;
+                    cursorY = pageHeight - 42;
                   }
 
                   async function drawCard(item, x, yTop) {
@@ -4494,7 +4498,7 @@
                       }
                     }
 
-                    let textY = yTop - 10 - imageHeight - 16;
+                    let textY = yTop - 8 - imageHeight - 14;
                     const textX = x + 10;
                     const textWidth = cardWidth - 20;
                     const rows = [
@@ -4536,13 +4540,13 @@
                   startPage();
                   for (const group of platformGroups) {
                     const sectionTotal = group.items.reduce((sum, item) => sum + Number(item.price || 0), 0);
-                    if (cursorY - 26 - cardHeight < margin) {
+                    if (cursorY - sectionHeaderHeight - firstRowOffset - cardHeight < margin) {
                       startPage();
                     }
                     page.drawText(group.platform, {
                       x: margin,
                       y: cursorY,
-                      size: 14,
+                      size: 13,
                       font: fontBold,
                       color: rgb(0.12, 0.08, 0.05)
                     });
@@ -4553,7 +4557,7 @@
                       font: fontRegular,
                       color: rgb(0.42, 0.36, 0.32)
                     });
-                    cursorY -= 18;
+                    cursorY -= firstRowOffset;
 
                     for (let index = 0; index < group.items.length; index += 2) {
                       if (cursorY - cardHeight < margin) {
@@ -4561,20 +4565,20 @@
                         page.drawText(group.platform + ' (continued)', {
                           x: margin,
                           y: cursorY,
-                          size: 14,
+                          size: 13,
                           font: fontBold,
                           color: rgb(0.12, 0.08, 0.05)
                         });
-                        cursorY -= 18;
+                        cursorY -= firstRowOffset;
                       }
                       const rowItems = group.items.slice(index, index + 2);
                       for (let column = 0; column < rowItems.length; column += 1) {
                         const x = margin + column * (cardWidth + gutter);
                         await drawCard(rowItems[column], x, cursorY);
                       }
-                      cursorY -= cardHeight + 10;
+                      cursorY -= cardHeight + rowGap;
                     }
-                    cursorY -= 10;
+                    cursorY -= sectionGap;
                   }
 
                   const bytes = await pdfDoc.save();
