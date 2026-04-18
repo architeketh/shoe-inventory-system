@@ -1542,7 +1542,7 @@
               <option value="for_sale_only">For sale only</option>
               <option value="sold_only">Sold only</option>
             </select>
-          <input class="search-input" id="search-input" type="search" placeholder="Search + Enter" aria-label="Search shoes">
+          <input class="search-input" id="search-input" type="search" placeholder="Search + Enter (brand, size, platform)" aria-label="Search shoes">
           <button class="button secondary" type="button" id="search-clear-button">Clear</button>
         </div>
         <div class="toolbar-compact">
@@ -3047,6 +3047,18 @@
       if (base === 'sold') {
         ['sold'].forEach((value) => variants.add(value));
       }
+      if (base === 'whatnot' || compact === 'whatnot') {
+        ['whatnot', 'what not', 'platform whatnot', 'listed on whatnot'].forEach((value) => variants.add(value));
+      }
+      if (base === 'depop' || compact === 'depop') {
+        ['depop', 'platform depop', 'listed on depop'].forEach((value) => variants.add(value));
+      }
+      if (base === 'ebay' || compact === 'ebay') {
+        ['ebay', 'e bay', 'platform ebay', 'listed on ebay'].forEach((value) => variants.add(value));
+      }
+      if (base === 'threadup' || base === 'thredup' || compact === 'threadup' || compact === 'thredup') {
+        ['threadup', 'thredup', 'thread up', 'thred up', 'platform threadup', 'listed on threadup'].forEach((value) => variants.add(value));
+      }
       return [...variants];
     }
 
@@ -3055,6 +3067,14 @@
       if (state.searchTerm) {
         const terms = normalizedSearchTerms(state.searchTerm);
         items = items.filter((item) => {
+          const platformTerms = getItemPlatforms(item).flatMap((platform) => {
+            const lower = String(platform || '').toLowerCase();
+            if (lower === 'whatnot') return ['whatnot', 'what not', 'platform whatnot', 'listed on whatnot'];
+            if (lower === 'depop') return ['depop', 'platform depop', 'listed on depop'];
+            if (lower === 'ebay') return ['ebay', 'e bay', 'platform ebay', 'listed on ebay'];
+            if (lower === 'threadup') return ['threadup', 'thredup', 'thread up', 'thred up', 'platform threadup', 'listed on threadup'];
+            return [lower, `platform ${lower}`, `listed on ${lower}`];
+          });
           const genderTerms = item.gender === 'mens'
             ? ['mens', "men's", 'men', 'm', 'male', 'category mens']
             : item.gender === 'womens'
@@ -3070,6 +3090,7 @@
             item.category_2,
             item.gender,
             ...genderTerms,
+            ...platformTerms,
             item.has_box ? 'box' : 'no box',
             item.sold ? 'sold' : 'for sale forsale available active',
             String(item.price ?? '')
@@ -4190,6 +4211,7 @@
         const items = exportItems.filter((item) => getItemPlatforms(item).includes(platform));
         return { platform, items };
       }).filter((group) => group.items.length);
+      const platformDataJson = JSON.stringify(groups).replace(/</g, '\\u003c');
       const uniqueListedItems = exportItems.filter((item) => getItemPlatforms(item).length);
       const totalAssignments = groups.reduce((sum, group) => sum + group.items.length, 0);
       const sections = groups.map((group) => {
@@ -4212,6 +4234,7 @@
           <head>
             <title>Platform Report</title>
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"><\/script>
             <style>
               body {
                 font-family: Arial, sans-serif;
@@ -4297,9 +4320,287 @@
                 }
               }
             </style>
+            <script>
+              const platformGroups = ${platformDataJson};
+
+              async function embedPlatformImage(pdfDoc, url) {
+                try {
+                  const response = await fetch(url, { mode: 'cors' });
+                  if (!response.ok) return null;
+                  const blob = await response.blob();
+                  const objectUrl = URL.createObjectURL(blob);
+                  try {
+                    const image = await new Promise((resolve, reject) => {
+                      const img = new Image();
+                      img.crossOrigin = 'anonymous';
+                      img.onload = () => resolve(img);
+                      img.onerror = () => reject(new Error('Could not load image for PDF.'));
+                      img.src = objectUrl;
+                    });
+                    const maxDimension = 1200;
+                    const width = image.naturalWidth || image.width;
+                    const height = image.naturalHeight || image.height;
+                    const scale = Math.min(1, maxDimension / Math.max(width, height));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(width * scale));
+                    canvas.height = Math.max(1, Math.round(height * scale));
+                    const context = canvas.getContext('2d');
+                    context.fillStyle = '#ffffff';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                    const normalizedBlob = await new Promise((resolve, reject) => {
+                      canvas.toBlob((outputBlob) => {
+                        if (outputBlob) resolve(outputBlob);
+                        else reject(new Error('Could not normalize image for PDF.'));
+                      }, 'image/jpeg', 0.9);
+                    });
+                    const bytes = await normalizedBlob.arrayBuffer();
+                    return await pdfDoc.embedJpg(bytes);
+                  } finally {
+                    URL.revokeObjectURL(objectUrl);
+                  }
+                } catch (error) {
+                  return null;
+                }
+              }
+
+              function drawWrappedText(page, text, options) {
+                const { font, size, color, x, y, maxWidth, lineHeight, maxLines } = options;
+                const words = String(text || '').split(/\s+/).filter(Boolean);
+                if (!words.length) return y;
+                const lines = [];
+                let current = '';
+                for (const word of words) {
+                  const candidate = current ? current + ' ' + word : word;
+                  if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+                    current = candidate;
+                  } else {
+                    if (current) lines.push(current);
+                    current = word;
+                  }
+                }
+                if (current) lines.push(current);
+                const finalLines = typeof maxLines === 'number' ? lines.slice(0, maxLines) : lines;
+                finalLines.forEach((line, index) => {
+                  page.drawText(line, { x, y: y - index * lineHeight, size, font, color });
+                });
+                return y - finalLines.length * lineHeight;
+              }
+
+              function drawImageContained(page, image, box) {
+                const imageWidth = image.width || 1;
+                const imageHeight = image.height || 1;
+                const scale = Math.min(box.width / imageWidth, box.height / imageHeight);
+                const drawWidth = imageWidth * scale;
+                const drawHeight = imageHeight * scale;
+                const drawX = box.x + (box.width - drawWidth) / 2;
+                const drawY = box.y + (box.height - drawHeight) / 2;
+                page.drawImage(image, {
+                  x: drawX,
+                  y: drawY,
+                  width: drawWidth,
+                  height: drawHeight
+                });
+              }
+
+              async function createPlatformPdf() {
+                const button = document.getElementById('create-platform-pdf-button');
+                const originalLabel = button.textContent;
+                button.disabled = true;
+                button.textContent = 'Building PDF...';
+                try {
+                  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+                  const pdfDoc = await PDFDocument.create();
+                  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+                  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                  const pageWidth = 612;
+                  const pageHeight = 792;
+                  const margin = 30;
+                  const gutter = 18;
+                  const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
+                  const cardHeight = 228;
+                  const imageHeight = 64;
+                  const imageGap = 0;
+                  const labelSize = 8;
+                  const valueSize = 8;
+                  const lineHeight = 8.5;
+                  const textColor = rgb(0.26, 0.22, 0.18);
+                  const borderColor = rgb(0.86, 0.82, 0.76);
+                  const bgColor = rgb(1, 1, 1);
+                  const imageCache = new Map();
+                  const allListedItems = platformGroups.reduce((sum, group) => sum + group.items.length, 0);
+
+                  let page;
+                  let cursorY;
+                  function startPage() {
+                    page = pdfDoc.addPage([pageWidth, pageHeight]);
+                    page.drawText('Platform Report', {
+                      x: margin,
+                      y: pageHeight - 18,
+                      size: 18,
+                      font: fontBold,
+                      color: rgb(0.12, 0.08, 0.05)
+                    });
+                    page.drawText('${escapeHtml(formatDate(new Date().toISOString()))} | ${uniqueListedItems.length} listed shoe(s) | ' + allListedItems + ' platform listing(s)', {
+                      x: margin,
+                      y: pageHeight - 34,
+                      size: 9,
+                      font: fontRegular,
+                      color: rgb(0.42, 0.36, 0.32)
+                    });
+                    cursorY = pageHeight - margin - 26;
+                  }
+
+                  async function drawCard(item, x, yTop) {
+                    const yBottom = yTop - cardHeight;
+                    page.drawRectangle({
+                      x,
+                      y: yBottom,
+                      width: cardWidth,
+                      height: cardHeight,
+                      color: bgColor,
+                      borderColor,
+                      borderWidth: 1
+                    });
+
+                    const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
+                    const imageWidth = (cardWidth - 24 - imageGap * 3) / 4;
+                    for (let imgIndex = 0; imgIndex < photos.length; imgIndex += 1) {
+                      const url = photos[imgIndex];
+                      let embedded = imageCache.get(url);
+                      if (!embedded) {
+                        embedded = await embedPlatformImage(pdfDoc, url);
+                        if (embedded) imageCache.set(url, embedded);
+                      }
+                      const imageX = x + 10 + imgIndex * (imageWidth + imageGap);
+                      const imageY = yTop - 10 - imageHeight;
+                      if (embedded) {
+                        drawImageContained(page, embedded, {
+                          x: imageX,
+                          y: imageY,
+                          width: imageWidth,
+                          height: imageHeight
+                        });
+                      } else {
+                        page.drawRectangle({
+                          x: imageX,
+                          y: imageY,
+                          width: imageWidth,
+                          height: imageHeight,
+                          borderColor,
+                          borderWidth: 1,
+                          color: rgb(0.97, 0.95, 0.92)
+                        });
+                      }
+                    }
+
+                    let textY = yTop - 10 - imageHeight - 16;
+                    const textX = x + 10;
+                    const textWidth = cardWidth - 20;
+                    const rows = [
+                      ['Category', item.category_2 || '-'],
+                      ['Brand', item.brand || '-'],
+                      ['Size', item.size || '-'],
+                      ['Condition', item.condition || 'Not set'],
+                      ['Original Tags Attached', item.original_tags_attached || '-'],
+                      ['Estimated Retail Price', item.estimated_retail_price ? ('$' + Number(item.estimated_retail_price).toFixed(2)) : '-'],
+                      ['Listed Price', '$' + Number(item.price || 0).toFixed(2)],
+                      ['Colors', item.colors || '-'],
+                      ['Shoe Style', item.shoe_style || '-'],
+                      ['Description', item.description || '-'],
+                      ["Brand's Style Name", item.brand_style_name || '-']
+                    ];
+
+                    for (const [label, value] of rows) {
+                      page.drawText(label + ':', {
+                        x: textX,
+                        y: textY,
+                        size: labelSize,
+                        font: fontBold,
+                        color: textColor
+                      });
+                      const labelWidth = fontBold.widthOfTextAtSize(label + ': ', labelSize);
+                      textY = drawWrappedText(page, value, {
+                        font: fontRegular,
+                        size: valueSize,
+                        color: textColor,
+                        x: textX + labelWidth,
+                        y: textY,
+                        maxWidth: textWidth - labelWidth,
+                        lineHeight,
+                        maxLines: 1
+                      }) - 2;
+                    }
+                  }
+
+                  startPage();
+                  for (const group of platformGroups) {
+                    const sectionTotal = group.items.reduce((sum, item) => sum + Number(item.price || 0), 0);
+                    if (cursorY - 26 - cardHeight < margin) {
+                      startPage();
+                    }
+                    page.drawText(group.platform, {
+                      x: margin,
+                      y: cursorY,
+                      size: 14,
+                      font: fontBold,
+                      color: rgb(0.12, 0.08, 0.05)
+                    });
+                    page.drawText(group.items.length + ' pair(s) | $' + sectionTotal.toFixed(2) + ' listed', {
+                      x: margin + 120,
+                      y: cursorY + 1,
+                      size: 9,
+                      font: fontRegular,
+                      color: rgb(0.42, 0.36, 0.32)
+                    });
+                    cursorY -= 18;
+
+                    for (let index = 0; index < group.items.length; index += 2) {
+                      if (cursorY - cardHeight < margin) {
+                        startPage();
+                        page.drawText(group.platform + ' (continued)', {
+                          x: margin,
+                          y: cursorY,
+                          size: 14,
+                          font: fontBold,
+                          color: rgb(0.12, 0.08, 0.05)
+                        });
+                        cursorY -= 18;
+                      }
+                      const rowItems = group.items.slice(index, index + 2);
+                      for (let column = 0; column < rowItems.length; column += 1) {
+                        const x = margin + column * (cardWidth + gutter);
+                        await drawCard(rowItems[column], x, cursorY);
+                      }
+                      cursorY -= cardHeight + 10;
+                    }
+                    cursorY -= 10;
+                  }
+
+                  const bytes = await pdfDoc.save();
+                  const blob = new Blob([bytes], { type: 'application/pdf' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = 'platform-report-' + new Date().toISOString().slice(0, 10) + '.pdf';
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                  URL.revokeObjectURL(url);
+                  button.textContent = 'PDF Ready';
+                  setTimeout(() => { button.textContent = originalLabel; button.disabled = false; }, 1200);
+                  return;
+                } catch (error) {
+                  alert('PDF generation failed: ' + (error?.message || String(error)));
+                }
+                button.textContent = originalLabel;
+                button.disabled = false;
+              }
+            <\/script>
           </head>
           <body>
             <div class="print-toolbar">
+              <button id="create-platform-pdf-button" onclick="createPlatformPdf()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">Create PDF</button>
               <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
             </div>
             <h1 style="margin:0 0 8px;">Platform Report</h1>
