@@ -724,6 +724,29 @@
       font-weight: 700;
     }
 
+    .checkbox-group {
+      display: grid;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.82);
+    }
+
+    .checkbox-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.92rem;
+      color: var(--ink);
+    }
+
+    .checkbox-option input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--sage);
+    }
+
     .inventory-actions.end {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1477,6 +1500,15 @@
               <label for="serial-number">Serial number</label>
               <input id="serial-number" name="serial-number" type="text" placeholder="SKU, serial, style code...">
             </div>
+            <div class="field-stack" style="grid-column:1/-1;">
+              <label>Platforms listed</label>
+              <div class="checkbox-group">
+                <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="ThreadUp">ThreadUp</label>
+                <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="ebay">ebay</label>
+                <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="Depop">Depop</label>
+                <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="WhatNot">WhatNot</label>
+              </div>
+            </div>
           </div>
         </details>
 
@@ -1722,6 +1754,15 @@
               <div class="field">
                 <label for="edit-serial-number">Serial number</label>
                 <input id="edit-serial-number" type="text">
+              </div>
+              <div class="field" style="grid-column:1/-1;">
+                <label>Platforms listed</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="ThreadUp">ThreadUp</label>
+                  <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="ebay">ebay</label>
+                  <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="Depop">Depop</label>
+                  <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="WhatNot">WhatNot</label>
+                </div>
               </div>
             </div>
           </details>
@@ -1978,6 +2019,17 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    function getCheckedValues(name) {
+      return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map((input) => input.value);
+    }
+
+    function setCheckedValues(name, values) {
+      const selected = new Set(Array.isArray(values) ? values : []);
+      document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+        input.checked = selected.has(input.value);
+      });
     }
 
     function showBanner(type, title, body) {
@@ -2781,7 +2833,8 @@
         brandStyleName,
         materials: elements.materials.value.trim(),
         madeIn: elements.madeIn.value.trim(),
-        serialNumber: elements.serialNumber.value.trim()
+        serialNumber: elements.serialNumber.value.trim(),
+        platformsListed: getCheckedValues('platforms-listed')
       };
     }
 
@@ -2926,6 +2979,7 @@
           materials: draft.materials || null,
           made_in: draft.madeIn || null,
           serial_number: draft.serialNumber || null,
+          platforms_listed: draft.platformsListed,
           price_ai_used: false,
           has_box: state.hasBox,
           source_method: state.hasBox ? 'box' : 'no_box',
@@ -3189,7 +3243,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,category_2,gender,price,notes,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,pricing_condition,pricing_locked,price_ai_last_run_at,colors,shoe_style,brand_style_name,materials,made_in,serial_number,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,brand,description,size,category_2,gender,price,notes,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,pricing_condition,pricing_locked,price_ai_last_run_at,colors,shoe_style,brand_style_name,materials,made_in,serial_number,platforms_listed,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -3469,6 +3523,7 @@
       elements.editMaterials.value = item.materials || '';
       elements.editMadeIn.value = item.made_in || '';
       elements.editSerialNumber.value = item.serial_number || '';
+      setCheckedValues('edit-platforms-listed', item.platforms_listed || []);
       elements.editStatus.className = 'form-status';
       elements.editStatus.textContent = 'Update the fields and save changes.';
       elements.editModal.classList.remove('hidden');
@@ -3530,6 +3585,7 @@
           materials: elements.editMaterials.value.trim() || null,
           made_in: elements.editMadeIn.value.trim() || null,
           serial_number: elements.editSerialNumber.value.trim() || null,
+          platforms_listed: getCheckedValues('edit-platforms-listed'),
           price_ai_used: priceAiUsed,
           has_box: state.editHasBox,
           source_method: state.editHasBox ? 'box' : 'no_box'
@@ -3590,6 +3646,7 @@
         materials: item.materials || null,
         made_in: item.made_in || null,
         serial_number: item.serial_number || null,
+        platforms_listed: Array.isArray(item.platforms_listed) ? item.platforms_listed : [],
         price_ai_used: false,
         has_box: Boolean(item.has_box),
         source_method: item.has_box ? 'box' : 'no_box',
