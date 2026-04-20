@@ -1380,6 +1380,7 @@
               <option value="New">New</option>
               <option value="Excellent">Excellent</option>
               <option value="Very Good">Very Good</option>
+              <option value="Good">Good</option>
             </select>
           </div>
 
@@ -1654,6 +1655,7 @@
               <option value="New">New</option>
               <option value="Excellent">Excellent</option>
               <option value="Very Good">Very Good</option>
+              <option value="Good">Good</option>
             </select>
           </div>
           <div class="field">
@@ -2665,6 +2667,7 @@
         category_2: item?.category_2 || '',
         gender: item?.gender || '',
         has_box: Boolean(item?.has_box),
+        condition: item?.condition || '',
         pricing_condition: item?.pricing_condition || '',
         notes: item?.notes || '',
         sold: Boolean(item?.sold),
@@ -3754,6 +3757,7 @@
             category_2: item.category_2,
             gender: item.gender,
             has_box: item.has_box,
+            condition: item.condition,
             notes: item.notes,
             sold: item.sold,
             pricing_condition: item.pricing_condition,
