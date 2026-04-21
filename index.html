@@ -3116,11 +3116,27 @@
       return [...variants].filter(Boolean);
     }
 
+    function isSizeLikeSearch(raw) {
+      const value = String(raw || '').toLowerCase().trim();
+      if (!value) return false;
+      return /^size\s*\d+(?:\.\d+)?(?:\s*[a-z]+)?$/i.test(value) || /^\d+(?:\.\d+)?(?:\s*[a-z]+)?$/i.test(value);
+    }
+
+    function normalizedSizeSearchTerms(raw) {
+      const base = String(raw || '').toLowerCase().trim().replace(/^size\s*/i, '').trim();
+      return normalizedSizeTerms(base);
+    }
+
     function sortedInventory() {
       let items = [...state.inventory];
       if (state.searchTerm) {
-        const terms = normalizedSearchTerms(state.searchTerm);
+        const sizeLikeSearch = isSizeLikeSearch(state.searchTerm);
+        const terms = sizeLikeSearch ? normalizedSizeSearchTerms(state.searchTerm) : normalizedSearchTerms(state.searchTerm);
         items = items.filter((item) => {
+          const sizeTerms = normalizedSizeTerms(item.size);
+          if (sizeLikeSearch) {
+            return terms.some((term) => sizeTerms.some((value) => value === term));
+          }
           const platformTerms = getItemPlatforms(item).flatMap((platform) => {
             const lower = String(platform || '').toLowerCase();
             if (lower === 'whatnot') return ['whatnot', 'what not', 'platform whatnot', 'listed on whatnot'];
@@ -3148,7 +3164,6 @@
             item.sold ? 'sold' : 'for sale forsale available active',
             String(item.price ?? '')
           ].map((value) => String(value || '').toLowerCase());
-          const sizeTerms = normalizedSizeTerms(item.size);
           searchValues.push(...sizeTerms);
           return terms.some((term) => searchValues.some((value) => value.includes(term)));
         });
