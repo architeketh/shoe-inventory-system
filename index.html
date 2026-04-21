@@ -3100,6 +3100,22 @@
       return [...variants];
     }
 
+    function normalizedSizeTerms(raw) {
+      const base = String(raw || '').toLowerCase().trim();
+      if (!base) return [];
+      const variants = new Set([base]);
+      const compact = base.replace(/\s+/g, '');
+      variants.add(compact);
+      const noUs = compact.replace(/us/g, '');
+      variants.add(noUs);
+      variants.add(base.replace(/\bus\b/g, '').replace(/\s+/g, ' ').trim());
+      const spacedYouth = noUs.replace(/^(\d+(?:\.\d+)?)([a-z]+)$/i, '$1 $2').trim();
+      if (spacedYouth && spacedYouth !== noUs) variants.add(spacedYouth);
+      const compactYouth = base.replace(/\s+/g, '').replace(/^(\d+(?:\.\d+)?)([a-z]+)$/i, '$1$2').trim();
+      if (compactYouth) variants.add(compactYouth);
+      return [...variants].filter(Boolean);
+    }
+
     function sortedInventory() {
       let items = [...state.inventory];
       if (state.searchTerm) {
@@ -3124,7 +3140,6 @@
             item.brand,
             item.description,
             item.notes,
-            item.size,
             item.category_2,
             item.gender,
             ...genderTerms,
@@ -3133,6 +3148,8 @@
             item.sold ? 'sold' : 'for sale forsale available active',
             String(item.price ?? '')
           ].map((value) => String(value || '').toLowerCase());
+          const sizeTerms = normalizedSizeTerms(item.size);
+          searchValues.push(...sizeTerms);
           return terms.some((term) => searchValues.some((value) => value.includes(term)));
         });
       }
