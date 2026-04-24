@@ -1329,6 +1329,15 @@
             <button class="toggle-pill" type="button" data-box-value="no">No box</button>
           </div>
         </div>
+        <div class="toggle-row" id="original-tags-toggle" style="margin-bottom:14px;">
+          <button class="toggle-pill" type="button" data-tags-value="yes">Original Tags</button>
+          <button class="toggle-pill active" type="button" data-tags-value="no">No Tags</button>
+        </div>
+        <select class="sr-only" id="original-tags-attached" name="original-tags-attached" tabindex="-1" aria-hidden="true">
+          <option value="">Select</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
 
         <div class="config-grid" style="margin-bottom:16px;">
           <article class="config-box">
@@ -1355,11 +1364,6 @@
             </div>
             <div class="helper">Select up to 6 photos. You can open the photo library, launch the camera, or use a general file picker.</div>
             <div class="photo-grid" id="photo-preview"></div>
-          </div>
-
-          <div class="field-stack">
-            <label for="description">Description</label>
-            <textarea id="description" name="description" placeholder="Air Jordan 1 Retro High OG Chicago, red white black..."></textarea>
           </div>
 
           <div class="field">
@@ -1421,21 +1425,12 @@
           </div>
 
           <div class="field">
-            <label for="original-tags-attached">Original Tags Attached</label>
-            <select id="original-tags-attached" name="original-tags-attached">
-              <option value="">Select</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-          </div>
-
-          <div class="field">
             <label for="price">Listed Price</label>
             <input id="price" name="price" type="number" min="0" step="0.01" placeholder="120.00" required>
           </div>
 
           <div class="field">
-            <label for="estimated-retail-price">Estimated Retail Price</label>
+            <label for="estimated-retail-price">Retail Price</label>
             <input id="estimated-retail-price" name="estimated-retail-price" type="number" min="0" step="0.01" placeholder="120.00">
           </div>
 
@@ -1493,6 +1488,10 @@
         <details class="collapsible" style="margin-top:16px;">
           <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
           <div class="form-grid" style="padding-top:16px;">
+            <div class="field-stack" style="grid-column:1/-1;">
+              <label for="description">Description</label>
+              <textarea id="description" name="description" placeholder="Air Jordan 1 Retro High OG Chicago, red white black..."></textarea>
+            </div>
             <div class="field">
               <label for="materials">Materials</label>
               <input id="materials" name="materials" type="text" placeholder="Leather, Mesh, Suede...">
@@ -1634,11 +1633,16 @@
           <button class="toggle-pill active" type="button" data-edit-box-value="yes">Box</button>
           <button class="toggle-pill" type="button" data-edit-box-value="no">No box</button>
         </div>
+        <div class="toggle-row" id="edit-original-tags-toggle" style="margin-bottom:14px;">
+          <button class="toggle-pill" type="button" data-edit-tags-value="yes">Original Tags</button>
+          <button class="toggle-pill active" type="button" data-edit-tags-value="no">No Tags</button>
+        </div>
+        <select class="sr-only" id="edit-original-tags-attached" tabindex="-1" aria-hidden="true">
+          <option value="">Select</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
         <div class="edit-grid">
-          <div class="field" style="grid-column:1/-1;">
-            <label for="edit-description">Description</label>
-            <textarea id="edit-description"></textarea>
-          </div>
           <div class="field">
             <label for="edit-category-2">Category</label>
             <select id="edit-category-2">
@@ -1690,19 +1694,11 @@
             <input id="edit-colors" type="text">
           </div>
           <div class="field">
-            <label for="edit-original-tags-attached">Original Tags Attached</label>
-            <select id="edit-original-tags-attached">
-              <option value="">Select</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-          </div>
-          <div class="field">
             <label for="edit-price">Listed Price</label>
             <input id="edit-price" type="number" min="0" step="0.01">
           </div>
           <div class="field">
-            <label for="edit-estimated-retail-price">Estimated Retail Price</label>
+            <label for="edit-estimated-retail-price">Retail Price</label>
             <input id="edit-estimated-retail-price" type="number" min="0" step="0.01">
           </div>
           <div class="field">
@@ -1752,6 +1748,10 @@
           <details class="collapsible" style="margin-top:16px;">
             <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
             <div class="edit-grid" style="padding-top:16px;">
+              <div class="field" style="grid-column:1/-1;">
+                <label for="edit-description">Description</label>
+                <textarea id="edit-description"></textarea>
+              </div>
               <div class="field">
                 <label for="edit-materials">Materials</label>
                 <input id="edit-materials" type="text">
@@ -2807,10 +2807,24 @@
       updateModeCopy();
     }
 
+    function setOriginalTagsMode(hasTags) {
+      elements.originalTagsAttached.value = hasTags ? 'yes' : 'no';
+      document.querySelectorAll('[data-tags-value]').forEach((button) => {
+        button.classList.toggle('active', button.dataset.tagsValue === (hasTags ? 'yes' : 'no'));
+      });
+    }
+
     function setEditBoxMode(hasBox) {
       state.editHasBox = hasBox;
       document.querySelectorAll('[data-edit-box-value]').forEach((button) => {
         button.classList.toggle('active', button.dataset.editBoxValue === (hasBox ? 'yes' : 'no'));
+      });
+    }
+
+    function setEditOriginalTagsMode(hasTags) {
+      elements.editOriginalTagsAttached.value = hasTags ? 'yes' : 'no';
+      document.querySelectorAll('[data-edit-tags-value]').forEach((button) => {
+        button.classList.toggle('active', button.dataset.editTagsValue === (hasTags ? 'yes' : 'no'));
       });
     }
 
@@ -2839,6 +2853,7 @@
       elements.saveButton.textContent = 'Save to Supabase';
       showFormStatus('', 'Ready to save. Add photos, confirm details, then save to Supabase.');
       setBoxMode(true);
+      setOriginalTagsMode(false);
     }
 
     function handlePhotoSelection(files) {
@@ -3329,7 +3344,7 @@
             <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
             <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
             <div><strong>Original Tags Attached:</strong> ${escapeHtml(item.original_tags_attached || '-')}</div>
-            <div><strong>Estimated Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
+            <div><strong>Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
             <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
             <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
             <div><strong>Shoe Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
@@ -3386,6 +3401,11 @@
       const button = event.target.closest('[data-box-value]');
       if (!button) return;
       setBoxMode(button.dataset.boxValue === 'yes');
+    });
+    document.getElementById('original-tags-toggle').addEventListener('click', (event) => {
+      const button = event.target.closest('[data-tags-value]');
+      if (!button) return;
+      setOriginalTagsMode(button.dataset.tagsValue === 'yes');
     });
 
     elements.choosePhotosButton.addEventListener('click', () => elements.photoInput.click());
@@ -3582,7 +3602,7 @@
       startEdit(itemId);
       elements.editEstimatedRetailPrice.value = retail.toFixed(2);
       elements.editStatus.className = 'form-status success';
-      elements.editStatus.textContent = 'Retail pricing applied to Estimated Retail Price. Save changes to keep it.';
+      elements.editStatus.textContent = 'Retail pricing applied to Retail Price. Save changes to keep it.';
     });
     elements.priceAiApplyBothButton.addEventListener('click', () => {
       const recommended = Number(state.lastPriceRecommendation?.recommended_price);
@@ -3636,7 +3656,7 @@
       elements.editSold.value = item.sold ? 'true' : 'false';
       elements.editReviewed.value = item.reviewed ? 'true' : 'false';
       elements.editCondition.value = item.condition || '';
-      elements.editOriginalTagsAttached.value = item.original_tags_attached || '';
+      setEditOriginalTagsMode(item.original_tags_attached === 'yes');
       elements.editEstimatedRetailPrice.value = item.estimated_retail_price ?? '';
       elements.editSoldPrice.value = item.sold_price ?? '';
       elements.editPurchasedPrice.value = item.purchased_price ?? '';
@@ -3971,7 +3991,7 @@
             <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
             <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
             <div><strong>Original Tags Attached:</strong> ${escapeHtml(item.original_tags_attached || '-')}</div>
-            <div><strong>Estimated Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
+            <div><strong>Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
             <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
             <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
             <div><strong>Shoe Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
@@ -4247,7 +4267,7 @@
                         ['Size', item.size || '-'],
                         ['Condition', item.condition || 'Not set'],
                         ['Original Tags Attached', item.original_tags_attached || '-'],
-                        ['Estimated Retail Price', item.estimated_retail_price ? ('$' + Number(item.estimated_retail_price).toFixed(2)) : '-'],
+['Retail Price', item.estimated_retail_price ? ('$' + Number(item.estimated_retail_price).toFixed(2)) : '-'],
                         ['Listed Price', '$' + Number(item.price || 0).toFixed(2)],
                         ['Colors', item.colors || '-'],
                         ['Shoe Style', item.shoe_style || '-'],
@@ -4653,7 +4673,7 @@
                       ['Size', item.size || '-'],
                       ['Condition', item.condition || 'Not set'],
                       ['Original Tags Attached', item.original_tags_attached || '-'],
-                      ['Estimated Retail Price', item.estimated_retail_price ? ('$' + Number(item.estimated_retail_price).toFixed(2)) : '-'],
+['Retail Price', item.estimated_retail_price ? ('$' + Number(item.estimated_retail_price).toFixed(2)) : '-'],
                       ['Listed Price', '$' + Number(item.price || 0).toFixed(2)],
                       ['Colors', item.colors || '-'],
                       ['Shoe Style', item.shoe_style || '-'],
@@ -5287,6 +5307,11 @@
       if (!button) return;
       setEditBoxMode(button.dataset.editBoxValue === 'yes');
     });
+    document.getElementById('edit-original-tags-toggle').addEventListener('click', (event) => {
+      const button = event.target.closest('[data-edit-tags-value]');
+      if (!button) return;
+      setEditOriginalTagsMode(button.dataset.editTagsValue === 'yes');
+    });
     elements.editForm.addEventListener('submit', saveEdit);
     elements.editCancelButton.addEventListener('click', closeEditModal);
     elements.editClose.addEventListener('click', closeEditModal);
@@ -5305,6 +5330,8 @@
     });
     syncResponsiveLabels();
     updateModeCopy();
+    setOriginalTagsMode(false);
+    setEditOriginalTagsMode(false);
     loadInventory();
   </script>
 </body>
