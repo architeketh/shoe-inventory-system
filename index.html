@@ -1426,7 +1426,7 @@
 
           <div class="field">
             <label for="price">Listed Price</label>
-            <input id="price" name="price" type="number" min="0" step="0.01" placeholder="120.00" required>
+            <input id="price" name="price" type="number" min="0" step="0.01" placeholder="120.00">
           </div>
 
           <div class="field">
@@ -1520,7 +1520,7 @@
 
         <div class="prompt-box" id="required-copy">
           <strong>Current requirement</strong>
-          <p>If there is no box, brand, category, and listed price must be entered manually or filled by AI lookup from the shoe photos. Description can also feed Brand Style Name.</p>
+          <p>If there is no box, brand and category should be entered manually or filled by AI lookup from the shoe photos. Description can also feed Brand Style Name. Blank listed price will save as $0.00.</p>
         </div>
 
         <div class="button-row">
@@ -2800,11 +2800,11 @@
     function updateModeCopy() {
       if (state.hasBox) {
         elements.aiModeCopy.textContent = 'Box mode is active, so AI will try to read brand, model, color, size, and Brand Style Name from the box photos before you save.';
-        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>With box selected, AI can use the box label and visible shoe details to fill Brand, Description, Colors, Shoe Style, and Brand Style Name. Listed Price is still required before saving.</p>';
+        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>With box selected, AI can use the box label and visible shoe details to fill Brand, Description, Colors, Shoe Style, and Brand Style Name. Blank listed price will save as $0.00.</p>';
         elements.aiFillButton.textContent = 'Read box details with AI';
       } else {
         elements.aiModeCopy.textContent = 'No-box mode is active, so AI will infer brand, model, colors, size, and Brand Style Name from the shoe photos and visible tags if you choose the lookup action.';
-        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>If there is no box, AI should use shoe photos, tags, and outsole details to fill Brand, Description, Colors, Shoe Style, and Brand Style Name when possible. Category and Listed Price still need to be confirmed before saving.</p>';
+        elements.requiredCopy.innerHTML = '<strong>Current requirement</strong><p>If there is no box, AI should use shoe photos, tags, and outsole details to fill Brand, Description, Colors, Shoe Style, and Brand Style Name when possible. Category still needs to be confirmed before saving. Blank listed price will save as $0.00.</p>';
         elements.aiFillButton.textContent = 'Lookup shoe details with AI';
       }
     }
@@ -2922,11 +2922,8 @@
       if (!state.photoFiles.length) {
         throw new Error('At least one photo is required.');
       }
-      if (!draft.price) {
-        throw new Error('Price is required.');
-      }
-      if (!draft.brand || !draft.category2 || !draft.price) {
-        throw new Error('Brand, Category, and listed price are required before saving.');
+      if (!draft.brand || !draft.category2) {
+        throw new Error('Brand and Category are required before saving.');
       }
       return draft;
     }
@@ -3789,8 +3786,8 @@
           has_box: state.editHasBox,
           source_method: state.editHasBox ? 'box' : 'no_box'
         };
-        if (!payload.brand || !payload.category_2 || !payload.price) {
-          throw new Error('Brand, Category, and listed price are required.');
+        if (!payload.brand || !payload.category_2) {
+          throw new Error('Brand and Category are required.');
         }
         const { error } = await supabaseClient.from(APP_CONFIG.inventoryTable).update(payload).eq('id', state.editingId);
         if (error) throw error;
