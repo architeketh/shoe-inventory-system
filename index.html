@@ -1358,11 +1358,6 @@
           </div>
 
           <div class="field-stack">
-            <label for="title">Title</label>
-            <input id="title" name="title" type="text" placeholder="Listing title for Depop, Whatnot, and other platforms...">
-          </div>
-
-          <div class="field-stack">
             <label for="description">Description</label>
             <textarea id="description" name="description" placeholder="Air Jordan 1 Retro High OG Chicago, red white black..."></textarea>
           </div>
@@ -1474,11 +1469,10 @@
           </div>
 
           <div class="field">
-            <label for="status">Status</label>
-            <select id="status" name="status">
-              <option value="active">Active</option>
-              <option value="sold">Sold</option>
-              <option value="draft">Draft</option>
+            <label for="sold">Sold</label>
+            <select id="sold" name="sold">
+              <option value="false">For sale</option>
+              <option value="true">Sold</option>
             </select>
           </div>
 
@@ -1641,10 +1635,6 @@
           <button class="toggle-pill" type="button" data-edit-box-value="no">No box</button>
         </div>
         <div class="edit-grid">
-          <div class="field-stack" style="grid-column:1/-1;">
-            <label for="edit-title">Title</label>
-            <input id="edit-title" type="text">
-          </div>
           <div class="field" style="grid-column:1/-1;">
             <label for="edit-description">Description</label>
             <textarea id="edit-description"></textarea>
@@ -1741,11 +1731,10 @@
             </select>
           </div>
           <div class="field">
-            <label for="edit-status-select">Status</label>
-            <select id="edit-status-select">
-              <option value="active">Active</option>
-              <option value="sold">Sold</option>
-              <option value="draft">Draft</option>
+            <label for="edit-sold">Sold</label>
+            <select id="edit-sold">
+              <option value="false">For sale</option>
+              <option value="true">Sold</option>
             </select>
           </div>
           <div class="field">
@@ -1899,7 +1888,6 @@
       fileBrowserInput: document.getElementById('file-browser-input'),
       photoPreview: document.getElementById('photo-preview'),
       form: document.getElementById('inventory-form'),
-      title: document.getElementById('title'),
       brand: document.getElementById('brand'),
       size: document.getElementById('size'),
       description: document.getElementById('description'),
@@ -1907,7 +1895,7 @@
       gender: document.getElementById('gender'),
       price: document.getElementById('price'),
       notes: document.getElementById('notes'),
-      status: document.getElementById('status'),
+      sold: document.getElementById('sold'),
       reviewed: document.getElementById('reviewed'),
       condition: document.getElementById('condition'),
       originalTagsAttached: document.getElementById('original-tags-attached'),
@@ -1985,7 +1973,6 @@
       editModal: document.getElementById('edit-modal'),
       editClose: document.getElementById('edit-close'),
       editForm: document.getElementById('edit-form'),
-      editTitle: document.getElementById('edit-title'),
       editBrand: document.getElementById('edit-brand'),
       editSize: document.getElementById('edit-size'),
       editGender: document.getElementById('edit-gender'),
@@ -1993,7 +1980,7 @@
       editDescription: document.getElementById('edit-description'),
       editPrice: document.getElementById('edit-price'),
       editNotes: document.getElementById('edit-notes'),
-      editListingStatus: document.getElementById('edit-status-select'),
+      editSold: document.getElementById('edit-sold'),
       editReviewed: document.getElementById('edit-reviewed'),
       editCondition: document.getElementById('edit-condition'),
       editOriginalTagsAttached: document.getElementById('edit-original-tags-attached'),
@@ -2876,12 +2863,9 @@
     }
 
     function getDraftValues() {
-      const title = elements.title.value.trim();
       const description = elements.description.value.trim();
       const brandStyleName = elements.brandStyleName.value.trim() || description;
-      const status = normalizeListingStatus(elements.status.value, false);
       return {
-        title,
         brand: elements.brand.value.trim(),
         size: elements.size.value.trim(),
         category2: elements.category2.value.trim(),
@@ -2889,8 +2873,7 @@
         description,
         price: Number(elements.price.value || 0),
         notes: elements.notes.value.trim(),
-        status,
-        sold: status === 'sold',
+        sold: elements.sold.value === 'true',
         reviewed: elements.reviewed.value === 'true',
         condition: elements.condition.value.trim(),
         originalTagsAttached: elements.originalTagsAttached.value.trim(),
@@ -3034,7 +3017,6 @@
         const draft = validateDraft();
         const photoUploads = state.photoFiles.length ? await uploadPhotos(state.photoFiles) : [];
         const payload = {
-          title: draft.title || null,
           brand: draft.brand,
           description: draft.description,
           size: draft.size,
@@ -3042,7 +3024,6 @@
           gender: draft.gender || null,
           price: draft.price,
           notes: draft.notes || null,
-          status: draft.status,
           sold: draft.sold,
           reviewed: draft.reviewed,
           condition: draft.condition || null,
@@ -3387,7 +3368,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,title,brand,description,size,category_2,gender,price,notes,status,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,pricing_condition,pricing_locked,price_ai_last_run_at,colors,shoe_style,brand_style_name,materials,made_in,serial_number,platforms_listed,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,brand,description,size,category_2,gender,price,notes,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,pricing_condition,pricing_locked,price_ai_last_run_at,colors,shoe_style,brand_style_name,materials,made_in,serial_number,platforms_listed,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -3640,13 +3621,11 @@
     function startEdit(id) {
       const item = state.inventory.find((entry) => entry.id === id);
       if (!item) return;
-      const itemStatus = normalizeListingStatus(item.status, Boolean(item.sold));
       state.editingId = id;
       state.editPriceAiUsed = Boolean(item.price_ai_used);
       state.editOriginalPrice = Number(item.price || 0);
       state.editAppliedPriceAiValue = null;
       setEditBoxMode(Boolean(item.has_box));
-      elements.editTitle.value = item.title || '';
       elements.editBrand.value = item.brand || '';
       elements.editSize.value = item.size || '';
       elements.editCategory2.value = item.category_2 || '';
@@ -3654,7 +3633,7 @@
       elements.editDescription.value = item.description || '';
       elements.editPrice.value = item.price ?? '';
       elements.editNotes.value = item.notes || '';
-      elements.editListingStatus.value = itemStatus;
+      elements.editSold.value = item.sold ? 'true' : 'false';
       elements.editReviewed.value = item.reviewed ? 'true' : 'false';
       elements.editCondition.value = item.condition || '';
       elements.editOriginalTagsAttached.value = item.original_tags_attached || '';
@@ -3697,10 +3676,8 @@
         const appliedAiPrice = Number(state.editAppliedPriceAiValue);
         const originalPrice = Number(state.editOriginalPrice);
         let priceAiUsed = state.editPriceAiUsed;
-        const editTitle = elements.editTitle.value.trim();
         const editDescription = elements.editDescription.value.trim();
         const editBrandStyleName = elements.editBrandStyleName.value.trim() || editDescription;
-        const editListingStatus = normalizeListingStatus(elements.editListingStatus.value, false);
 
         if (priceAiUsed) {
           if (Number.isFinite(appliedAiPrice)) {
@@ -3711,7 +3688,6 @@
         }
 
         const payload = {
-          title: editTitle || null,
           brand: elements.editBrand.value.trim(),
           size: elements.editSize.value.trim(),
           category_2: elements.editCategory2.value.trim(),
@@ -3719,8 +3695,7 @@
           description: editDescription,
           price: editedPrice,
           notes: elements.editNotes.value.trim() || null,
-          status: editListingStatus,
-          sold: editListingStatus === 'sold',
+          sold: elements.editSold.value === 'true',
           reviewed: elements.editReviewed.value === 'true',
           condition: elements.editCondition.value.trim() || null,
           original_tags_attached: elements.editOriginalTagsAttached.value.trim() || null,
@@ -3772,9 +3747,7 @@
     async function duplicateItem(id) {
       const item = state.inventory.find((entry) => entry.id === id);
       if (!item) return;
-      const itemStatus = normalizeListingStatus(item.status, Boolean(item.sold));
       const payload = {
-        title: item.title || null,
         brand: item.brand,
         description: item.description,
         size: item.size,
@@ -3782,8 +3755,7 @@
         gender: item.gender || null,
         price: item.price,
         notes: item.notes || null,
-        status: itemStatus,
-        sold: itemStatus === 'sold',
+        sold: Boolean(item.sold),
         reviewed: Boolean(item.reviewed),
         condition: item.condition || null,
         original_tags_attached: item.original_tags_attached || null,
