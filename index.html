@@ -288,6 +288,12 @@
       border-color: rgba(239, 68, 68, 0.18);
     }
 
+    .inventory-tag.draft {
+      color: #7a5a13;
+      background: rgba(254, 243, 199, 0.96);
+      border-color: rgba(245, 158, 11, 0.18);
+    }
+
     .inventory-tag.empty {
       min-width: 48px;
       color: transparent;
@@ -1351,6 +1357,16 @@
             <div class="photo-grid" id="photo-preview"></div>
           </div>
 
+          <div class="field-stack">
+            <label for="title">Title</label>
+            <input id="title" name="title" type="text" placeholder="Listing title for Depop, Whatnot, and other platforms...">
+          </div>
+
+          <div class="field-stack">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" placeholder="Air Jordan 1 Retro High OG Chicago, red white black..."></textarea>
+          </div>
+
           <div class="field">
             <label for="category-2">Category</label>
             <select id="category-2" name="category-2" required>
@@ -1364,8 +1380,28 @@
           </div>
 
           <div class="field">
+            <label for="gender">Category 2</label>
+            <select id="gender" name="gender">
+              <option value="">Select</option>
+              <option value="mens">Mens</option>
+              <option value="womens">Womens</option>
+              <option value="kids">Kids</option>
+            </select>
+          </div>
+
+          <div class="field">
             <label for="brand">Brand</label>
             <input id="brand" name="brand" type="text" placeholder="Nike, Adidas, New Balance...">
+          </div>
+
+          <div class="field">
+            <label for="brand-style-name">Brand Style Name</label>
+            <input id="brand-style-name" name="brand-style-name" type="text" placeholder="Defaults from description if left blank">
+          </div>
+
+          <div class="field">
+            <label for="shoe-style">Street Slang</label>
+            <input id="shoe-style" name="shoe-style" type="text" placeholder="Platform, Low top, Running...">
           </div>
 
           <div class="field">
@@ -1385,6 +1421,11 @@
           </div>
 
           <div class="field">
+            <label for="colors">Colors</label>
+            <input id="colors" name="colors" type="text" placeholder="Pink, Black, White...">
+          </div>
+
+          <div class="field">
             <label for="original-tags-attached">Original Tags Attached</label>
             <select id="original-tags-attached" name="original-tags-attached">
               <option value="">Select</option>
@@ -1394,13 +1435,13 @@
           </div>
 
           <div class="field">
-            <label for="estimated-retail-price">Estimated Retail Price</label>
-            <input id="estimated-retail-price" name="estimated-retail-price" type="number" min="0" step="0.01" placeholder="120.00">
+            <label for="price">Listed Price</label>
+            <input id="price" name="price" type="number" min="0" step="0.01" placeholder="120.00" required>
           </div>
 
           <div class="field">
-            <label for="price">Listed Price</label>
-            <input id="price" name="price" type="number" min="0" step="0.01" placeholder="120.00" required>
+            <label for="estimated-retail-price">Estimated Retail Price</label>
+            <input id="estimated-retail-price" name="estimated-retail-price" type="number" min="0" step="0.01" placeholder="120.00">
           </div>
 
           <div class="field">
@@ -1433,30 +1474,11 @@
           </div>
 
           <div class="field">
-            <label for="colors">Colors</label>
-            <input id="colors" name="colors" type="text" placeholder="Pink, Black, White...">
-          </div>
-
-          <div class="field">
-            <label for="shoe-style">Shoe Style / Platform</label>
-            <input id="shoe-style" name="shoe-style" type="text" placeholder="Platform, Low top, Running...">
-          </div>
-
-          <div class="field-stack">
-            <label for="description">Description</label>
-            <textarea id="description" name="description" placeholder="Air Jordan 1 Retro High OG Chicago, red white black..."></textarea>
-          </div>
-
-          <div class="field-stack">
-            <label for="brand-style-name">Brand Style Name</label>
-            <input id="brand-style-name" name="brand-style-name" type="text" placeholder="Defaults from description if left blank">
-          </div>
-
-          <div class="field">
-            <label for="sold">Sold</label>
-            <select id="sold" name="sold">
-              <option value="false">For sale</option>
-              <option value="true">Sold</option>
+            <label for="status">Status</label>
+            <select id="status" name="status">
+              <option value="active">Active</option>
+              <option value="sold">Sold</option>
+              <option value="draft">Draft</option>
             </select>
           </div>
 
@@ -1477,16 +1499,6 @@
         <details class="collapsible" style="margin-top:16px;">
           <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
           <div class="form-grid" style="padding-top:16px;">
-            <div class="field">
-              <label for="gender">Category 2</label>
-              <select id="gender" name="gender">
-                <option value="">Select</option>
-                <option value="mens">Mens</option>
-                <option value="womens">Womens</option>
-                <option value="kids">Kids</option>
-              </select>
-            </div>
-
             <div class="field">
               <label for="materials">Materials</label>
               <input id="materials" name="materials" type="text" placeholder="Leather, Mesh, Suede...">
@@ -1629,6 +1641,14 @@
           <button class="toggle-pill" type="button" data-edit-box-value="no">No box</button>
         </div>
         <div class="edit-grid">
+          <div class="field-stack" style="grid-column:1/-1;">
+            <label for="edit-title">Title</label>
+            <input id="edit-title" type="text">
+          </div>
+          <div class="field" style="grid-column:1/-1;">
+            <label for="edit-description">Description</label>
+            <textarea id="edit-description"></textarea>
+          </div>
           <div class="field">
             <label for="edit-category-2">Category</label>
             <select id="edit-category-2">
@@ -1641,8 +1661,25 @@
             </select>
           </div>
           <div class="field">
+            <label for="edit-gender">Category 2</label>
+            <select id="edit-gender">
+              <option value="">Select</option>
+              <option value="mens">Mens</option>
+              <option value="womens">Womens</option>
+              <option value="kids">Kids</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="edit-brand">Brand</label>
             <input id="edit-brand" type="text">
+          </div>
+          <div class="field">
+            <label for="edit-brand-style-name">Brand Style Name</label>
+            <input id="edit-brand-style-name" type="text">
+          </div>
+          <div class="field">
+            <label for="edit-shoe-style">Street Slang</label>
+            <input id="edit-shoe-style" type="text">
           </div>
           <div class="field">
             <label for="edit-size">Size</label>
@@ -1659,6 +1696,10 @@
             </select>
           </div>
           <div class="field">
+            <label for="edit-colors">Colors</label>
+            <input id="edit-colors" type="text">
+          </div>
+          <div class="field">
             <label for="edit-original-tags-attached">Original Tags Attached</label>
             <select id="edit-original-tags-attached">
               <option value="">Select</option>
@@ -1667,12 +1708,12 @@
             </select>
           </div>
           <div class="field">
-            <label for="edit-estimated-retail-price">Estimated Retail Price</label>
-            <input id="edit-estimated-retail-price" type="number" min="0" step="0.01">
-          </div>
-          <div class="field">
             <label for="edit-price">Listed Price</label>
             <input id="edit-price" type="number" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label for="edit-estimated-retail-price">Estimated Retail Price</label>
+            <input id="edit-estimated-retail-price" type="number" min="0" step="0.01">
           </div>
           <div class="field">
             <label for="edit-sold-price">Sold Price</label>
@@ -1700,26 +1741,11 @@
             </select>
           </div>
           <div class="field">
-            <label for="edit-colors">Colors</label>
-            <input id="edit-colors" type="text">
-          </div>
-          <div class="field">
-            <label for="edit-shoe-style">Shoe Style / Platform</label>
-            <input id="edit-shoe-style" type="text">
-          </div>
-          <div class="field" style="grid-column:1/-1;">
-            <label for="edit-description">Description</label>
-            <textarea id="edit-description"></textarea>
-          </div>
-          <div class="field" style="grid-column:1/-1;">
-            <label for="edit-brand-style-name">Brand Style Name</label>
-            <input id="edit-brand-style-name" type="text">
-          </div>
-          <div class="field">
-            <label for="edit-sold">Sold</label>
-            <select id="edit-sold">
-              <option value="false">For sale</option>
-              <option value="true">Sold</option>
+            <label for="edit-status-select">Status</label>
+            <select id="edit-status-select">
+              <option value="active">Active</option>
+              <option value="sold">Sold</option>
+              <option value="draft">Draft</option>
             </select>
           </div>
           <div class="field">
@@ -1737,15 +1763,6 @@
           <details class="collapsible" style="margin-top:16px;">
             <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
             <div class="edit-grid" style="padding-top:16px;">
-              <div class="field">
-                <label for="edit-gender">Category 2</label>
-                <select id="edit-gender">
-                  <option value="">Select</option>
-                  <option value="mens">Mens</option>
-                  <option value="womens">Womens</option>
-                  <option value="kids">Kids</option>
-                </select>
-              </div>
               <div class="field">
                 <label for="edit-materials">Materials</label>
                 <input id="edit-materials" type="text">
@@ -1882,6 +1899,7 @@
       fileBrowserInput: document.getElementById('file-browser-input'),
       photoPreview: document.getElementById('photo-preview'),
       form: document.getElementById('inventory-form'),
+      title: document.getElementById('title'),
       brand: document.getElementById('brand'),
       size: document.getElementById('size'),
       description: document.getElementById('description'),
@@ -1889,7 +1907,7 @@
       gender: document.getElementById('gender'),
       price: document.getElementById('price'),
       notes: document.getElementById('notes'),
-      sold: document.getElementById('sold'),
+      status: document.getElementById('status'),
       reviewed: document.getElementById('reviewed'),
       condition: document.getElementById('condition'),
       originalTagsAttached: document.getElementById('original-tags-attached'),
@@ -1967,6 +1985,7 @@
       editModal: document.getElementById('edit-modal'),
       editClose: document.getElementById('edit-close'),
       editForm: document.getElementById('edit-form'),
+      editTitle: document.getElementById('edit-title'),
       editBrand: document.getElementById('edit-brand'),
       editSize: document.getElementById('edit-size'),
       editGender: document.getElementById('edit-gender'),
@@ -1974,7 +1993,7 @@
       editDescription: document.getElementById('edit-description'),
       editPrice: document.getElementById('edit-price'),
       editNotes: document.getElementById('edit-notes'),
-      editSold: document.getElementById('edit-sold'),
+      editListingStatus: document.getElementById('edit-status-select'),
       editReviewed: document.getElementById('edit-reviewed'),
       editCondition: document.getElementById('edit-condition'),
       editOriginalTagsAttached: document.getElementById('edit-original-tags-attached'),
@@ -1989,12 +2008,12 @@
       editMaterials: document.getElementById('edit-materials'),
       editMadeIn: document.getElementById('edit-made-in'),
       editSerialNumber: document.getElementById('edit-serial-number'),
-        editStatus: document.getElementById('edit-status'),
-        editCancelButton: document.getElementById('edit-cancel-button'),
-        editSaveButton: document.getElementById('edit-save-button'),
-        deleteButton: document.getElementById('delete-button'),
-        duplicateButton: document.getElementById('duplicate-button')
-      };
+      editStatus: document.getElementById('edit-status'),
+      editCancelButton: document.getElementById('edit-cancel-button'),
+      editSaveButton: document.getElementById('edit-save-button'),
+      deleteButton: document.getElementById('delete-button'),
+      duplicateButton: document.getElementById('duplicate-button')
+    };
 
     const SUPABASE_READY = !APP_CONFIG.supabaseUrl.includes('YOUR_PROJECT') && !APP_CONFIG.supabaseAnonKey.includes('YOUR_SUPABASE');
     const supabaseClient = SUPABASE_READY ? window.supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseAnonKey) : null;
@@ -2660,6 +2679,7 @@
 
     function getPriceAiSignature(item) {
       return JSON.stringify({
+        title: item?.title || '',
         brand: item?.brand || '',
         brand_style_name: item?.brand_style_name || '',
         description: item?.description || '',
@@ -2670,7 +2690,7 @@
         condition: item?.condition || '',
         pricing_condition: item?.pricing_condition || '',
         notes: item?.notes || '',
-        sold: Boolean(item?.sold),
+        status: normalizeListingStatus(item?.status, Boolean(item?.sold)),
         price: Number(item?.price || 0),
         photo_urls: Array.isArray(item?.photo_urls) ? item.photo_urls : []
       });
@@ -2807,6 +2827,19 @@
       });
     }
 
+    function normalizeListingStatus(statusValue, soldValue = false) {
+      const normalized = String(statusValue || '').trim().toLowerCase();
+      if (normalized === 'active' || normalized === 'sold' || normalized === 'draft') return normalized;
+      return soldValue ? 'sold' : 'active';
+    }
+
+    function getStatusLabel(item) {
+      const statusValue = normalizeListingStatus(item?.status, Boolean(item?.sold));
+      if (statusValue === 'sold') return 'Sold';
+      if (statusValue === 'draft') return 'Draft';
+      return 'Active';
+    }
+
     function resetDraft() {
       state.photoFiles = [];
       state.aiUsedForCurrentDraft = false;
@@ -2843,9 +2876,12 @@
     }
 
     function getDraftValues() {
+      const title = elements.title.value.trim();
       const description = elements.description.value.trim();
       const brandStyleName = elements.brandStyleName.value.trim() || description;
+      const status = normalizeListingStatus(elements.status.value, false);
       return {
+        title,
         brand: elements.brand.value.trim(),
         size: elements.size.value.trim(),
         category2: elements.category2.value.trim(),
@@ -2853,7 +2889,8 @@
         description,
         price: Number(elements.price.value || 0),
         notes: elements.notes.value.trim(),
-        sold: elements.sold.value === 'true',
+        status,
+        sold: status === 'sold',
         reviewed: elements.reviewed.value === 'true',
         condition: elements.condition.value.trim(),
         originalTagsAttached: elements.originalTagsAttached.value.trim(),
@@ -2997,6 +3034,7 @@
         const draft = validateDraft();
         const photoUploads = state.photoFiles.length ? await uploadPhotos(state.photoFiles) : [];
         const payload = {
+          title: draft.title || null,
           brand: draft.brand,
           description: draft.description,
           size: draft.size,
@@ -3004,6 +3042,7 @@
           gender: draft.gender || null,
           price: draft.price,
           notes: draft.notes || null,
+          status: draft.status,
           sold: draft.sold,
           reviewed: draft.reviewed,
           condition: draft.condition || null,
@@ -3085,6 +3124,9 @@
       if (base === 'sold') {
         ['sold'].forEach((value) => variants.add(value));
       }
+      if (base === 'draft') {
+        ['draft'].forEach((value) => variants.add(value));
+      }
       if (base === 'whatnot' || compact === 'whatnot') {
         ['whatnot', 'what not', 'platform whatnot', 'listed on whatnot'].forEach((value) => variants.add(value));
       }
@@ -3153,6 +3195,7 @@
                 ? ['kids', 'kid', 'youth', 'y', 'child', 'category kids']
                 : [];
           const searchValues = [
+            item.title,
             item.brand,
             item.description,
             item.notes,
@@ -3161,7 +3204,8 @@
             ...genderTerms,
             ...platformTerms,
             item.has_box ? 'box' : 'no box',
-            item.sold ? 'sold' : 'for sale forsale available active',
+            getStatusLabel(item).toLowerCase(),
+            normalizeListingStatus(item.status, Boolean(item.sold)) === 'active' ? 'for sale forsale available active' : '',
             String(item.price ?? '')
           ].map((value) => String(value || '').toLowerCase());
           searchValues.push(...sizeTerms);
@@ -3181,10 +3225,10 @@
           items = items.filter((item) => item.gender === 'kids');
           break;
         case 'for_sale_only':
-          items = items.filter((item) => !item.sold);
+          items = items.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'active');
           break;
         case 'sold_only':
-          items = items.filter((item) => item.sold);
+          items = items.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold');
           break;
         default:
           items = items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -3223,7 +3267,12 @@
         ].join('');
         const categoryDisplay = item.category_2 || '-';
         const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : item.gender === 'kids' ? 'gender-kids' : '';
-        const soldPill = item.sold ? `<span class="inventory-tag sold">Sold</span>` : '';
+        const itemStatus = normalizeListingStatus(item.status, Boolean(item.sold));
+        const statusPill = itemStatus === 'sold'
+          ? `<span class="inventory-tag sold">Sold</span>`
+          : itemStatus === 'draft'
+            ? `<span class="inventory-tag draft">Draft</span>`
+            : '';
         const priceAiClass = item.price_ai_used ? 'mini-button price-ai-used' : 'mini-button';
         const reviewedDotClass = item.reviewed ? 'review-status-dot reviewed' : 'review-status-dot';
         const pricedNote = item.price_ai_last_run_at ? `Priced ${escapeHtml(formatShortDate(item.price_ai_last_run_at))}` : 'Not priced';
@@ -3261,7 +3310,7 @@
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Listed Price</div>
-                ${soldPill ? `<div class="inventory-status-stack">${soldPill}<div class="price">${currency(item.price)}</div></div>` : `<div class="price">${currency(item.price)}</div>`}
+                ${statusPill ? `<div class="inventory-status-stack">${statusPill}<div class="price">${currency(item.price)}</div></div>` : `<div class="price">${currency(item.price)}</div>`}
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Attachments</div>
@@ -3292,6 +3341,8 @@
             ${photoMarkup}
           </div>
           <div style="font:11px Arial,sans-serif;color:#6c5d52;line-height:1.55;">
+            <div><strong>Title:</strong> ${escapeHtml(item.title || buildTitle(item))}</div>
+            <div><strong>Status:</strong> ${escapeHtml(getStatusLabel(item))}</div>
             <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
             <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
             <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
@@ -3336,7 +3387,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,category_2,gender,price,notes,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,pricing_condition,pricing_locked,price_ai_last_run_at,colors,shoe_style,brand_style_name,materials,made_in,serial_number,platforms_listed,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,title,brand,description,size,category_2,gender,price,notes,status,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,pricing_condition,pricing_locked,price_ai_last_run_at,colors,shoe_style,brand_style_name,materials,made_in,serial_number,platforms_listed,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -3589,11 +3640,13 @@
     function startEdit(id) {
       const item = state.inventory.find((entry) => entry.id === id);
       if (!item) return;
+      const itemStatus = normalizeListingStatus(item.status, Boolean(item.sold));
       state.editingId = id;
       state.editPriceAiUsed = Boolean(item.price_ai_used);
       state.editOriginalPrice = Number(item.price || 0);
       state.editAppliedPriceAiValue = null;
       setEditBoxMode(Boolean(item.has_box));
+      elements.editTitle.value = item.title || '';
       elements.editBrand.value = item.brand || '';
       elements.editSize.value = item.size || '';
       elements.editCategory2.value = item.category_2 || '';
@@ -3601,7 +3654,7 @@
       elements.editDescription.value = item.description || '';
       elements.editPrice.value = item.price ?? '';
       elements.editNotes.value = item.notes || '';
-      elements.editSold.value = item.sold ? 'true' : 'false';
+      elements.editListingStatus.value = itemStatus;
       elements.editReviewed.value = item.reviewed ? 'true' : 'false';
       elements.editCondition.value = item.condition || '';
       elements.editOriginalTagsAttached.value = item.original_tags_attached || '';
@@ -3644,8 +3697,10 @@
         const appliedAiPrice = Number(state.editAppliedPriceAiValue);
         const originalPrice = Number(state.editOriginalPrice);
         let priceAiUsed = state.editPriceAiUsed;
+        const editTitle = elements.editTitle.value.trim();
         const editDescription = elements.editDescription.value.trim();
         const editBrandStyleName = elements.editBrandStyleName.value.trim() || editDescription;
+        const editListingStatus = normalizeListingStatus(elements.editListingStatus.value, false);
 
         if (priceAiUsed) {
           if (Number.isFinite(appliedAiPrice)) {
@@ -3656,6 +3711,7 @@
         }
 
         const payload = {
+          title: editTitle || null,
           brand: elements.editBrand.value.trim(),
           size: elements.editSize.value.trim(),
           category_2: elements.editCategory2.value.trim(),
@@ -3663,7 +3719,8 @@
           description: editDescription,
           price: editedPrice,
           notes: elements.editNotes.value.trim() || null,
-          sold: elements.editSold.value === 'true',
+          status: editListingStatus,
+          sold: editListingStatus === 'sold',
           reviewed: elements.editReviewed.value === 'true',
           condition: elements.editCondition.value.trim() || null,
           original_tags_attached: elements.editOriginalTagsAttached.value.trim() || null,
@@ -3715,7 +3772,9 @@
     async function duplicateItem(id) {
       const item = state.inventory.find((entry) => entry.id === id);
       if (!item) return;
+      const itemStatus = normalizeListingStatus(item.status, Boolean(item.sold));
       const payload = {
+        title: item.title || null,
         brand: item.brand,
         description: item.description,
         size: item.size,
@@ -3723,7 +3782,8 @@
         gender: item.gender || null,
         price: item.price,
         notes: item.notes || null,
-        sold: Boolean(item.sold),
+        status: itemStatus,
+        sold: itemStatus === 'sold',
         reviewed: Boolean(item.reviewed),
         condition: item.condition || null,
         original_tags_attached: item.original_tags_attached || null,
@@ -4788,7 +4848,7 @@
           const listedPrice = Number(item.price || 0);
           const soldPrice = Number(item.sold_price || 0);
           return [
-            item.sold ? 'Sold' : 'For sale',
+            getStatusLabel(item),
             item.brand || '',
             item.description || '',
             item.size || '',
@@ -4824,7 +4884,7 @@
               ${photo ? `<img class="profit-photo" src="${photo}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />` : '<div class="profit-photo-empty">No photo</div>'}
             </div>
             <div class="profit-copy">
-              <div><strong>Status:</strong> ${escapeHtml(item.sold ? 'Sold' : 'For sale')}</div>
+              <div><strong>Status:</strong> ${escapeHtml(getStatusLabel(item))}</div>
               <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
               <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
               <div><strong>Description:</strong> ${escapeHtml(item.description || '-')}</div>
@@ -5032,7 +5092,7 @@
                       const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
                       const profitValue = hasPurchased && hasSold ? Number(item.sold_price || 0) - Number(item.purchased_price || 0) : null;
                       const rows = [
-                        ['Status', item.sold ? 'Sold' : 'For sale'],
+                        ['Status', getStatusLabel(item)],
                         ['Category', item.category_2 || '-'],
                         ['Brand', item.brand || '-'],
                         ['Description', item.description || '-'],
@@ -5091,7 +5151,7 @@
                     const listedPrice = Number(item.price || 0);
                     const soldPrice = Number(item.sold_price || 0);
                     return [
-                      item.sold ? 'Sold' : 'For sale',
+                      getStatusLabel(item),
                       item.brand || '',
                       item.description || '',
                       item.size || '',
@@ -5151,7 +5211,8 @@
     }
 
     function buildTitle(item, maxLength = 80) {
-      const parts = [item.brand, item.description, item.size ? `Size ${item.size}` : ''].filter(Boolean);
+      const preferredTitle = String(item.title || '').trim();
+      const parts = preferredTitle ? [preferredTitle] : [item.brand, item.description, item.size ? `Size ${item.size}` : ''].filter(Boolean);
       const title = parts.join(' ').replace(/\s+/g, ' ').trim();
       return title.length > maxLength ? `${title.slice(0, maxLength - 1).trim()}…` : title;
     }
