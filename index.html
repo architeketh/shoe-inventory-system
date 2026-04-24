@@ -3197,6 +3197,15 @@
               : item.gender === 'kids'
                 ? ['kids', 'kid', 'youth', 'y', 'child', 'category kids']
                 : [];
+          const pricingConditionTerms = item.pricing_condition === 'used'
+            ? ['used', 'preowned', 'pre-owned', 'pricing used']
+            : item.pricing_condition === 'new'
+              ? ['new', 'brand new', 'pricing new']
+              : item.pricing_condition === 'new_w_box'
+                ? ['new', 'new w box', 'new with box', 'new w/box', 'boxed new', 'pricing new with box']
+                : item.pricing_condition === 'refurbished'
+                  ? ['refurbished', 'renewed', 'restored', 'pricing refurbished']
+                  : [];
           const searchValues = [
             item.title,
             item.brand,
@@ -3204,7 +3213,9 @@
             item.notes,
             item.category_2,
             item.gender,
+            item.pricing_condition,
             ...genderTerms,
+            ...pricingConditionTerms,
             ...platformTerms,
             item.has_box ? 'box' : 'no box',
             getStatusLabel(item).toLowerCase(),
