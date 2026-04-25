@@ -3366,9 +3366,13 @@
       }).join('');
     }
 
+    function getCardTitleText(item) {
+      return [item.brand, item.brand_style_name || item.description].filter(Boolean).join(' ').trim() || buildTitle(item);
+    }
+
     function renderSingleCard(item) {
       const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
-      const titleText = [item.brand, item.brand_style_name || item.description].filter(Boolean).join(' ').trim() || buildTitle(item);
+      const titleText = getCardTitleText(item);
       const photoMarkup = photos.length
         ? photos.map((url) => `<img src="${url}" style="width:100%;aspect-ratio:1 / 1;object-fit:cover;border-radius:8px;border:1px solid #e4d8cb;display:block;" />`).join('')
         : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;min-height:120px;">No photos</div>';
@@ -4037,6 +4041,7 @@
 
     function buildReviewCardMarkup(item) {
       const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
+      const titleText = getCardTitleText(item);
       const photoMarkup = photos.length
         ? photos.map((url) => `<img class="review-photo" src="${url}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />`).join('')
         : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;">No photos</div>';
@@ -4045,18 +4050,17 @@
           <div class="review-photo-grid">
             ${photoMarkup}
           </div>
-          <div style="font:11px Arial,sans-serif;color:#6c5d52;line-height:1.45;">
+          <div style="font:12px Arial,sans-serif;color:#6c5d52;line-height:1.65;">
+            <div><strong>Title:</strong> ${escapeHtml(titleText)}</div>
             <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
             <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
+            <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
             <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
             <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
-            <div><strong>Original Tags Attached:</strong> ${escapeHtml(item.original_tags_attached || '-')}</div>
+            <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
             <div><strong>Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
             <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
-            <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
-            <div><strong>Shoe Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
-            <div><strong>Description:</strong> ${escapeHtml(item.description || '-')}</div>
-            <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
+            <div><strong>Pricing Condition:</strong> ${escapeHtml(item.pricing_condition || '-')}</div>
           </div>
         </article>
       `;
@@ -4930,19 +4934,24 @@
         const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
         const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
         const profitValue = hasPurchased && hasSold ? Number(item.sold_price || 0) - Number(item.purchased_price || 0) : null;
+        const titleText = getCardTitleText(item);
         return `
           <article class="profit-card">
             <div class="profit-photo-wrap">
               ${photo ? `<img class="profit-photo" src="${photo}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />` : '<div class="profit-photo-empty">No photo</div>'}
             </div>
             <div class="profit-copy">
-              <div><strong>Status:</strong> ${escapeHtml(getStatusLabel(item))}</div>
+              <div><strong>Title:</strong> ${escapeHtml(titleText)}</div>
               <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
               <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
-              <div><strong>Description:</strong> ${escapeHtml(item.description || '-')}</div>
+              <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
               <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
+              <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
+              <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
+              <div><strong>Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
               <div><strong>Purchased Price:</strong> ${escapeHtml(hasPurchased ? currency(item.purchased_price) : '-')}</div>
               <div><strong>Listed Price:</strong> ${escapeHtml(item.price ? currency(item.price) : '-')}</div>
+              <div><strong>Pricing Condition:</strong> ${escapeHtml(item.pricing_condition || '-')}</div>
               <div><strong>Sold Price:</strong> ${escapeHtml(hasSold ? currency(item.sold_price) : '-')}</div>
               <div><strong>Net Income:</strong> ${escapeHtml(profitValue !== null ? currency(profitValue) : '-') }</div>
             </div>
