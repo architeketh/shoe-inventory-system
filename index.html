@@ -3368,6 +3368,7 @@
 
     function renderSingleCard(item) {
       const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
+      const titleText = [item.brand, item.brand_style_name || item.description].filter(Boolean).join(' ').trim() || buildTitle(item);
       const photoMarkup = photos.length
         ? photos.map((url) => `<img src="${url}" style="width:100%;aspect-ratio:1 / 1;object-fit:cover;border-radius:8px;border:1px solid #e4d8cb;display:block;" />`).join('')
         : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;min-height:120px;">No photos</div>';
@@ -3377,19 +3378,16 @@
             ${photoMarkup}
           </div>
           <div style="font:11px Arial,sans-serif;color:#6c5d52;line-height:1.55;">
-            <div><strong>Title:</strong> ${escapeHtml(item.title || buildTitle(item))}</div>
-            <div><strong>Status:</strong> ${escapeHtml(getStatusLabel(item))}</div>
+            <div><strong>Title:</strong> ${escapeHtml(titleText)}</div>
             <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
             <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
+            <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
             <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
             <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
-            <div><strong>Original Tags Attached:</strong> ${escapeHtml(item.original_tags_attached || '-')}</div>
+            <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
             <div><strong>Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
             <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
-            <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
-            <div><strong>Shoe Style:</strong> ${escapeHtml(item.shoe_style || '-')}</div>
-            <div><strong>Description:</strong> ${escapeHtml(item.description || '-')}</div>
-            <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
+            <div><strong>Pricing Condition:</strong> ${escapeHtml(item.pricing_condition || '-')}</div>
           </div>
         </article>
       `;
