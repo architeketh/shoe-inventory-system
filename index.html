@@ -3374,10 +3374,10 @@
         : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;min-height:120px;">No photos</div>';
       return `
         <article class="detail-card" style="padding:14px;">
-          <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px;margin-bottom:12px;">
+          <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:6px;margin-bottom:10px;">
             ${photoMarkup}
           </div>
-          <div style="font:11px Arial,sans-serif;color:#6c5d52;line-height:1.55;">
+          <div style="font:12px Arial,sans-serif;color:#6c5d52;line-height:1.65;">
             <div><strong>Title:</strong> ${escapeHtml(titleText)}</div>
             <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
             <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
