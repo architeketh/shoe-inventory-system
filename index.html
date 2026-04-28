@@ -1576,7 +1576,7 @@
       <div class="inventory-head">
         <div>Status</div>
         <div data-sort-key="brand">Brand</div>
-        <div data-sort-key="description">Description</div>
+        <div data-sort-key="description">Title</div>
         <div>Category</div>
         <div data-sort-key="size">Size</div>
         <div data-sort-key="price">Listed Price</div>
@@ -3340,7 +3340,7 @@
                 <h3>${escapeHtml(item.brand || 'Unknown brand')}</h3>
               </div>
               <div class="inventory-cell">
-                <div class="inventory-meta">${escapeHtml(item.description || 'No description')}</div>
+                <div class="inventory-meta">${escapeHtml(getCardTitleText(item) || 'No title')}</div>
               </div>
               <div class="inventory-cell">
                 <div class="mini-label">Category</div>
