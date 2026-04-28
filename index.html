@@ -1513,6 +1513,7 @@
                 <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="ebay">ebay</label>
                 <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="Depop">Depop</label>
                 <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="WhatNot">WhatNot</label>
+                <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="GOAT">GOAT</label>
               </div>
             </div>
           </div>
@@ -1777,6 +1778,7 @@
                   <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="ebay">ebay</label>
                   <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="Depop">Depop</label>
                   <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="WhatNot">WhatNot</label>
+                  <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="GOAT">GOAT</label>
                 </div>
               </div>
             </div>
@@ -3139,6 +3141,9 @@
       if (base === 'ebay' || compact === 'ebay') {
         ['ebay', 'e bay', 'platform ebay', 'listed on ebay'].forEach((value) => variants.add(value));
       }
+      if (base === 'goat' || compact === 'goat') {
+        ['goat', 'platform goat', 'listed on goat'].forEach((value) => variants.add(value));
+      }
       if (base === 'threadup' || base === 'thredup' || compact === 'threadup' || compact === 'thredup') {
         ['threadup', 'thredup', 'thread up', 'thred up', 'platform threadup', 'listed on threadup'].forEach((value) => variants.add(value));
       }
@@ -3187,6 +3192,7 @@
             if (lower === 'whatnot') return ['whatnot', 'what not', 'platform whatnot', 'listed on whatnot'];
             if (lower === 'depop') return ['depop', 'platform depop', 'listed on depop'];
             if (lower === 'ebay') return ['ebay', 'e bay', 'platform ebay', 'listed on ebay'];
+            if (lower === 'goat') return ['goat', 'platform goat', 'listed on goat'];
             if (lower === 'threadup') return ['threadup', 'thredup', 'thread up', 'thred up', 'platform threadup', 'listed on threadup'];
             return [lower, `platform ${lower}`, `listed on ${lower}`];
           });
@@ -4032,7 +4038,7 @@
       reportWindow.focus();
     }
 
-    const PLATFORM_REPORT_ORDER = ['ThreadUp', 'ebay', 'Depop', 'WhatNot'];
+    const PLATFORM_REPORT_ORDER = ['ThreadUp', 'ebay', 'Depop', 'WhatNot', 'GOAT'];
 
     function getItemPlatforms(item) {
       if (!Array.isArray(item.platforms_listed)) return [];
