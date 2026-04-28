@@ -1524,7 +1524,6 @@
         </div>
 
         <div class="button-row">
-          <button class="button secondary" type="button" id="shoe-identifier-button">Shoe Identifier</button>
           <button class="button ghost" type="button" id="ai-fill-button">Read box details with AI</button>
           <button class="button ghost hidden" type="button" id="cancel-edit-button">Cancel edit</button>
           <button class="button secondary" type="button" id="reset-button">Clear form</button>
@@ -1835,32 +1834,6 @@
     </div>
   </div>
 
-  <div class="modal hidden" id="shoe-identifier-modal" aria-hidden="true">
-    <div class="edit-modal-card">
-      <button class="modal-close" type="button" id="shoe-identifier-close" aria-label="Close shoe identifier">x</button>
-      <div class="eyebrow">Shoe Identifier</div>
-      <p style="margin:6px 0 14px;color:#6c5d52;font:13px Arial,sans-serif;line-height:1.5;">Add a few shoe photos and the tool will estimate brand, model, likely year, retail, resale, and condition. Nothing is saved unless you use the results.</p>
-      <div class="field-stack">
-        <label for="identifier-photo-input">Identifier Photos</label>
-        <input class="sr-only" id="identifier-photo-input" type="file" accept="image/*" multiple>
-        <input class="sr-only" id="identifier-camera-input" type="file" accept="image/*" capture="environment" multiple>
-        <div class="upload-actions">
-          <button class="button secondary" type="button" id="identifier-choose-button">Choose from photos</button>
-          <button class="button ghost" type="button" id="identifier-camera-button">Use camera</button>
-        </div>
-        <div class="helper">Use 2 to 5 photos when possible: side, top, outsole, and any size or inside tags.</div>
-        <div class="photo-grid" id="identifier-photo-preview"></div>
-      </div>
-      <div class="form-status" id="shoe-identifier-status" style="margin-top:14px;">Ready to identify. Add photos and run the lookup.</div>
-      <div id="shoe-identifier-results" style="margin-top:14px;"></div>
-      <div class="button-row" style="margin-top:14px;">
-        <button class="button secondary" type="button" id="shoe-identifier-run">Identify Shoe</button>
-        <button class="button ghost" type="button" id="shoe-identifier-use">Use in form</button>
-        <button class="button ghost" type="button" id="shoe-identifier-cancel">Close</button>
-      </div>
-    </div>
-  </div>
-
   <script>
     const APP_CONFIG = {
       appVersion: '04.12.26-1',
@@ -1869,14 +1842,12 @@
       photoBucket: 'shoe-photos',
       inventoryTable: 'shoe_inventory',
       aiFunctionName: 'shoe-intake-ai',
-      priceAiFunctionName: 'shoe-price-ai',
-      identifierFunctionName: 'shoe-identifier-ai'
+      priceAiFunctionName: 'shoe-price-ai'
     };
 
     const state = {
       hasBox: true,
       photoFiles: [],
-      identifierPhotoFiles: [],
       inventory: [],
       editingId: null,
       editHasBox: true,
@@ -1905,9 +1876,7 @@
       editAppliedPriceAiValue: null,
       isWhiteBgRunning: false,
       backgroundRemovalModule: null,
-      pendingWhiteBgReplacement: null,
-      isIdentifierRunning: false,
-      lastIdentifierResult: null
+      pendingWhiteBgReplacement: null
     };
 
     const elements = {
@@ -1922,12 +1891,9 @@
       aiModeCopy: document.getElementById('ai-mode-copy'),
       requiredCopy: document.getElementById('required-copy'),
       photoInput: document.getElementById('photo-input'),
-      identifierPhotoInput: document.getElementById('identifier-photo-input'),
-      identifierCameraInput: document.getElementById('identifier-camera-input'),
       cameraInput: document.getElementById('camera-input'),
       fileBrowserInput: document.getElementById('file-browser-input'),
       photoPreview: document.getElementById('photo-preview'),
-      identifierPhotoPreview: document.getElementById('identifier-photo-preview'),
       form: document.getElementById('inventory-form'),
       brand: document.getElementById('brand'),
       size: document.getElementById('size'),
@@ -1955,7 +1921,6 @@
       useCameraButton: document.getElementById('use-camera-button'),
       browseFilesButton: document.getElementById('browse-files-button'),
       aiFillButton: document.getElementById('ai-fill-button'),
-      shoeIdentifierButton: document.getElementById('shoe-identifier-button'),
       cancelEditButton: document.getElementById('cancel-edit-button'),
       resetButton: document.getElementById('reset-button'),
       saveButton: document.getElementById('save-button'),
@@ -2012,15 +1977,6 @@
       priceAiApplyBothButton: document.getElementById('price-ai-apply-both-button'),
       priceAiRefreshButton: document.getElementById('price-ai-refresh-button'),
       priceAiCancelButton: document.getElementById('price-ai-cancel-button'),
-      shoeIdentifierModal: document.getElementById('shoe-identifier-modal'),
-      shoeIdentifierClose: document.getElementById('shoe-identifier-close'),
-      shoeIdentifierChooseButton: document.getElementById('identifier-choose-button'),
-      shoeIdentifierCameraButton: document.getElementById('identifier-camera-button'),
-      shoeIdentifierRunButton: document.getElementById('shoe-identifier-run'),
-      shoeIdentifierUseButton: document.getElementById('shoe-identifier-use'),
-      shoeIdentifierCancelButton: document.getElementById('shoe-identifier-cancel'),
-      shoeIdentifierStatus: document.getElementById('shoe-identifier-status'),
-      shoeIdentifierResults: document.getElementById('shoe-identifier-results'),
       singleCardModal: document.getElementById('single-card-modal'),
       singleCardClose: document.getElementById('single-card-close'),
       singleCardContent: document.getElementById('single-card-content'),
@@ -2931,67 +2887,6 @@
       }).join('');
     }
 
-    function handleIdentifierPhotoSelection(files) {
-      const merged = state.identifierPhotoFiles.concat(Array.from(files || []));
-      state.identifierPhotoFiles = merged.slice(0, 6);
-      if (merged.length > 6) {
-        alert('Only 6 photos can be used for Shoe Identifier. The first 6 were kept.');
-      }
-      renderIdentifierPhotoPreview();
-    }
-
-    function renderIdentifierPhotoPreview() {
-      if (!state.identifierPhotoFiles.length) {
-        elements.identifierPhotoPreview.innerHTML = '';
-        return;
-      }
-      elements.identifierPhotoPreview.innerHTML = state.identifierPhotoFiles.map((file, index) => {
-        const previewUrl = URL.createObjectURL(file);
-        return `<div class="photo-tile"><img src="${previewUrl}" alt="Identifier photo ${index + 1}"><div class="photo-caption">${escapeHtml(file.name || `Photo ${index + 1}`)}</div></div>`;
-      }).join('');
-    }
-
-    function openShoeIdentifierModal() {
-      state.lastIdentifierResult = null;
-      state.identifierPhotoFiles = [];
-      elements.identifierPhotoPreview.innerHTML = '';
-      elements.identifierPhotoInput.value = '';
-      elements.identifierCameraInput.value = '';
-      elements.shoeIdentifierStatus.className = 'form-status';
-      elements.shoeIdentifierStatus.textContent = 'Ready to identify. Add photos and run the lookup.';
-      elements.shoeIdentifierResults.innerHTML = '';
-      elements.shoeIdentifierUseButton.disabled = true;
-      elements.shoeIdentifierModal.classList.remove('hidden');
-      elements.shoeIdentifierModal.setAttribute('aria-hidden', 'false');
-    }
-
-    function closeShoeIdentifierModal() {
-      elements.shoeIdentifierModal.classList.add('hidden');
-      elements.shoeIdentifierModal.setAttribute('aria-hidden', 'true');
-    }
-
-    function renderIdentifierResult(result) {
-      const confidence = escapeHtml(result.confidence_note || 'Review before using.');
-      const yearText = result.likely_year ? escapeHtml(String(result.likely_year)) : '-';
-      const retailText = Number(result.retail_price || 0) > 0 ? currency(result.retail_price) : '-';
-      const resaleText = Number(result.resale_estimate || 0) > 0 ? currency(result.resale_estimate) : '-';
-      elements.shoeIdentifierResults.innerHTML = `
-        <article class="detail-card" style="padding:14px;margin-top:8px;">
-          <div style="font:12px Arial,sans-serif;color:#6c5d52;line-height:1.65;">
-            <div><strong>Brand:</strong> ${escapeHtml(result.brand || '-')}</div>
-            <div><strong>Model:</strong> ${escapeHtml(result.model || '-')}</div>
-            <div><strong>Style Code:</strong> ${escapeHtml(result.style_code || '-')}</div>
-            <div><strong>Likely Year:</strong> ${yearText}</div>
-            <div><strong>Retail Price:</strong> ${escapeHtml(retailText)}</div>
-            <div><strong>Resale Estimate:</strong> ${escapeHtml(resaleText)}</div>
-            <div><strong>Condition Rating:</strong> ${escapeHtml(result.condition_rating || '-')}</div>
-            <div><strong>Confidence:</strong> ${confidence}</div>
-            <div><strong>Summary:</strong> ${escapeHtml(result.summary || '-')}</div>
-          </div>
-        </article>
-      `;
-    }
-
     function getDraftValues() {
       const description = elements.description.value.trim();
       const brandStyleName = elements.brandStyleName.value.trim() || description;
@@ -3100,78 +2995,6 @@
         elements.aiFillButton.disabled = false;
         updateModeCopy();
       }
-    }
-
-    async function runShoeIdentifier() {
-      if (!SUPABASE_READY) {
-        alert('Add your Supabase URL and anon key first, then Shoe Identifier can call your Edge Function.');
-        return;
-      }
-      if (!state.identifierPhotoFiles.length) {
-        alert('Add at least one photo before running Shoe Identifier.');
-        return;
-      }
-      if (state.isIdentifierRunning) return;
-
-      state.isIdentifierRunning = true;
-      elements.shoeIdentifierRunButton.disabled = true;
-      elements.shoeIdentifierUseButton.disabled = true;
-      elements.shoeIdentifierStatus.className = 'form-status';
-      elements.shoeIdentifierStatus.textContent = 'Analyzing shoe photos and checking the market...';
-
-      try {
-        const imagePayload = await Promise.all(state.identifierPhotoFiles.map((file) => fileToBase64(file)));
-        const response = await supabaseClient.functions.invoke(APP_CONFIG.identifierFunctionName, {
-          body: {
-            photos: imagePayload
-          }
-        });
-
-        if (response.error) throw response.error;
-        const result = response.data || {};
-        if (result.error) throw new Error(result.error);
-
-        state.lastIdentifierResult = result;
-        renderIdentifierResult(result);
-        elements.shoeIdentifierStatus.className = 'form-status success';
-        elements.shoeIdentifierStatus.textContent = 'Shoe Identifier is ready. Review the result, then optionally use it in the form.';
-        elements.shoeIdentifierUseButton.disabled = false;
-      } catch (error) {
-        elements.shoeIdentifierStatus.className = 'form-status error';
-        elements.shoeIdentifierStatus.textContent = error?.message || String(error);
-        elements.shoeIdentifierResults.innerHTML = '';
-      } finally {
-        state.isIdentifierRunning = false;
-        elements.shoeIdentifierRunButton.disabled = false;
-      }
-    }
-
-    function applyIdentifierToForm() {
-      const result = state.lastIdentifierResult;
-      if (!result) return;
-      if (result.brand && !elements.brand.value.trim()) elements.brand.value = result.brand;
-      if (result.model) {
-        if (!elements.brandStyleName.value.trim()) elements.brandStyleName.value = result.model;
-        if (!elements.description.value.trim()) elements.description.value = result.model;
-      }
-      if (result.condition_rating && !elements.condition.value) {
-        const rating = String(result.condition_rating).toLowerCase();
-        if (rating.includes('new')) elements.condition.value = 'New';
-        else if (rating.includes('excellent')) elements.condition.value = 'Excellent';
-        else if (rating.includes('very good')) elements.condition.value = 'Very Good';
-        else if (rating.includes('good')) elements.condition.value = 'Good';
-      }
-      if (Number(result.retail_price || 0) > 0 && !elements.estimatedRetailPrice.value) {
-        elements.estimatedRetailPrice.value = Number(result.retail_price).toFixed(2);
-      }
-      const identifierNotes = [result.style_code ? `Style code: ${result.style_code}` : '', result.summary || ''].filter(Boolean).join(' | ');
-      if (identifierNotes) {
-        elements.notes.value = elements.notes.value.trim()
-          ? `${elements.notes.value.trim()} | ${identifierNotes}`
-          : identifierNotes;
-      }
-      closeShoeIdentifierModal();
-      showBanner('success', 'Identifier applied', 'The shoe identifier details were added to the intake form for review.');
     }
 
     function fileToBase64(file) {
@@ -3629,15 +3452,6 @@
     });
 
     elements.choosePhotosButton.addEventListener('click', () => elements.photoInput.click());
-    elements.shoeIdentifierButton.addEventListener('click', openShoeIdentifierModal);
-    elements.shoeIdentifierChooseButton.addEventListener('click', () => elements.identifierPhotoInput.click());
-    elements.shoeIdentifierCameraButton.addEventListener('click', () => elements.identifierCameraInput.click());
-    elements.identifierPhotoInput.addEventListener('change', (event) => handleIdentifierPhotoSelection(event.target.files));
-    elements.identifierCameraInput.addEventListener('change', (event) => handleIdentifierPhotoSelection(event.target.files));
-    elements.shoeIdentifierRunButton.addEventListener('click', runShoeIdentifier);
-    elements.shoeIdentifierUseButton.addEventListener('click', applyIdentifierToForm);
-    elements.shoeIdentifierClose.addEventListener('click', closeShoeIdentifierModal);
-    elements.shoeIdentifierCancelButton.addEventListener('click', closeShoeIdentifierModal);
     elements.useCameraButton.addEventListener('click', () => elements.cameraInput.click());
     elements.browseFilesButton.addEventListener('click', () => elements.fileBrowserInput.click());
     elements.photoInput.addEventListener('change', (event) => handlePhotoSelection(event.target.files));
@@ -5580,9 +5394,6 @@
       if (event.target === elements.editModal) closeEditModal();
     });
     elements.singleCardClose.addEventListener('click', closeSingleCardModal);
-    elements.shoeIdentifierModal.addEventListener('click', (event) => {
-      if (event.target === elements.shoeIdentifierModal) closeShoeIdentifierModal();
-    });
     elements.singleCardModal.addEventListener('click', (event) => {
       if (event.target === elements.singleCardModal) closeSingleCardModal();
     });
