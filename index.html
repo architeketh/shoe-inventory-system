@@ -3214,11 +3214,15 @@
                   : [];
           const searchValues = [
             item.title,
+            getCardTitleText(item),
             item.brand,
+            item.brand_style_name,
             item.description,
             item.notes,
             item.category_2,
             item.gender,
+            item.colors,
+            item.shoe_style,
             item.pricing_condition,
             ...genderTerms,
             ...pricingConditionTerms,
