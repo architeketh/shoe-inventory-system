@@ -819,6 +819,94 @@
       letter-spacing: -0.02em;
     }
 
+    .chart-panel {
+      margin-bottom: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      overflow: hidden;
+    }
+
+    .chart-panel-body {
+      padding: 14px;
+    }
+
+    .chart-scroll {
+      overflow-x: auto;
+    }
+
+    .brand-size-chart {
+      width: 100%;
+      min-width: max-content;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.9rem;
+    }
+
+    .brand-size-chart th,
+    .brand-size-chart td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(161, 120, 82, 0.14);
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .brand-size-chart th:first-child,
+    .brand-size-chart td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      background: rgba(255, 252, 247, 0.96);
+      z-index: 1;
+    }
+
+    .brand-size-chart thead th {
+      position: sticky;
+      top: 0;
+      background: rgba(255, 248, 240, 0.98);
+      color: var(--accent-deep);
+      font: 700 0.74rem/1.1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      z-index: 2;
+    }
+
+    .brand-size-chart thead th:first-child {
+      z-index: 3;
+    }
+
+    .brand-size-chart tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .brand-size-brand {
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .chart-count {
+      display: inline-flex;
+      min-width: 32px;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(200, 220, 210, 0.42);
+      color: var(--sage-deep);
+      font-weight: 700;
+    }
+
+    .chart-count.empty {
+      background: transparent;
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 0;
+    }
+
+    .chart-count.empty::before {
+      content: '-';
+      font-size: 0.9rem;
+    }
+
     .bottom-sticky-card {
       position: fixed;
       left: 50%;
@@ -1122,6 +1210,10 @@
         display: grid;
         grid-template-columns: 1fr;
         gap: 8px;
+      }
+
+      .chart-panel-body {
+        padding: 12px;
       }
 
       .toolbar-compact {
@@ -1568,6 +1660,15 @@
         <button class="button ghost" type="button" id="clear-selection-button">Clear Selected</button>
         <span class="pill" id="selection-summary">0 selected</span>
       </div>
+      <details class="chart-panel collapsible">
+        <summary class="summary-pill"><span>Brand x Size Chart</span><span>+</span></summary>
+        <div class="chart-panel-body">
+          <div class="chart-scroll">
+            <div id="brand-size-chart-wrap" class="report-note">Chart will update after inventory loads.</div>
+          </div>
+          <div class="report-note" id="brand-size-chart-note">Uses the current filtered/search view.</div>
+        </div>
+      </details>
       <div class="section-head">
         <div>
           <h2>Saved pairs</h2>
@@ -1944,6 +2045,8 @@
       selectAllButton: document.getElementById('select-all-button'),
       clearSelectionButton: document.getElementById('clear-selection-button'),
       selectionSummary: document.getElementById('selection-summary'),
+      brandSizeChartWrap: document.getElementById('brand-size-chart-wrap'),
+      brandSizeChartNote: document.getElementById('brand-size-chart-note'),
       refreshButton: document.getElementById('refresh-button'),
       formStatus: document.getElementById('form-status'),
       photoModal: document.getElementById('photo-modal'),
@@ -3288,17 +3391,70 @@
       elements.selectAllButton.textContent = allVisibleSelected ? 'View Selected' : 'Select View';
     }
 
+    function renderBrandSizeChart(items = sortedInventory()) {
+      if (!items.length) {
+        elements.brandSizeChartWrap.innerHTML = '<div class="report-note">No shoes available for the current view.</div>';
+        elements.brandSizeChartNote.textContent = 'Uses the current filtered/search view.';
+        return;
+      }
+
+      const brandMap = new Map();
+      const sizes = new Set();
+      items.forEach((item) => {
+        const brand = String(item.brand || 'Unbranded').trim() || 'Unbranded';
+        const size = String(item.size || 'Unspecified').trim() || 'Unspecified';
+        sizes.add(size);
+        if (!brandMap.has(brand)) brandMap.set(brand, new Map());
+        const sizeMap = brandMap.get(brand);
+        sizeMap.set(size, (sizeMap.get(size) || 0) + 1);
+      });
+
+      const sizeList = [...sizes].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      const brandList = [...brandMap.keys()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+      const rows = brandList.map((brand) => {
+        const sizeMap = brandMap.get(brand);
+        const total = [...sizeMap.values()].reduce((sum, count) => sum + count, 0);
+        const cells = sizeList.map((size) => {
+          const count = sizeMap.get(size) || 0;
+          return `<td><span class="chart-count${count ? '' : ' empty'}">${count || '—'}</span></td>`;
+        }).join('');
+        return `
+          <tr>
+            <td class="brand-size-brand">${escapeHtml(brand)} <span class="report-note" style="display:inline;margin-left:6px;">(${total})</span></td>
+            ${cells}
+          </tr>
+        `;
+      }).join('');
+
+      elements.brandSizeChartWrap.innerHTML = `
+        <table class="brand-size-chart">
+          <thead>
+            <tr>
+              <th>Brand</th>
+              ${sizeList.map((size) => `<th>${escapeHtml(size)}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      `;
+      elements.brandSizeChartNote.textContent = `${items.length} ${items.length === 1 ? 'shoe' : 'shoes'} in the current filtered/search view.`;
+    }
+
     function renderInventory() {
       if (!state.inventory.length) {
         elements.inventoryList.innerHTML = '<div class="empty-state">No pairs have been saved yet. Add your first pair above, upload the photos, and this list will fill in automatically.</div>';
         elements.inventorySummary.textContent = '0 pairs total · $0.00';
         updateSelectionSummary([]);
+        renderBrandSizeChart([]);
         return;
       }
 
       const visibleItems = sortedInventory();
       const visibleTotal = visibleItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
       updateSelectionSummary(visibleItems);
+      renderBrandSizeChart(visibleItems);
       const selectedCount = getSelectedInventory().length;
       elements.inventorySummary.textContent = `${visibleItems.length} ${visibleItems.length === 1 ? 'pair' : 'pairs'} total · ${currency(visibleTotal)}${selectedCount ? ` · ${selectedCount} selected` : ''}`;
 
