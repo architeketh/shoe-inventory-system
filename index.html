@@ -3391,8 +3391,29 @@
       elements.selectAllButton.textContent = allVisibleSelected ? 'View Selected' : 'Select View';
     }
 
+    function getChartSizeSortMeta(rawSize) {
+      const value = String(rawSize || '').trim();
+      const lower = value.toLowerCase();
+      const numericMatch = lower.match(/(\d+(?:\.\d+)?)/);
+      const numeric = numericMatch ? Number(numericMatch[1]) : Number.POSITIVE_INFINITY;
+      const youthSignals = ['y', 'gs', 'ps', 'td', 'c', 'kids', 'kid', 'youth', 'preschool', 'grade school', 'toddler'];
+      const isYouth = youthSignals.some((signal) => lower.includes(signal));
+      const bucket = value ? (isYouth ? 0 : 1) : 2;
+      return { bucket, numeric, label: lower };
+    }
+
+    function compareChartSizes(a, b) {
+      const metaA = getChartSizeSortMeta(a);
+      const metaB = getChartSizeSortMeta(b);
+      if (metaA.bucket !== metaB.bucket) return metaA.bucket - metaB.bucket;
+      if (metaA.numeric !== metaB.numeric) return metaA.numeric - metaB.numeric;
+      return String(a || '').localeCompare(String(b || ''), undefined, { numeric: true, sensitivity: 'base' });
+    }
+
     function renderBrandSizeChart(items = sortedInventory()) {
-      if (!items.length) {
+      const chartItems = items.filter((item) => String(item.brand || '').trim().toLowerCase() !== 'abcisforxyz');
+
+      if (!chartItems.length) {
         elements.brandSizeChartWrap.innerHTML = '<div class="report-note">No shoes available for the current view.</div>';
         elements.brandSizeChartNote.textContent = 'Uses the current filtered/search view.';
         return;
@@ -3400,7 +3421,7 @@
 
       const brandMap = new Map();
       const sizes = new Set();
-      items.forEach((item) => {
+      chartItems.forEach((item) => {
         const brand = String(item.brand || 'Unbranded').trim() || 'Unbranded';
         const size = String(item.size || 'Unspecified').trim() || 'Unspecified';
         sizes.add(size);
@@ -3409,7 +3430,7 @@
         sizeMap.set(size, (sizeMap.get(size) || 0) + 1);
       });
 
-      const sizeList = [...sizes].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      const sizeList = [...sizes].sort(compareChartSizes);
       const brandList = [...brandMap.keys()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
       const rows = brandList.map((brand) => {
         const sizeMap = brandMap.get(brand);
@@ -3439,7 +3460,7 @@
           </tbody>
         </table>
       `;
-      elements.brandSizeChartNote.textContent = `${items.length} ${items.length === 1 ? 'shoe' : 'shoes'} in the current filtered/search view.`;
+      elements.brandSizeChartNote.textContent = `${chartItems.length} ${chartItems.length === 1 ? 'shoe' : 'shoes'} in the current filtered/search view. Placeholder brand hidden.`;
     }
 
     function renderInventory() {
