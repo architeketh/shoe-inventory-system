@@ -875,6 +875,10 @@
       z-index: 3;
     }
 
+    .brand-size-chart .adult-divider {
+      border-left: 2px solid rgba(161, 120, 82, 0.28);
+    }
+
     .brand-size-chart tbody tr:last-child td {
       border-bottom: none;
     }
@@ -905,6 +909,17 @@
     .chart-count.empty::before {
       content: '-';
       font-size: 0.9rem;
+    }
+
+    .chart-filter-button {
+      border: none;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .chart-filter-button.active {
+      background: linear-gradient(135deg, #3f8f68 0%, #2c6c4d 100%);
+      color: #ffffff;
     }
 
     .bottom-sticky-card {
@@ -1666,7 +1681,10 @@
           <div class="chart-scroll">
             <div id="brand-size-chart-wrap" class="report-note">Chart will update after inventory loads.</div>
           </div>
-          <div class="report-note" id="brand-size-chart-note">Uses the current filtered/search view.</div>
+          <div class="report-note" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <span id="brand-size-chart-note">Uses the current filtered/search view.</span>
+            <button class="button ghost" type="button" id="clear-chart-filter-button" hidden>Clear chart filter</button>
+          </div>
         </div>
       </details>
       <div class="section-head">
@@ -1956,6 +1974,7 @@
       editHasBox: true,
       sortValue: 'created_at_desc',
       searchTerm: '',
+      chartFilter: null,
       selectedIds: new Set(),
       columnSort: { key: null, direction: 'asc' },
       galleryUrls: [],
@@ -2047,6 +2066,7 @@
       selectionSummary: document.getElementById('selection-summary'),
       brandSizeChartWrap: document.getElementById('brand-size-chart-wrap'),
       brandSizeChartNote: document.getElementById('brand-size-chart-note'),
+      clearChartFilterButton: document.getElementById('clear-chart-filter-button'),
       refreshButton: document.getElementById('refresh-button'),
       formStatus: document.getElementById('form-status'),
       photoModal: document.getElementById('photo-modal'),
@@ -3339,6 +3359,15 @@
           return terms.some((term) => searchValues.some((value) => value.includes(term)));
         });
       }
+      if (state.chartFilter) {
+        const filterBrand = String(state.chartFilter.brand || '').trim().toLowerCase();
+        const filterSize = String(state.chartFilter.size || '').trim().toLowerCase();
+        items = items.filter((item) => {
+          const brand = String(item.brand || '').trim().toLowerCase();
+          const size = String(item.size || '').trim().toLowerCase();
+          return brand === filterBrand && size === filterSize;
+        });
+      }
         switch (state.sortValue) {
         case 'all':
           break;
@@ -3410,6 +3439,14 @@
       return String(a || '').localeCompare(String(b || ''), undefined, { numeric: true, sensitivity: 'base' });
     }
 
+    function formatChartSizeLabel(size) {
+      const value = String(size || '').trim() || 'Unspecified';
+      const meta = getChartSizeSortMeta(value);
+      if (meta.bucket !== 0) return value;
+      if (/^c(?=\s|\d|$)/i.test(value)) return value.toUpperCase();
+      return `C ${value}`;
+    }
+
     function renderBrandSizeChart(items = sortedInventory()) {
       const chartItems = items.filter((item) => String(item.brand || '').trim().toLowerCase() !== 'abcisforxyz');
 
@@ -3431,6 +3468,7 @@
       });
 
       const sizeList = [...sizes].sort(compareChartSizes);
+      const firstAdultIndex = sizeList.findIndex((size) => getChartSizeSortMeta(size).bucket === 1);
       const brandList = [...brandMap.keys()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
       const rows = brandList.map((brand) => {
         const sizeMap = brandMap.get(brand);
@@ -3452,7 +3490,7 @@
           <thead>
             <tr>
               <th>Brand</th>
-              ${sizeList.map((size) => `<th>${escapeHtml(size)}</th>`).join('')}
+              ${sizeList.map((size) => `<th>${escapeHtml(formatChartSizeLabel(size))}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
@@ -3460,7 +3498,36 @@
           </tbody>
         </table>
       `;
-      elements.brandSizeChartNote.textContent = `${chartItems.length} ${chartItems.length === 1 ? 'shoe' : 'shoes'} in the current filtered/search view. Placeholder brand hidden.`;
+      const chartRows = elements.brandSizeChartWrap.querySelectorAll('tbody tr');
+      chartRows.forEach((row, brandIndex) => {
+        const brand = brandList[brandIndex];
+        const sizeMap = brandMap.get(brand);
+        const cells = row.querySelectorAll('td');
+        sizeList.forEach((size, sizeIndex) => {
+          const cell = cells[sizeIndex + 1];
+          if (!cell) return;
+          const count = sizeMap.get(size) || 0;
+          if (!count) {
+            cell.innerHTML = '<span class="chart-count empty">-</span>';
+            return;
+          }
+          const isActiveFilter =
+            state.chartFilter &&
+            String(state.chartFilter.brand || '').trim().toLowerCase() === String(brand).trim().toLowerCase() &&
+            String(state.chartFilter.size || '').trim().toLowerCase() === String(size).trim().toLowerCase();
+          cell.innerHTML = `<button class="chart-count chart-filter-button${isActiveFilter ? ' active' : ''}" type="button" data-chart-brand="${escapeHtml(brand)}" data-chart-size="${escapeHtml(size)}">${count}</button>`;
+        });
+      });
+      if (firstAdultIndex >= 0) {
+        const adultColumn = firstAdultIndex + 2;
+        elements.brandSizeChartWrap.querySelectorAll(`thead th:nth-child(${adultColumn}), tbody td:nth-child(${adultColumn})`).forEach((cell) => {
+          cell.classList.add('adult-divider');
+        });
+      }
+      elements.clearChartFilterButton.hidden = !state.chartFilter;
+      elements.brandSizeChartNote.textContent = state.chartFilter
+        ? `Chart filter active: ${state.chartFilter.brand} / ${formatChartSizeLabel(state.chartFilter.size)}.`
+        : `${chartItems.length} ${chartItems.length === 1 ? 'shoe' : 'shoes'} in the current filtered/search view. Placeholder brand hidden. Click a count to filter inventory.`;
     }
 
     function renderInventory() {
@@ -3685,6 +3752,10 @@
       elements.searchInput.value = '';
       renderInventory();
     });
+    elements.clearChartFilterButton.addEventListener('click', () => {
+      state.chartFilter = null;
+      renderInventory();
+    });
     elements.selectAllButton.addEventListener('click', () => {
       const visibleItems = sortedInventory();
       const allVisibleSelected = visibleItems.length > 0 && visibleItems.every((item) => state.selectedIds.has(item.id));
@@ -3693,6 +3764,20 @@
       } else {
         visibleItems.forEach((item) => state.selectedIds.add(item.id));
       }
+      renderInventory();
+    });
+    elements.brandSizeChartWrap.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-chart-brand][data-chart-size]');
+      if (!button) return;
+      const nextFilter = {
+        brand: button.getAttribute('data-chart-brand') || '',
+        size: button.getAttribute('data-chart-size') || ''
+      };
+      const isSameFilter =
+        state.chartFilter &&
+        String(state.chartFilter.brand || '').trim().toLowerCase() === String(nextFilter.brand || '').trim().toLowerCase() &&
+        String(state.chartFilter.size || '').trim().toLowerCase() === String(nextFilter.size || '').trim().toLowerCase();
+      state.chartFilter = isSameFilter ? null : nextFilter;
       renderInventory();
     });
     elements.clearSelectionButton.addEventListener('click', () => {
