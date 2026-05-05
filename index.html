@@ -218,6 +218,13 @@
       font-size: 1rem;
     }
 
+    .chart-summary-pill {
+      border-color: rgba(70, 118, 170, 0.28);
+      background: linear-gradient(135deg, rgba(224, 238, 255, 0.96) 0%, rgba(210, 231, 255, 0.92) 100%);
+      color: #244b77;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+    }
+
     .pill-row,
     .toggle-row,
     .button-row,
@@ -1683,7 +1690,7 @@
         <span class="pill" id="selection-summary">0 selected</span>
       </div>
       <details class="chart-panel collapsible">
-        <summary class="summary-pill"><span>Brand x Size Chart</span><span>+</span></summary>
+        <summary class="summary-pill chart-summary-pill"><span>Brand x Size Chart</span><span>+</span></summary>
         <div class="chart-panel-body">
           <div class="chart-scroll">
             <div id="brand-size-chart-wrap" class="report-note">Chart will update after inventory loads.</div>
