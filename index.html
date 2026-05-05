@@ -67,6 +67,7 @@
     .hero,
     .panel,
     .inventory-card {
+      min-width: 0;
       background: var(--surface);
       backdrop-filter: blur(16px);
       border: 1px solid rgba(255, 255, 255, 0.75);
@@ -821,6 +822,7 @@
 
     .chart-panel {
       margin-bottom: 14px;
+      max-width: 100%;
       border: 1px solid var(--line);
       border-radius: 18px;
       background: rgba(255, 255, 255, 0.72);
@@ -828,11 +830,13 @@
     }
 
     .chart-panel-body {
+      min-width: 0;
       padding: 14px;
     }
 
     .chart-scroll {
       width: 100%;
+      min-width: 0;
       max-width: 100%;
       overflow-x: auto;
       overflow-y: hidden;
