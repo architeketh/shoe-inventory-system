@@ -3441,10 +3441,7 @@
 
     function formatChartSizeLabel(size) {
       const value = String(size || '').trim() || 'Unspecified';
-      const meta = getChartSizeSortMeta(value);
-      if (meta.bucket !== 0) return value;
-      if (/^c(?=\s|\d|$)/i.test(value)) return value.toUpperCase();
-      return `C ${value}`;
+      return value;
     }
 
     function renderBrandSizeChart(items = sortedInventory()) {
@@ -3461,11 +3458,19 @@
       chartItems.forEach((item) => {
         const brand = String(item.brand || 'Unbranded').trim() || 'Unbranded';
         const size = String(item.size || 'Unspecified').trim() || 'Unspecified';
+        if (size.toLowerCase() === 'unspecified') return;
         sizes.add(size);
         if (!brandMap.has(brand)) brandMap.set(brand, new Map());
         const sizeMap = brandMap.get(brand);
         sizeMap.set(size, (sizeMap.get(size) || 0) + 1);
       });
+
+      if (!sizes.size) {
+        elements.brandSizeChartWrap.innerHTML = '<div class="report-note">No sized shoes available for the current view.</div>';
+        elements.clearChartFilterButton.hidden = true;
+        elements.brandSizeChartNote.textContent = 'Unspecified sizes are hidden from the chart.';
+        return;
+      }
 
       const sizeList = [...sizes].sort(compareChartSizes);
       const firstAdultIndex = sizeList.findIndex((size) => getChartSizeSortMeta(size).bucket === 1);
