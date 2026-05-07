@@ -3161,6 +3161,18 @@
       }, 40);
     }
 
+    function triggerMobileSafeEditSave() {
+      const active = document.activeElement;
+      if (active && typeof active.blur === 'function') active.blur();
+      window.setTimeout(() => {
+        if (typeof elements.editForm.requestSubmit === 'function') {
+          elements.editForm.requestSubmit();
+        } else {
+          elements.editSaveButton.click();
+        }
+      }, 40);
+    }
+
     async function saveInventoryItem(event) {
       event.preventDefault();
       if (!SUPABASE_READY) {
@@ -3738,6 +3750,12 @@
       if (state.isSaving) return;
       event.preventDefault();
       triggerMobileSafeSave();
+    });
+    elements.editSaveButton.addEventListener('click', (event) => {
+      if (!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) return;
+      if (elements.editSaveButton.disabled) return;
+      event.preventDefault();
+      triggerMobileSafeEditSave();
     });
     elements.refreshButton.addEventListener('click', loadInventory);
     elements.sortSelect.addEventListener('change', (event) => {
