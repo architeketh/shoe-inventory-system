@@ -3366,6 +3366,7 @@
             getCardTitleText(item),
             item.brand,
             item.brand_style_name,
+            [item.brand, item.brand_style_name].filter(Boolean).join(' '),
             item.description,
             item.notes,
             item.category_2,
