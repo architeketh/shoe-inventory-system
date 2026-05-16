@@ -925,6 +925,70 @@
       font-size: 0.9rem;
     }
 
+    .match-panel-body {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .match-toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .match-summary-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .match-results {
+      display: grid;
+      gap: 10px;
+    }
+
+    .match-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    .match-card strong {
+      color: var(--ink);
+    }
+
+    .match-card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 16px;
+      margin-top: 8px;
+      font-size: 0.92rem;
+    }
+
+    .match-group-title {
+      margin: 4px 0 0;
+      color: var(--accent-deep);
+      font: 700 0.8rem/1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .match-pill-strong {
+      border-color: rgba(57, 125, 90, 0.24);
+      background: rgba(219, 240, 230, 0.82);
+      color: #255b43;
+    }
+
+    .match-pill-possible {
+      border-color: rgba(181, 137, 48, 0.24);
+      background: rgba(250, 238, 205, 0.82);
+      color: #7a5a1e;
+    }
+
     .chart-filter-button {
       border: none;
       cursor: pointer;
@@ -1701,6 +1765,20 @@
           </div>
         </div>
       </details>
+      <details class="chart-panel collapsible">
+        <summary class="summary-pill"><span>ThredUp Sold Match</span><span>+</span></summary>
+        <div class="match-panel-body">
+          <input class="sr-only" id="sold-match-file-input" type="file" accept=".json,application/json">
+          <div class="match-toolbar">
+            <button class="button secondary" type="button" id="sold-match-upload-button">Upload sold JSON</button>
+            <button class="button ghost" type="button" id="sold-match-clear-button" hidden>Clear matches</button>
+            <span class="pill" id="sold-match-file-pill">No file loaded</span>
+          </div>
+          <div class="report-note" id="sold-match-status">Upload a ThredUp sold JSON file to compare sold entries against current inventory.</div>
+          <div class="match-summary-row" id="sold-match-summary"></div>
+          <div class="match-results" id="sold-match-results"></div>
+        </div>
+      </details>
       <div class="section-head">
         <div>
           <h2>Saved pairs</h2>
@@ -2010,6 +2088,8 @@
       editPriceAiUsed: false,
       editOriginalPrice: null,
       editAppliedPriceAiValue: null,
+      soldMatchResults: [],
+      soldMatchFileName: '',
       isWhiteBgRunning: false,
       backgroundRemovalModule: null,
       pendingWhiteBgReplacement: null
@@ -2081,6 +2161,13 @@
       brandSizeChartWrap: document.getElementById('brand-size-chart-wrap'),
       brandSizeChartNote: document.getElementById('brand-size-chart-note'),
       clearChartFilterButton: document.getElementById('clear-chart-filter-button'),
+      soldMatchFileInput: document.getElementById('sold-match-file-input'),
+      soldMatchUploadButton: document.getElementById('sold-match-upload-button'),
+      soldMatchClearButton: document.getElementById('sold-match-clear-button'),
+      soldMatchFilePill: document.getElementById('sold-match-file-pill'),
+      soldMatchStatus: document.getElementById('sold-match-status'),
+      soldMatchSummary: document.getElementById('sold-match-summary'),
+      soldMatchResults: document.getElementById('sold-match-results'),
       refreshButton: document.getElementById('refresh-button'),
       formStatus: document.getElementById('form-status'),
       photoModal: document.getElementById('photo-modal'),
@@ -2179,6 +2266,211 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    function normalizeMatchText(value) {
+      return String(value || '')
+        .toLowerCase()
+        .replace(/["“”]/g, '')
+        .replace(/[\/_,.:;()[\]{}|]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function tokenizeMatchText(value) {
+      const stopwords = new Set(['sneakers', 'shoes', 'shoe', 'platform', 'leather', 'suede', 'canvas', 'direct', 'listing', 'shop', 'similar', 'view', 'product', 'size']);
+      return normalizeMatchText(value)
+        .split(/\s+/)
+        .filter((token) => token && token.length > 1 && !stopwords.has(token));
+    }
+
+    function normalizeBrandForMatch(value) {
+      return normalizeMatchText(value).replace(/\s+/g, '');
+    }
+
+    function extractThredUpSize(entry) {
+      const raw = String(entry?.rawText || '')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!raw || !/size\s+/i.test(raw)) return '';
+      const title = String(entry?.title || entry?.description || '').trim();
+      const sizeSection = raw.split(/size\s+/i)[1] || '';
+      const beforeTitle = title ? sizeSection.split(title)[0] : sizeSection;
+      const cleaned = beforeTitle
+        .replace(/\$.*$/, '')
+        .replace(/\bDirect listing\b.*$/i, '')
+        .trim();
+      return cleaned;
+    }
+
+    function inventoryItemMatchText(item) {
+      return [
+        item.brand,
+        item.brand_style_name,
+        item.description,
+        item.colors,
+        item.shoe_style,
+        item.notes,
+        item.serial_number
+      ].filter(Boolean).join(' ');
+    }
+
+    function soldEntryMatchText(entry) {
+      return [
+        entry.title,
+        entry.description,
+        entry.rawText
+      ].filter(Boolean).join(' ');
+    }
+
+    function scoreSoldMatch(item, entry) {
+      const inventoryBrand = normalizeBrandForMatch(item.brand);
+      const soldBrand = normalizeBrandForMatch(entry.brand);
+      if (!inventoryBrand || !soldBrand) return null;
+      const sameBrand = inventoryBrand === soldBrand || inventoryBrand.includes(soldBrand) || soldBrand.includes(inventoryBrand);
+      if (!sameBrand) return null;
+
+      const inventoryText = inventoryItemMatchText(item);
+      const soldText = soldEntryMatchText(entry);
+      const inventoryTokens = new Set(tokenizeMatchText(inventoryText));
+      const soldTokens = tokenizeMatchText(soldText);
+      const overlap = soldTokens.filter((token) => inventoryTokens.has(token));
+      const overlapCount = new Set(overlap).size;
+
+      const soldSize = extractThredUpSize(entry);
+      const inventorySizes = new Set(normalizedSizeTerms(item.size));
+      const soldSizes = normalizedSizeTerms(soldSize);
+      const sizeMatch = soldSizes.some((size) => inventorySizes.has(size));
+
+      const styleName = normalizeMatchText(item.brand_style_name || '');
+      const titleMatch = styleName && normalizeMatchText(soldText).includes(styleName);
+
+      let score = 4;
+      if (sizeMatch) score += 4;
+      if (titleMatch) score += 3;
+      score += Math.min(4, overlapCount);
+
+      if (score < 7) return null;
+      const confidence = score >= 11 && (sizeMatch || titleMatch || overlapCount >= 4)
+        ? 'strong'
+        : score >= 8
+          ? 'possible'
+          : null;
+      if (!confidence) return null;
+
+      return {
+        score,
+        confidence,
+        sizeMatch,
+        overlapCount,
+        soldSize
+      };
+    }
+
+    function renderSoldMatchResults() {
+      const result = state.soldMatchResults;
+      if (!result || (!result.strong?.length && !result.possible?.length)) {
+        elements.soldMatchSummary.innerHTML = '';
+        elements.soldMatchResults.innerHTML = result?.ran
+          ? '<div class="report-note">No likely sold matches were found against the current inventory.</div>'
+          : '';
+        elements.soldMatchClearButton.hidden = !result?.ran;
+        return;
+      }
+
+      const summaryPills = [
+        `<span class="pill match-pill-strong">Strong ${result.strong.length}</span>`,
+        `<span class="pill match-pill-possible">Possible ${result.possible.length}</span>`,
+        `<span class="pill">Sold rows checked ${result.checkedSoldCount}</span>`
+      ].join('');
+      elements.soldMatchSummary.innerHTML = summaryPills;
+
+      const renderCards = (matches) => matches.map((match) => `
+        <article class="match-card">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <strong>${escapeHtml(getCardTitleText(match.item) || match.item.brand || 'Inventory item')}</strong>
+            <span class="pill ${match.confidence === 'strong' ? 'match-pill-strong' : 'match-pill-possible'}">${escapeHtml(match.confidence)}</span>
+          </div>
+          <div class="match-card-grid">
+            <div><strong>Inventory size:</strong> ${escapeHtml(match.item.size || '-')}</div>
+            <div><strong>ThredUp size:</strong> ${escapeHtml(match.soldSize || '-')}</div>
+            <div><strong>Matched sold title:</strong> ${escapeHtml(match.entry.title || '-')}</div>
+            <div><strong>Sold price:</strong> ${escapeHtml(currency(match.entry.price || 0))}</div>
+            <div><strong>Overlap score:</strong> ${escapeHtml(String(match.score))}</div>
+            <div><strong>URL:</strong> <a href="${escapeHtml(match.entry.url || '#')}" target="_blank" rel="noopener noreferrer">Open listing</a></div>
+          </div>
+        </article>
+      `).join('');
+
+      elements.soldMatchResults.innerHTML = `
+        ${result.strong.length ? `<div class="match-group-title">Strong matches</div>${renderCards(result.strong)}` : ''}
+        ${result.possible.length ? `<div class="match-group-title">Possible matches</div>${renderCards(result.possible)}` : ''}
+      `;
+      elements.soldMatchClearButton.hidden = false;
+    }
+
+    function clearSoldMatchResults(resetFile = false) {
+      state.soldMatchResults = [];
+      if (resetFile) {
+        state.soldMatchFileName = '';
+        elements.soldMatchFileInput.value = '';
+      }
+      elements.soldMatchFilePill.textContent = state.soldMatchFileName || 'No file loaded';
+      elements.soldMatchStatus.textContent = 'Upload a ThredUp sold JSON file to compare sold entries against current inventory.';
+      elements.soldMatchSummary.innerHTML = '';
+      elements.soldMatchResults.innerHTML = '';
+      elements.soldMatchClearButton.hidden = true;
+    }
+
+    function runSoldMatchCheck(rows, fileName = '') {
+      const soldRows = (Array.isArray(rows) ? rows : []).filter((row) => normalizeMatchText(row?.status) === 'sold');
+      const activeInventory = state.inventory.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) !== 'sold');
+      const candidates = [];
+
+      activeInventory.forEach((item) => {
+        soldRows.forEach((entry, soldIndex) => {
+          const scored = scoreSoldMatch(item, entry);
+          if (!scored) return;
+          candidates.push({
+            itemId: item.id,
+            soldIndex,
+            item,
+            entry,
+            ...scored
+          });
+        });
+      });
+
+      candidates.sort((a, b) => b.score - a.score);
+      const usedInventory = new Set();
+      const usedSold = new Set();
+      const strong = [];
+      const possible = [];
+
+      candidates.forEach((candidate) => {
+        if (usedInventory.has(candidate.itemId) || usedSold.has(candidate.soldIndex)) return;
+        usedInventory.add(candidate.itemId);
+        usedSold.add(candidate.soldIndex);
+        if (candidate.confidence === 'strong') {
+          strong.push(candidate);
+        } else {
+          possible.push(candidate);
+        }
+      });
+
+      state.soldMatchResults = {
+        ran: true,
+        checkedSoldCount: soldRows.length,
+        strong,
+        possible
+      };
+      state.soldMatchFileName = fileName;
+      elements.soldMatchFilePill.textContent = fileName || 'JSON loaded';
+      elements.soldMatchStatus.textContent = soldRows.length
+        ? `Checked ${soldRows.length} sold ThredUp rows against ${activeInventory.length} active inventory shoes.`
+        : 'No sold rows were found in that JSON file.';
+      renderSoldMatchResults();
     }
 
     function getCheckedValues(name) {
@@ -3815,6 +4107,29 @@
       state.searchTerm = '';
       elements.searchInput.value = '';
       renderInventory();
+    });
+    elements.soldMatchUploadButton.addEventListener('click', () => {
+      elements.soldMatchFileInput.click();
+    });
+    elements.soldMatchFileInput.addEventListener('change', async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      elements.soldMatchStatus.textContent = `Reading ${file.name}...`;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (!Array.isArray(parsed)) {
+          throw new Error('This JSON file must contain an array of items.');
+        }
+        runSoldMatchCheck(parsed, file.name);
+      } catch (error) {
+        clearSoldMatchResults();
+        elements.soldMatchFilePill.textContent = file.name;
+        elements.soldMatchStatus.textContent = error?.message || String(error);
+      }
+    });
+    elements.soldMatchClearButton.addEventListener('click', () => {
+      clearSoldMatchResults(true);
     });
     elements.clearChartFilterButton.addEventListener('click', () => {
       state.chartFilter = null;
