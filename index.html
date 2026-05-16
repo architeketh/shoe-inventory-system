@@ -1001,6 +1001,18 @@
       color: #7a5a1e;
     }
 
+    .match-pill-reviewed {
+      border-color: rgba(57, 125, 90, 0.24);
+      background: rgba(219, 240, 230, 0.82);
+      color: #255b43;
+    }
+
+    .match-pill-mismatch {
+      border-color: rgba(196, 84, 84, 0.24);
+      background: rgba(251, 226, 226, 0.82);
+      color: #8a3131;
+    }
+
     .chart-filter-button {
       border: none;
       cursor: pointer;
@@ -2101,6 +2113,7 @@
       editOriginalPrice: null,
       editAppliedPriceAiValue: null,
       soldMatchResults: [],
+      soldMatchReviewState: {},
       soldMatchFileName: '',
       isWhiteBgRunning: false,
       backgroundRemovalModule: null,
@@ -2391,18 +2404,31 @@
         return;
       }
 
+      const reviewValues = Object.values(state.soldMatchReviewState || {});
+      const matchedCount = reviewValues.filter((value) => value === 'matched').length;
+      const mismatchCount = reviewValues.filter((value) => value === 'mismatch').length;
       const summaryPills = [
         `<span class="pill match-pill-strong">Strong ${result.strong.length}</span>`,
         `<span class="pill match-pill-possible">Possible ${result.possible.length}</span>`,
+        `<span class="pill match-pill-reviewed">Reviewed match ${matchedCount}</span>`,
+        `<span class="pill match-pill-mismatch">Mismatch ${mismatchCount}</span>`,
         `<span class="pill">Sold rows checked ${result.checkedSoldCount}</span>`
       ].join('');
       elements.soldMatchSummary.innerHTML = summaryPills;
 
-      const renderCards = (matches) => matches.map((match) => `
+      const renderCards = (matches) => matches.map((match) => {
+        const reviewState = state.soldMatchReviewState?.[match.matchKey] || '';
+        const reviewPill = reviewState === 'matched'
+          ? '<span class="pill match-pill-reviewed">reviewed match</span>'
+          : reviewState === 'mismatch'
+            ? '<span class="pill match-pill-mismatch">mismatch</span>'
+            : '';
+        return `
         <article class="match-card">
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <strong>${escapeHtml(getCardTitleText(match.item) || match.item.brand || 'Inventory item')}</strong>
             <span class="pill ${match.confidence === 'strong' ? 'match-pill-strong' : 'match-pill-possible'}">${escapeHtml(match.confidence)}</span>
+            ${reviewPill}
           </div>
           <div class="match-card-grid">
             <div><strong>Inventory size:</strong> ${escapeHtml(match.item.size || '-')}</div>
@@ -2414,10 +2440,14 @@
           </div>
           <div class="match-card-actions">
             <button class="mini-button" type="button" data-match-open="${escapeHtml(match.matchKey)}">View in inventory</button>
+            <button class="mini-button" type="button" data-match-reviewed="${escapeHtml(match.matchKey)}">Mark reviewed match</button>
+            <button class="mini-button" type="button" data-match-mismatch="${escapeHtml(match.matchKey)}">Mark mismatch</button>
+            ${reviewState ? `<button class="mini-button" type="button" data-match-clear-review="${escapeHtml(match.matchKey)}">Clear review</button>` : ''}
             <button class="mini-button" type="button" data-match-mark-sold="${escapeHtml(match.matchKey)}">Mark sold + ThreadUp</button>
           </div>
         </article>
-      `).join('');
+      `;
+      }).join('');
 
       elements.soldMatchResults.innerHTML = `
         ${result.strong.length ? `<div class="match-group-title">Strong matches</div>${renderCards(result.strong)}` : ''}
@@ -2428,6 +2458,7 @@
 
     function clearSoldMatchResults(resetFile = false) {
       state.soldMatchResults = [];
+      state.soldMatchReviewState = {};
       if (resetFile) {
         state.soldMatchFileName = '';
         elements.soldMatchFileInput.value = '';
@@ -2437,6 +2468,16 @@
       elements.soldMatchSummary.innerHTML = '';
       elements.soldMatchResults.innerHTML = '';
       elements.soldMatchClearButton.hidden = true;
+    }
+
+    function setSoldMatchReview(matchKey, reviewState) {
+      if (!matchKey) return;
+      if (!reviewState) {
+        delete state.soldMatchReviewState[matchKey];
+      } else {
+        state.soldMatchReviewState[matchKey] = reviewState;
+      }
+      renderSoldMatchResults();
     }
 
     function findSoldMatchByKey(matchKey) {
@@ -2488,6 +2529,7 @@
         const { error } = await supabaseClient.from(APP_CONFIG.inventoryTable).update(payload).eq('id', item.id);
         if (error) throw error;
         await loadInventory();
+        setSoldMatchReview(matchKey, 'matched');
         showBanner('success', 'Marked sold', `${getCardTitleText(item) || item.brand} was marked sold and linked to ThreadUp.`);
         const refreshed = state.inventory.find((entry) => entry.id === item.id);
         if (refreshed) {
@@ -4217,6 +4259,21 @@
           const found = scrollToInventoryItem(match.item.id);
           if (!found) showBanner('error', 'Inventory item not visible', 'That inventory item could not be scrolled into view.');
         }
+        return;
+      }
+      const reviewedButton = event.target.closest('[data-match-reviewed]');
+      if (reviewedButton) {
+        setSoldMatchReview(reviewedButton.getAttribute('data-match-reviewed'), 'matched');
+        return;
+      }
+      const mismatchButton = event.target.closest('[data-match-mismatch]');
+      if (mismatchButton) {
+        setSoldMatchReview(mismatchButton.getAttribute('data-match-mismatch'), 'mismatch');
+        return;
+      }
+      const clearReviewButton = event.target.closest('[data-match-clear-review]');
+      if (clearReviewButton) {
+        setSoldMatchReview(clearReviewButton.getAttribute('data-match-clear-review'), '');
         return;
       }
       const soldButton = event.target.closest('[data-match-mark-sold]');
