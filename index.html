@@ -621,6 +621,11 @@
       border-color: rgba(245, 158, 11, 0.16);
     }
 
+    .inventory-card-highlight {
+      box-shadow: 0 0 0 3px rgba(70, 118, 170, 0.28), var(--shadow);
+      transition: box-shadow 0.2s ease;
+    }
+
     .inventory-card h3 {
       font-size: 1rem;
       letter-spacing: -0.03em;
@@ -967,6 +972,13 @@
       gap: 8px 16px;
       margin-top: 8px;
       font-size: 0.92rem;
+    }
+
+    .match-card-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
     }
 
     .match-group-title {
@@ -2400,6 +2412,10 @@
             <div><strong>Overlap score:</strong> ${escapeHtml(String(match.score))}</div>
             <div><strong>URL:</strong> <a href="${escapeHtml(match.entry.url || '#')}" target="_blank" rel="noopener noreferrer">Open listing</a></div>
           </div>
+          <div class="match-card-actions">
+            <button class="mini-button" type="button" data-match-open="${escapeHtml(match.matchKey)}">View in inventory</button>
+            <button class="mini-button" type="button" data-match-mark-sold="${escapeHtml(match.matchKey)}">Mark sold + ThreadUp</button>
+          </div>
         </article>
       `).join('');
 
@@ -2423,6 +2439,67 @@
       elements.soldMatchClearButton.hidden = true;
     }
 
+    function findSoldMatchByKey(matchKey) {
+      const matches = [
+        ...(state.soldMatchResults?.strong || []),
+        ...(state.soldMatchResults?.possible || [])
+      ];
+      return matches.find((match) => match.matchKey === matchKey) || null;
+    }
+
+    function scrollToInventoryItem(itemId) {
+      const card = document.querySelector(`[data-inventory-item-id="${CSS.escape(String(itemId))}"]`);
+      if (!card) return false;
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('inventory-card-highlight');
+      window.setTimeout(() => card.classList.remove('inventory-card-highlight'), 1800);
+      return true;
+    }
+
+    async function markMatchedItemSold(matchKey) {
+      const match = findSoldMatchByKey(matchKey);
+      if (!match) return;
+      if (!SUPABASE_READY) {
+        showBanner('error', 'Supabase unavailable', 'Supabase is not configured.');
+        return;
+      }
+      const item = state.inventory.find((entry) => entry.id === match.item.id);
+      if (!item) {
+        showBanner('error', 'Item not found', 'That inventory item could not be located.');
+        return;
+      }
+
+      const platforms = Array.isArray(item.platforms_listed) ? [...item.platforms_listed] : [];
+      if (!platforms.includes('ThreadUp')) platforms.push('ThreadUp');
+      const existingNotes = String(item.notes || '').trim();
+      const soldLinkNote = match.entry?.url ? `ThreadUp sold match: ${match.entry.url}` : 'ThreadUp sold match linked.';
+      const notes = existingNotes.includes(soldLinkNote)
+        ? existingNotes
+        : [existingNotes, soldLinkNote].filter(Boolean).join(' | ');
+
+      const payload = {
+        sold: true,
+        sold_price: Number(match.entry?.price || 0) || item.sold_price || null,
+        platforms_listed: platforms,
+        notes: notes || null
+      };
+
+      try {
+        const { error } = await supabaseClient.from(APP_CONFIG.inventoryTable).update(payload).eq('id', item.id);
+        if (error) throw error;
+        await loadInventory();
+        showBanner('success', 'Marked sold', `${getCardTitleText(item) || item.brand} was marked sold and linked to ThreadUp.`);
+        const refreshed = state.inventory.find((entry) => entry.id === item.id);
+        if (refreshed) {
+          match.item = refreshed;
+        }
+        renderSoldMatchResults();
+        scrollToInventoryItem(item.id);
+      } catch (error) {
+        showBanner('error', 'Mark sold failed', error?.message || String(error));
+      }
+    }
+
     function runSoldMatchCheck(rows, fileName = '') {
       const soldRows = (Array.isArray(rows) ? rows : []).filter((row) => normalizeMatchText(row?.status) === 'sold');
       const activeInventory = state.inventory.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) !== 'sold');
@@ -2435,6 +2512,7 @@
           candidates.push({
             itemId: item.id,
             soldIndex,
+            matchKey: `${item.id}-${soldIndex}`,
             item,
             entry,
             ...scored
@@ -3922,7 +4000,7 @@
             : '<div class="attachments-empty">No photos</div>';
 
         return `
-            <article class="inventory-card ${cardClass}">
+            <article class="inventory-card ${cardClass}" data-inventory-item-id="${item.id}">
               <span class="${reviewedDotClass}" aria-label="${item.reviewed ? 'Reviewed' : 'Not reviewed'}" title="${item.reviewed ? 'Reviewed' : 'Not reviewed'}"></span>
               <div class="inventory-line">
                 <div class="inventory-cell">
@@ -4130,6 +4208,21 @@
     });
     elements.soldMatchClearButton.addEventListener('click', () => {
       clearSoldMatchResults(true);
+    });
+    elements.soldMatchResults.addEventListener('click', (event) => {
+      const openButton = event.target.closest('[data-match-open]');
+      if (openButton) {
+        const match = findSoldMatchByKey(openButton.getAttribute('data-match-open'));
+        if (match) {
+          const found = scrollToInventoryItem(match.item.id);
+          if (!found) showBanner('error', 'Inventory item not visible', 'That inventory item could not be scrolled into view.');
+        }
+        return;
+      }
+      const soldButton = event.target.closest('[data-match-mark-sold]');
+      if (soldButton) {
+        markMatchedItemSold(soldButton.getAttribute('data-match-mark-sold'));
+      }
     });
     elements.clearChartFilterButton.addEventListener('click', () => {
       state.chartFilter = null;
