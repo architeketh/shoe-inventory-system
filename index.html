@@ -3249,54 +3249,74 @@
       elements.boxedCount.textContent = String(boxed);
     }
 
+    function normalizeSearchToken(raw) {
+      return String(raw || '')
+        .toLowerCase()
+        .replace(/["“”]/g, '')
+        .replace(/[\/_,.:;()[\]{}|]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function compactSearchToken(raw) {
+      return normalizeSearchToken(raw).replace(/[\s'-]+/g, '');
+    }
+
     function normalizedSearchTerms(raw) {
-      const base = String(raw || '').toLowerCase().trim();
+      const base = normalizeSearchToken(raw);
       if (!base) return [];
-      const variants = new Set([base]);
-      const compact = base.replace(/[\s'-]+/g, '');
-      variants.add(compact);
-      const words = base.split(/\s+/).filter(Boolean);
-      words.forEach((word) => variants.add(word.replace(/[\s'-]+/g, '')));
-      if (['mens', "men's", 'men', 'm', 'male'].includes(base) || ['mens', 'mens', 'men', 'm', 'male'].includes(compact)) {
-        ['mens', "men's", 'men', 'm', 'male'].forEach((value) => variants.add(value));
+      const variants = new Set();
+      const quotedPhrases = [...String(raw || '').matchAll(/"([^"]+)"|“([^”]+)”/g)]
+        .map((match) => normalizeSearchToken(match[1] || match[2] || ''))
+        .filter(Boolean);
+      quotedPhrases.forEach((phrase) => variants.add(phrase));
+      base.split(/\s+/).filter(Boolean).forEach((word) => {
+        variants.add(word);
+        const compact = compactSearchToken(word);
+        if (compact) variants.add(compact);
+      });
+
+      const baseCompact = compactSearchToken(base);
+      if (['mens', "men's", 'men', 'm', 'male'].includes(base) || ['mens', 'men', 'm', 'male'].includes(baseCompact)) {
+        ['mens', "men's", 'men', 'm', 'male'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
-      if (['womens', "women's", 'women', 'w', 'female'].includes(base) || ['womens', 'womens', 'women', 'w', 'female'].includes(compact)) {
-        ['womens', "women's", 'women', 'w', 'female'].forEach((value) => variants.add(value));
+      if (['womens', "women's", 'women', 'w', 'female'].includes(base) || ['womens', 'women', 'w', 'female'].includes(baseCompact)) {
+        ['womens', "women's", 'women', 'w', 'female'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
       if (base === 'kids' || base === 'kid' || base === 'youth' || base === 'y') {
-        ['kids', 'kid', 'youth', 'y', 'child'].forEach((value) => variants.add(value));
+        ['kids', 'kid', 'youth', 'y', 'child'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
-      if (compact === 'nobox') {
-        ['no box', 'nobox', 'without box'].forEach((value) => variants.add(value));
+      if (baseCompact === 'nobox') {
+        ['no box', 'nobox', 'without box'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
       if (base === 'box') {
-        ['box', 'with box'].forEach((value) => variants.add(value));
+        ['box', 'with box'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
-      if (compact === 'forsale' || base === 'for sale') {
-        ['for sale', 'forsale', 'available', 'active'].forEach((value) => variants.add(value));
+      if (baseCompact === 'forsale' || base === 'for sale') {
+        ['for sale', 'forsale', 'available', 'active'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
       if (base === 'sold') {
-        ['sold'].forEach((value) => variants.add(value));
+        variants.add('sold');
       }
       if (base === 'draft') {
-        ['draft'].forEach((value) => variants.add(value));
+        variants.add('draft');
       }
-      if (base === 'whatnot' || compact === 'whatnot') {
-        ['whatnot', 'what not', 'platform whatnot', 'listed on whatnot'].forEach((value) => variants.add(value));
+      if (base === 'whatnot' || baseCompact === 'whatnot') {
+        ['whatnot', 'what not', 'platform whatnot', 'listed on whatnot'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
-      if (base === 'depop' || compact === 'depop') {
-        ['depop', 'platform depop', 'listed on depop'].forEach((value) => variants.add(value));
+      if (base === 'depop' || baseCompact === 'depop') {
+        ['depop', 'platform depop', 'listed on depop'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
-      if (base === 'ebay' || compact === 'ebay') {
-        ['ebay', 'e bay', 'platform ebay', 'listed on ebay'].forEach((value) => variants.add(value));
+      if (base === 'ebay' || baseCompact === 'ebay') {
+        ['ebay', 'e bay', 'platform ebay', 'listed on ebay'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
-      if (base === 'goat' || compact === 'goat') {
-        ['goat', 'platform goat', 'listed on goat'].forEach((value) => variants.add(value));
+      if (base === 'goat' || baseCompact === 'goat') {
+        ['goat', 'platform goat', 'listed on goat'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
-      if (base === 'threadup' || base === 'thredup' || compact === 'threadup' || compact === 'thredup') {
-        ['threadup', 'thredup', 'thread up', 'thred up', 'platform threadup', 'listed on threadup'].forEach((value) => variants.add(value));
+      if (base === 'threadup' || base === 'thredup' || baseCompact === 'threadup' || baseCompact === 'thredup') {
+        ['threadup', 'thredup', 'thread up', 'thred up', 'platform threadup', 'listed on threadup'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
-      return [...variants];
+      return [...variants].filter(Boolean);
     }
 
     function normalizedSizeTerms(raw) {
@@ -3381,9 +3401,15 @@
             getStatusLabel(item).toLowerCase(),
             normalizeListingStatus(item.status, Boolean(item.sold)) === 'active' ? 'for sale forsale available active' : '',
             String(item.price ?? '')
-          ].map((value) => String(value || '').toLowerCase());
-          searchValues.push(...sizeTerms);
-          return terms.some((term) => searchValues.some((value) => value.includes(term)));
+          ].map((value) => normalizeSearchToken(value));
+          searchValues.push(...sizeTerms.map((value) => normalizeSearchToken(value)));
+          const haystack = `${searchValues.join(' ')} ${searchValues.map((value) => compactSearchToken(value)).join(' ')}`;
+          return terms.every((term) => {
+            const normalizedTerm = normalizeSearchToken(term);
+            const compactTerm = compactSearchToken(term);
+            if (!normalizedTerm && !compactTerm) return true;
+            return (normalizedTerm && haystack.includes(normalizedTerm)) || (compactTerm && haystack.includes(compactTerm));
+          });
         });
       }
       if (state.chartFilter) {
