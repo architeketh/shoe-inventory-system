@@ -1410,10 +1410,6 @@
             <div class="stat-label">With box</div>
             <div class="stat-value" id="boxed-count">0</div>
           </article>
-          <article class="stat-chip">
-            <div class="stat-label">Avg price</div>
-            <div class="stat-value" id="average-price">$0</div>
-          </article>
         </div>
       </div>
     </section>
@@ -2027,7 +2023,6 @@
       totalPairs: document.getElementById('total-pairs'),
       soldCount: document.getElementById('sold-count'),
       boxedCount: document.getElementById('boxed-count'),
-      averagePrice: document.getElementById('average-price'),
       addPanel: document.getElementById('add-panel'),
       aiModeCopy: document.getElementById('ai-mode-copy'),
       requiredCopy: document.getElementById('required-copy'),
@@ -3249,11 +3244,9 @@
       const total = state.inventory.length;
       const sold = state.inventory.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold').length;
       const boxed = state.inventory.filter((item) => item.has_box).length;
-      const average = total ? state.inventory.reduce((sum, item) => sum + Number(item.price || 0), 0) / total : 0;
       elements.totalPairs.textContent = String(total);
       elements.soldCount.textContent = String(sold);
       elements.boxedCount.textContent = String(boxed);
-      elements.averagePrice.textContent = currency(average);
     }
 
     function normalizedSearchTerms(raw) {
