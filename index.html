@@ -6076,7 +6076,91 @@
       const preferredTitle = String(item.title || '').trim();
       const parts = preferredTitle ? [preferredTitle] : [item.brand, item.description, item.size ? `Size ${item.size}` : ''].filter(Boolean);
       const title = parts.join(' ').replace(/\s+/g, ' ').trim();
-      return title.length > maxLength ? `${title.slice(0, maxLength - 1).trim()}…` : title;
+      return title.length > maxLength ? `${title.slice(0, Math.max(1, maxLength - 3)).trim()}...` : title;
+    }
+
+    function cleanExportText(value) {
+      return String(value ?? '').replace(/\s+/g, ' ').trim();
+    }
+
+    function buildExportTitle(item, maxLength = 80, includeSize = false) {
+      const preferredTitle = cleanExportText(item.title);
+      const baseTitle = preferredTitle || cleanExportText([item.brand, item.brand_style_name || item.description].filter(Boolean).join(' '));
+      const sizeSuffix = includeSize && item.size ? `Size ${item.size}` : '';
+      const title = cleanExportText([baseTitle, sizeSuffix].filter(Boolean).join(' '));
+      if (!title) return buildTitle(item, maxLength);
+      return title.length > maxLength ? `${title.slice(0, maxLength - 1).trim()}â€¦` : title;
+    }
+
+    function buildExportDescription(item) {
+      const segments = [
+        item.brand_style_name || item.description || '',
+        item.colors ? `Color: ${item.colors}.` : '',
+        item.category_2 ? `Category: ${item.category_2}.` : '',
+        item.gender ? `Category 2: ${item.gender}.` : '',
+        item.shoe_style ? `Street Slang: ${item.shoe_style}.` : '',
+        item.materials ? `Materials: ${item.materials}.` : '',
+        item.made_in ? `Made in: ${item.made_in}.` : '',
+        item.serial_number ? `Serial Number: ${item.serial_number}.` : '',
+        item.original_tags_attached === 'yes' ? 'Original tags attached.' : item.original_tags_attached === 'no' ? 'No original tags.' : '',
+        item.has_box ? 'Includes original box.' : 'No box.',
+        item.notes || ''
+      ];
+      return cleanExportText(segments.filter(Boolean).join(' '));
+    }
+
+    function mapExportCondition(item, platform) {
+      const rawCondition = cleanExportText(item.condition).toLowerCase();
+      const pricingCondition = cleanExportText(item.pricing_condition).toLowerCase();
+      const notes = cleanExportText(item.notes).toLowerCase();
+      const hasOriginalTags = item.original_tags_attached === 'yes';
+
+      if (platform === 'depop') {
+        if (rawCondition === 'new' || pricingCondition === 'new' || pricingCondition === 'new_w_box' || hasOriginalTags || notes.includes('nwt') || notes.includes('nwot')) {
+          return 'Brand new';
+        }
+      } else if (rawCondition === 'new' || pricingCondition === 'new' || pricingCondition === 'new_w_box' || hasOriginalTags || notes.includes('nwt') || notes.includes('nwot')) {
+        return 'New';
+      }
+
+      if (rawCondition.includes('excellent') || rawCondition.includes('like new') || notes.includes('excellent') || notes.includes('like new')) return 'Excellent';
+      if (rawCondition.includes('very good')) return platform === 'depop' ? 'Good' : 'Excellent';
+      if (rawCondition.includes('good') || pricingCondition === 'used' || notes.includes('good')) return 'Good';
+      if (rawCondition.includes('fair') || rawCondition.includes('poor') || pricingCondition === 'refurbished' || notes.includes('flaw') || notes.includes('worn')) return 'Fair';
+      return 'Good';
+    }
+
+    function getStoredExportSetting(storageKey) {
+      try {
+        return cleanExportText(window.localStorage.getItem(storageKey) || '');
+      } catch (error) {
+        return '';
+      }
+    }
+
+    function promptForExportSetting(storageKey, promptText) {
+      const existingValue = getStoredExportSetting(storageKey);
+      const response = window.prompt(promptText, existingValue);
+      if (response === null) return null;
+      const value = cleanExportText(response);
+      if (!value) {
+        alert('Export canceled. A value is required for a cleaner CSV import.');
+        return null;
+      }
+      try {
+        window.localStorage.setItem(storageKey, value);
+      } catch (error) {
+      }
+      return value;
+    }
+
+    function buildExportTitleSafe(item, maxLength = 80, includeSize = false) {
+      const preferredTitle = cleanExportText(item.title);
+      const baseTitle = preferredTitle || cleanExportText([item.brand, item.brand_style_name || item.description].filter(Boolean).join(' '));
+      const sizeSuffix = includeSize && item.size ? `Size ${item.size}` : '';
+      const title = cleanExportText([baseTitle, sizeSuffix].filter(Boolean).join(' '));
+      if (!title) return buildTitle(item, maxLength);
+      return title.length > maxLength ? `${title.slice(0, Math.max(1, maxLength - 3)).trim()}...` : title;
     }
 
     function mapCondition(item) {
@@ -6090,28 +6174,26 @@
 
     function exportWhatnotCsv() {
       const exportItems = getExportItems();
+      const shippingProfile = promptForExportSetting(
+        'shoeInventoryWhatnotShippingProfile',
+        'Enter the Whatnot Shipping Profile to use for this export. Use an exact Whatnot template value or the name of an existing custom shipping profile.'
+      );
+      if (!shippingProfile) return;
       const lines = [
         ['Category', 'Sub Category', 'Title', 'Description', 'Quantity', 'Type', 'Price', 'Shipping Profile', 'Offerable', 'Condition', 'Image URL 1', 'Image URL 2', 'Image URL 3', 'Image URL 4', 'Image URL 5', 'Image URL 6', 'Image URL 7', 'Image URL 8'],
         ...exportItems.map((item) => {
           const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 8) : [];
-          const description = [
-            item.brand_style_name || item.description || '',
-            item.category_2 ? `Category: ${item.category_2}` : '',
-            item.gender ? `Category 2: ${item.gender}` : '',
-            item.has_box ? 'Includes box.' : 'No box.',
-            item.notes || ''
-          ].filter(Boolean).join(' ');
           return [
             'Fashion',
             item.category_2 || 'Shoes',
-            buildTitle(item, 120),
-            description.trim(),
+            buildExportTitleSafe(item, 120, true),
+            buildExportDescription(item),
             1,
             'Buy It Now',
             Number(item.price || 0).toFixed(2),
-            '',
+            shippingProfile,
             'FALSE',
-            item.condition || mapCondition(item),
+            mapExportCondition(item, 'whatnot'),
             photos[0] || '',
             photos[1] || '',
             photos[2] || '',
@@ -6124,35 +6206,33 @@
         })
       ];
       downloadCsv(`whatnot-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
-      alert('Whatnot CSV exported. Review Category, Sub Category, Shipping Profile, and Condition before import.');
+      alert('Whatnot CSV exported with your saved Shipping Profile. Review category and condition values against the current Whatnot template before import.');
     }
 
     function exportDepopCsv() {
       const exportItems = getExportItems();
+      const shippingValue = promptForExportSetting(
+        'shoeInventoryDepopShippingValue',
+        'Enter the Depop shipping value to apply to this export. Match the wording you use in your current Depop bulk-listing template.'
+      );
+      if (!shippingValue) return;
       const lines = [
         ['SKU', 'Title', 'Description', 'Price', 'Brand', 'Category', 'Category 2', 'Size', 'Condition', 'Colour', 'Shipping', 'Image URL 1', 'Image URL 2', 'Image URL 3', 'Image URL 4', 'Image URL 5', 'Image URL 6'],
         ...exportItems.map((item) => {
           const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 6) : [];
           const sku = `${(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase()}-${String(item.id || '').slice(0, 6).toUpperCase()}`;
-          const description = [
-            item.brand_style_name || item.description || '',
-            item.notes || '',
-            item.has_box ? 'Includes original box.' : 'No box.',
-            item.category_2 ? `Category: ${item.category_2}.` : '',
-            item.gender ? `Category 2: ${item.gender}.` : ''
-          ].filter(Boolean).join(' ');
           return [
             sku,
-            buildTitle(item, 80),
-            description.trim(),
+            buildExportTitleSafe(item, 80),
+            buildExportDescription(item),
             Number(item.price || 0).toFixed(2),
-            item.brand || '',
+            cleanExportText(item.brand),
             'Shoes',
-            item.category_2 || '',
-            item.size || '',
-            item.condition || mapCondition(item),
-            item.colors || '',
-            '',
+            cleanExportText(item.category_2),
+            cleanExportText(item.size),
+            mapExportCondition(item, 'depop'),
+            cleanExportText(item.colors),
+            shippingValue,
             photos[0] || '',
             photos[1] || '',
             photos[2] || '',
@@ -6162,8 +6242,8 @@
           ];
         })
       ];
-      downloadCsv(`depop-prep-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
-      alert("Depop prep CSV exported. Match the columns to Depop's current bulk listing template before import.");
+      downloadCsv(`depop-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
+      alert("Depop CSV exported with your saved shipping value. Spot-check category and condition values against Depop's current template before import.");
     }
 
     elements.reviewHtmlButton.addEventListener('click', exportReviewListingHtml);
