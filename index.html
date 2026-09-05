@@ -6209,11 +6209,91 @@
       alert('Whatnot CSV exported with your saved Shipping Profile. Review category and condition values against the current Whatnot template before import.');
     }
 
+    // ---- Depop dropdown lookup tables -------------------------------------------------
+    // Depop's Category/Brand/Condition/Color/Source/Age/Style fields don't accept plain text -
+    // they need the exact "Display Name (internal_code)" format from Depop's own dropdown.
+    // These tables were built from real values confirmed in your Depop template export.
+    // If a shoe's info doesn't match anything in a table, we leave that cell blank and flag
+    // the SKU so you can fill it in manually in Depop (safer than guessing a wrong code).
+
+    // Category codes, keyed by gender. Only "Sneakers" is confirmed right now - if you carry
+    // Boots/Flats/Heels/Sandals too, get their exact codes the same way (type each into Depop's
+    // Category field, copy the "Name (code)" text) and they can be added here later.
+    const DEPOP_CATEGORY_BY_GENDER = {
+      mens: 'Men >> Footwear >> Sneakers (menswear, footwear, trainers)',
+      womens: 'Women >> Footwear >> Sneakers (womenswear, footwear, trainers)',
+      kids: 'Kids >> Footwear >> Sneakers (kidswear, footwear, trainers)'
+    };
+
+    // Brand codes. Key = brand name with spaces/punctuation removed, lowercased.
+    const DEPOP_BRAND_CODES = {
+      nike: 'Nike (nike)',
+      adidas: 'Adidas (adidas)',
+      newbalance: 'New Balance (new-balance)',
+      converse: 'Converse (converse)',
+      conversekids: 'Converse Kids (converse-kids)'
+    };
+
+    // Condition codes. "Used - Good (used_good)" wasn't in your sample export, so it's marked
+    // as a best guess based on Depop's naming pattern - confirm it once in Depop before relying on it.
+    const DEPOP_CONDITION_CODES = {
+      'Brand new': 'Brand new (brand_new)',
+      'Excellent': 'Like new (used_like_new)',
+      'Good': 'Used - Good (used_good)', // best guess - please verify in Depop
+      'Fair': 'Used - Fair (used_fair)'
+    };
+
+    // Color codes. Key = color name lowercased.
+    const DEPOP_COLOR_CODES = {
+      white: 'White (white)', black: 'Black (black)', blue: 'Blue (blue)', brown: 'Brown (brown)',
+      burgundy: 'Burgundy (burgundy)', cream: 'Cream (cream)', gold: 'Gold (gold)', green: 'Green (green)',
+      grey: 'Grey (grey)', gray: 'Grey (grey)', khaki: 'Khaki (khaki)', multi: 'Multi (multi)',
+      navy: 'Navy (navy)', orange: 'Orange (orange)', pink: 'Pink (pink)', purple: 'Purple (purple)',
+      red: 'Red (red)', silver: 'Silver (silver)', tan: 'Tan (tan)', yellow: 'Yellow (yellow)'
+    };
+
+    // Source codes. This app doesn't track "source" separately, so we guess from condition:
+    // brand-new items get "Deadstock", everything else gets "Preloved". Change per-row in the
+    // CSV afterward if a particular pair should say Vintage / Designer / Custom / Repaired instead.
+    const DEPOP_SOURCE_NEW = 'Deadstock (deadstock)';
+    const DEPOP_SOURCE_USED = 'Preloved (preloved)';
+
+    // Age codes. Not tracked in this app, so every item defaults to "Modern" - edit the
+    // CSV by hand for any pair that's actually vintage (70s/80s/90s) or antique.
+    const DEPOP_AGE_DEFAULT = 'Modern (modern)';
+
+    // Style codes, matched by keyword against the "Street Slang" field.
+    const DEPOP_STYLE_KEYWORDS = [
+      { keyword: 'street', code: 'Streetwear (streetwear)' },
+      { keyword: 'sport', code: 'Sportswear (sportswear)' },
+      { keyword: 'skate', code: 'Skater (skater)' },
+      { keyword: 'casual', code: 'Casual (casual)' }
+    ];
+
+    function normalizeLookupKey(value) {
+      return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    }
+
+    function lookupDepopBrand(brand) {
+      return DEPOP_BRAND_CODES[normalizeLookupKey(brand)] || '';
+    }
+
+    function lookupDepopColor(color) {
+      return DEPOP_COLOR_CODES[normalizeLookupKey(color)] || '';
+    }
+
+    function lookupDepopStyles(shoeStyleText) {
+      const text = String(shoeStyleText || '').toLowerCase();
+      const matches = DEPOP_STYLE_KEYWORDS.filter((entry) => text.includes(entry.keyword)).map((entry) => entry.code);
+      return matches.slice(0, 3);
+    }
+
     // This builds a CSV that matches Depop's own "Bulk listing" template exactly:
     // same column names, same column order, and the same "Template version: 6" line on top.
     // That file can be uploaded directly in Depop under Bulk listing > Upload CSV file.
     function exportDepopCsv() {
       const exportItems = getExportItems();
+      const reviewNotes = []; // collects "SKU: what needs a manual check" messages
 
       // These three values are asked for once and then remembered (saved in the browser)
       // so you don't have to retype them every time you export.
@@ -6248,28 +6328,78 @@
         headerRow,
         ...exportItems.map((item) => {
           const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 8) : [];
-          // Split "Colors" and "Street Slang" into separate values if more than one was entered
-          // (separated by comma, slash, or "&"), since Depop has two Color columns and three Style columns.
-          const colorList = cleanExportText(item.colors).split(/[,/&]+/).map((value) => value.trim()).filter(Boolean);
-          const styleList = cleanExportText(item.shoe_style).split(/[,/&]+/).map((value) => value.trim()).filter(Boolean);
-          const genderLabel = item.gender === 'womens' ? 'Womens' : item.gender === 'kids' ? 'Kids' : item.gender === 'mens' ? 'Mens' : '';
           const sku = `${(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase()}-${String(item.id || '').slice(0, 6).toUpperCase()}`;
+          const missing = []; // fields this specific item couldn't be auto-matched for
+
+          // Category: only confirmed for "Sneakers" per gender right now.
+          let categoryCode = '';
+          if (String(item.category_2 || '').toLowerCase() === 'sneakers' && DEPOP_CATEGORY_BY_GENDER[item.gender]) {
+            categoryCode = DEPOP_CATEGORY_BY_GENDER[item.gender];
+          } else {
+            missing.push('Category');
+          }
+
+          // Brand: looked up by normalized name; left blank if not in the table yet.
+          const brandCode = lookupDepopBrand(item.brand);
+          if (!brandCode) missing.push('Brand');
+
+          // Condition: reuses the app's existing New/Excellent/Good/Fair logic, then converts
+          // that to Depop's exact wording.
+          const appCondition = mapExportCondition(item, 'depop');
+          const conditionCode = DEPOP_CONDITION_CODES[appCondition] || '';
+          if (!conditionCode) missing.push('Condition');
+
+          // Size: adult sizing on Depop is "US <number>" from US 3 up to US 16, including half
+          // sizes (3, 3.5, 4, 4.5 ... 16). Kids' sizing uses a different format this app doesn't
+          // have enough info to guess (e.g. "0-0.5 (newborn)"), so kids sizes are left blank.
+          let sizeValue = '';
+          if (item.gender === 'kids') {
+            missing.push('Size (kids sizing needs manual entry)');
+          } else if (item.size) {
+            const numericSize = parseFloat(String(item.size).replace(/[^0-9.]/g, ''));
+            const isHalfStep = Number.isFinite(numericSize) && Math.round(numericSize * 2) === numericSize * 2;
+            const inRange = Number.isFinite(numericSize) && numericSize >= 3 && numericSize <= 16;
+            if (isHalfStep && inRange) {
+              // Trims a trailing ".0" so whole sizes read "US 10" instead of "US 10.0".
+              const cleanNumber = numericSize % 1 === 0 ? numericSize.toFixed(0) : numericSize.toFixed(1);
+              sizeValue = `US ${cleanNumber}`;
+            } else {
+              missing.push(`Size ("${item.size}" is outside US 3-16 half-size range)`);
+            }
+          } else {
+            missing.push('Size');
+          }
+
+          // Colors: split on comma/slash/"&" in case more than one color was entered.
+          const colorNames = cleanExportText(item.colors).split(/[,/&]+/).map((value) => value.trim()).filter(Boolean);
+          const colorCodes = colorNames.map(lookupDepopColor).filter(Boolean);
+          if (colorNames.length && !colorCodes.length) missing.push('Color');
+
+          // Source: guessed from condition since this app doesn't have its own Source field.
+          const sourceCode = appCondition === 'Brand new' ? DEPOP_SOURCE_NEW : DEPOP_SOURCE_USED;
+
+          // Style: matched by keyword against the "Street Slang" field.
+          const styleCodes = lookupDepopStyles(item.shoe_style);
+
+          if (missing.length) {
+            reviewNotes.push(`${sku}: ${missing.join(', ')}`);
+          }
 
           return [
             buildExportDescription(item).slice(0, 1000), // Depop max is 1,000 characters
-            cleanExportText([genderLabel, item.category_2].filter(Boolean).join(' ')) || 'Shoes',
+            categoryCode,
             Number(item.price || 0).toFixed(2),
-            cleanExportText(item.brand),
-            mapExportCondition(item, 'depop'),
-            cleanExportText(item.size),
-            colorList[0] || '',
-            colorList[1] || '',
-            '', // Source 1 - not tracked in this app, fill in manually if needed
-            '', // Source 2 - not tracked in this app, fill in manually if needed
-            '', // Age - not tracked in this app, fill in manually if needed
-            styleList[0] || '',
-            styleList[1] || '',
-            styleList[2] || '',
+            brandCode,
+            conditionCode,
+            sizeValue,
+            colorCodes[0] || '',
+            colorCodes[1] || '',
+            sourceCode,
+            '',
+            DEPOP_AGE_DEFAULT,
+            styleCodes[0] || '',
+            styleCodes[1] || '',
+            styleCodes[2] || '',
             location,
             photos[0] || '',
             photos[1] || '',
@@ -6286,7 +6416,14 @@
         })
       ];
       downloadCsv(`depop-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
-      alert("Depop CSV exported using Depop's official bulk listing column layout. Depop's Category, Size, Source, Age, Style, and Location fields are dropdown menus in their template — open the exported file and confirm those values match Depop's dropdown wording exactly before uploading.");
+
+      if (reviewNotes.length) {
+        const preview = reviewNotes.slice(0, 15).join('\n');
+        const more = reviewNotes.length > 15 ? `\n...and ${reviewNotes.length - 15} more.` : '';
+        alert(`Depop CSV exported. ${reviewNotes.length} item(s) have fields that couldn't be auto-matched to a Depop dropdown code and were left blank - fill these in manually in the CSV or in Depop before uploading:\n\n${preview}${more}`);
+      } else {
+        alert('Depop CSV exported using Depop\'s official bulk listing column layout. All fields were matched to known Depop dropdown codes - do a quick spot check before uploading.');
+      }
     }
 
     elements.reviewHtmlButton.addEventListener('click', exportReviewListingHtml);
