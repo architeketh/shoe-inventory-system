@@ -6270,6 +6270,25 @@
       { keyword: 'casual', code: 'Casual (casual)' }
     ];
 
+    // Turns a shoe type into the word Depop shoppers search for, e.g. "Sneakers" -> "Trainers".
+    const DEPOP_CATEGORY_NOUN = {
+      sneakers: 'Trainers',
+      boots: 'Boots',
+      flats: 'Flats',
+      heels: 'Heels',
+      sandals: 'Sandals'
+    };
+
+    // Builds a short Depop-style title for the Description column, e.g. "Adidas Women's Multi Trainers".
+    // This is intentionally short (Brand + gender + main color + shoe type) - full details like
+    // materials, box status, etc. still belong in Depop's own listing photos/description if needed.
+    function buildDepopTitle(item) {
+      const genderPossessive = item.gender === 'womens' ? "Women's" : item.gender === 'kids' ? "Kids'" : item.gender === 'mens' ? "Men's" : '';
+      const categoryNoun = DEPOP_CATEGORY_NOUN[normalizeLookupKey(item.category_2)] || 'Shoes';
+      const primaryColor = cleanExportText(item.colors).split(/[,/&]+/)[0]?.trim() || '';
+      return cleanExportText([item.brand, genderPossessive, primaryColor, categoryNoun].filter(Boolean).join(' '));
+    }
+
     function normalizeLookupKey(value) {
       return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
     }
@@ -6386,7 +6405,7 @@
           }
 
           return [
-            buildExportDescription(item).slice(0, 1000), // Depop max is 1,000 characters
+            buildDepopTitle(item), // e.g. "Adidas Women's Multi Trainers" - Depop's Description field
             categoryCode,
             Number(item.price || 0).toFixed(2),
             brandCode,
