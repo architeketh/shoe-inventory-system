@@ -6209,41 +6209,84 @@
       alert('Whatnot CSV exported with your saved Shipping Profile. Review category and condition values against the current Whatnot template before import.');
     }
 
+    // This builds a CSV that matches Depop's own "Bulk listing" template exactly:
+    // same column names, same column order, and the same "Template version: 6" line on top.
+    // That file can be uploaded directly in Depop under Bulk listing > Upload CSV file.
     function exportDepopCsv() {
       const exportItems = getExportItems();
-      const shippingValue = promptForExportSetting(
-        'shoeInventoryDepopShippingValue',
-        'Enter the Depop shipping value to apply to this export. Match the wording you use in your current Depop bulk-listing template.'
+
+      // These three values are asked for once and then remembered (saved in the browser)
+      // so you don't have to retype them every time you export.
+      const location = promptForExportSetting(
+        'shoeInventoryDepopLocation',
+        "Enter the Location you ship from, exactly as it appears in Depop's Location dropdown (e.g. United States)."
       );
-      if (!shippingValue) return;
+      if (!location) return;
+      const domesticShipping = promptForExportSetting(
+        'shoeInventoryDepopDomesticShippingPrice',
+        'Enter your Domestic Shipping price (number only, no currency symbol, e.g. 5.00).'
+      );
+      if (!domesticShipping) return;
+      const internationalShipping = promptForExportSetting(
+        'shoeInventoryDepopInternationalShippingPrice',
+        'Enter your International Shipping price (number only, no currency symbol, e.g. 20.00).'
+      );
+      if (!internationalShipping) return;
+
+      // Depop's real template starts with a "Template version" row, then the header row.
+      const templateVersionRow = ['Template version: 6', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+      const headerRow = [
+        'Description', 'Category', 'Price', 'Brand', 'Condition', 'Size', 'Color 1', 'Color 2',
+        'Source 1', 'Source 2', 'Age', 'Style 1', 'Style 2', 'Style 3', 'Location',
+        'Picture Hero url', 'Picture 2 url', 'Picture 3 url', 'Picture 4 url', 'Picture 5 url',
+        'Picture 6 url', 'Picture 7 url', 'Picture 8 url',
+        'Domestic Shipping price', 'International Shipping price', 'SKU'
+      ];
+
       const lines = [
-        ['SKU', 'Title', 'Description', 'Price', 'Brand', 'Category', 'Category 2', 'Size', 'Condition', 'Colour', 'Shipping', 'Image URL 1', 'Image URL 2', 'Image URL 3', 'Image URL 4', 'Image URL 5', 'Image URL 6'],
+        templateVersionRow,
+        headerRow,
         ...exportItems.map((item) => {
-          const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 6) : [];
+          const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 8) : [];
+          // Split "Colors" and "Street Slang" into separate values if more than one was entered
+          // (separated by comma, slash, or "&"), since Depop has two Color columns and three Style columns.
+          const colorList = cleanExportText(item.colors).split(/[,/&]+/).map((value) => value.trim()).filter(Boolean);
+          const styleList = cleanExportText(item.shoe_style).split(/[,/&]+/).map((value) => value.trim()).filter(Boolean);
+          const genderLabel = item.gender === 'womens' ? 'Womens' : item.gender === 'kids' ? 'Kids' : item.gender === 'mens' ? 'Mens' : '';
           const sku = `${(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase()}-${String(item.id || '').slice(0, 6).toUpperCase()}`;
+
           return [
-            sku,
-            buildExportTitleSafe(item, 80),
-            buildExportDescription(item),
+            buildExportDescription(item).slice(0, 1000), // Depop max is 1,000 characters
+            cleanExportText([genderLabel, item.category_2].filter(Boolean).join(' ')) || 'Shoes',
             Number(item.price || 0).toFixed(2),
             cleanExportText(item.brand),
-            'Shoes',
-            cleanExportText(item.category_2),
-            cleanExportText(item.size),
             mapExportCondition(item, 'depop'),
-            cleanExportText(item.colors),
-            shippingValue,
+            cleanExportText(item.size),
+            colorList[0] || '',
+            colorList[1] || '',
+            '', // Source 1 - not tracked in this app, fill in manually if needed
+            '', // Source 2 - not tracked in this app, fill in manually if needed
+            '', // Age - not tracked in this app, fill in manually if needed
+            styleList[0] || '',
+            styleList[1] || '',
+            styleList[2] || '',
+            location,
             photos[0] || '',
             photos[1] || '',
             photos[2] || '',
             photos[3] || '',
             photos[4] || '',
-            photos[5] || ''
+            photos[5] || '',
+            photos[6] || '',
+            photos[7] || '',
+            domesticShipping,
+            internationalShipping,
+            sku
           ];
         })
       ];
       downloadCsv(`depop-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
-      alert("Depop CSV exported with your saved shipping value. Spot-check category and condition values against Depop's current template before import.");
+      alert("Depop CSV exported using Depop's official bulk listing column layout. Depop's Category, Size, Source, Age, Style, and Location fields are dropdown menus in their template — open the exported file and confirm those values match Depop's dropdown wording exactly before uploading.");
     }
 
     elements.reviewHtmlButton.addEventListener('click', exportReviewListingHtml);
