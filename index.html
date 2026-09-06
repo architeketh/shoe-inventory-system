@@ -6279,10 +6279,41 @@
       sandals: 'Sandals'
     };
 
+    // Kids' Size dropdown codes, straight from Depop's own template (0 through 13.5).
+    // Sizes 0-6.5 and 9-13.5 are grouped in pairs (e.g. "4-4.5"); 8, 8.5, 11, and 11.5 stand alone.
+    // "7-7.5" continues that same pairing pattern but wasn't directly visible in the screenshots,
+    // so it's a reasonable inference - flag it for a quick manual check the first time it's used.
+    const DEPOP_KIDS_SIZE_CODES = {
+      0: '0-0.5 (newborn)', 0.5: '0-0.5 (newborn)',
+      1: '1-1.5 (baby)', 1.5: '1-1.5 (baby)',
+      2: '2-2.5', 2.5: '2-2.5',
+      3: '3-3.5', 3.5: '3-3.5',
+      4: '4-4.5', 4.5: '4-4.5',
+      5: '5-5.5', 5.5: '5-5.5',
+      6: '6-6.5', 6.5: '6-6.5',
+      7: '7-7.5', 7.5: '7-7.5', // inferred - please verify once in Depop
+      8: '8',
+      8.5: '8.5',
+      9: '9-9.5', 9.5: '9-9.5',
+      10: '10-10.5', 10.5: '10-10.5',
+      11: '11',
+      11.5: '11.5',
+      12: '12-12.5', 12.5: '12-12.5',
+      13: '13-13.5', 13.5: '13-13.5'
+    };
+
+    // Pulls a clean number like 4.5 out of a size value, whether it's written "4.5", "4,5",
+    // "US 4.5", etc. Using a proper number-pattern match (instead of just stripping characters)
+    // avoids accidentally gluing digits together into the wrong number.
+    function extractNumericSize(rawSize) {
+      const match = String(rawSize || '').match(/\d+(?:[.,]\d+)?/);
+      if (!match) return NaN;
+      return parseFloat(match[0].replace(',', '.'));
+    }
+
     // Builds "Size 7.5" (adult) or "Size 2.5Y" (kids, youth sizing) for the end of the title.
     function buildDepopSizeLabel(item) {
-      if (!item.size) return '';
-      const numericSize = parseFloat(String(item.size).replace(/[^0-9.]/g, ''));
+      const numericSize = extractNumericSize(item.size);
       if (!Number.isFinite(numericSize)) return '';
       const cleanNumber = numericSize % 1 === 0 ? numericSize.toFixed(0) : numericSize.toFixed(1);
       return item.gender === 'kids' ? `Size ${cleanNumber}Y` : `Size ${cleanNumber}`;
@@ -6379,13 +6410,20 @@
           if (!conditionCode) missing.push('Condition');
 
           // Size: adult sizing on Depop is "US <number>" from US 3 up to US 16, including half
-          // sizes (3, 3.5, 4, 4.5 ... 16). Kids' sizing uses a different format this app doesn't
-          // have enough info to guess (e.g. "0-0.5 (newborn)"), so kids sizes are left blank.
+          // sizes (3, 3.5, 4, 4.5 ... 16). Kids' sizing uses Depop's own grouped-range codes
+          // (e.g. "4-4.5") pulled from DEPOP_KIDS_SIZE_CODES above.
           let sizeValue = '';
+          const numericSize = extractNumericSize(item.size);
           if (item.gender === 'kids') {
-            missing.push('Size (kids sizing needs manual entry)');
+            const kidsCode = Number.isFinite(numericSize) ? DEPOP_KIDS_SIZE_CODES[numericSize] : undefined;
+            if (kidsCode) {
+              sizeValue = kidsCode;
+            } else if (item.size) {
+              missing.push(`Size ("${item.size}" is outside supported kids range 0-13.5)`);
+            } else {
+              missing.push('Size');
+            }
           } else if (item.size) {
-            const numericSize = parseFloat(String(item.size).replace(/[^0-9.]/g, ''));
             const isHalfStep = Number.isFinite(numericSize) && Math.round(numericSize * 2) === numericSize * 2;
             const inRange = Number.isFinite(numericSize) && numericSize >= 3 && numericSize <= 16;
             if (isHalfStep && inRange) {
