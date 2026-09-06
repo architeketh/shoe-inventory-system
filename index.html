@@ -6279,14 +6279,24 @@
       sandals: 'Sandals'
     };
 
-    // Builds a short Depop-style title for the Description column, e.g. "Adidas Women's Multi Trainers".
-    // This is intentionally short (Brand + gender + main color + shoe type) - full details like
+    // Builds "Size 7.5" (adult) or "Size 2.5Y" (kids, youth sizing) for the end of the title.
+    function buildDepopSizeLabel(item) {
+      if (!item.size) return '';
+      const numericSize = parseFloat(String(item.size).replace(/[^0-9.]/g, ''));
+      if (!Number.isFinite(numericSize)) return '';
+      const cleanNumber = numericSize % 1 === 0 ? numericSize.toFixed(0) : numericSize.toFixed(1);
+      return item.gender === 'kids' ? `Size ${cleanNumber}Y` : `Size ${cleanNumber}`;
+    }
+
+    // Builds a short Depop-style title for the Description column, e.g. "Adidas Women's Multi Trainers Size 7.5".
+    // This is intentionally short (Brand + gender + main color + shoe type + size) - full details like
     // materials, box status, etc. still belong in Depop's own listing photos/description if needed.
     function buildDepopTitle(item) {
       const genderPossessive = item.gender === 'womens' ? "Women's" : item.gender === 'kids' ? "Kids'" : item.gender === 'mens' ? "Men's" : '';
       const categoryNoun = DEPOP_CATEGORY_NOUN[normalizeLookupKey(item.category_2)] || 'Shoes';
       const primaryColor = cleanExportText(item.colors).split(/[,/&]+/)[0]?.trim() || '';
-      return cleanExportText([item.brand, genderPossessive, primaryColor, categoryNoun].filter(Boolean).join(' '));
+      const sizeLabel = buildDepopSizeLabel(item);
+      return cleanExportText([item.brand, genderPossessive, primaryColor, categoryNoun, sizeLabel].filter(Boolean).join(' '));
     }
 
     function normalizeLookupKey(value) {
