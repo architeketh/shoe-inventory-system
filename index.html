@@ -6322,7 +6322,12 @@
     // Builds a short Depop-style title for the Description column, e.g. "Adidas Women's Multi Trainers Size 7.5".
     // This is intentionally short (Brand + gender + main color + shoe type + size) - full details like
     // materials, box status, etc. still belong in Depop's own listing photos/description if needed.
+    // Uses the shoe's own saved Description field (the one shown in the main inventory table,
+    // e.g. "Nike Kids' Grey (GS) Trainers Size 7Y") as Depop's Description column. Falls back to
+    // building a simple Brand + gender + color + type + size title only if that field is empty.
     function buildDepopTitle(item) {
+      const savedDescription = cleanExportText(item.description);
+      if (savedDescription) return savedDescription.slice(0, 1000);
       const genderPossessive = item.gender === 'womens' ? "Women's" : item.gender === 'kids' ? "Kids'" : item.gender === 'mens' ? "Men's" : '';
       const categoryNoun = DEPOP_CATEGORY_NOUN[normalizeLookupKey(item.category_2)] || 'Shoes';
       const primaryColor = cleanExportText(item.colors).split(/[,/&]+/)[0]?.trim() || '';
@@ -6387,7 +6392,9 @@
         templateVersionRow,
         headerRow,
         ...exportItems.map((item) => {
-          const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 8) : [];
+          // filter(Boolean) drops any empty/null slots so a gap in the photo list doesn't
+          // push a real photo out past the 8-picture limit.
+          const photos = (Array.isArray(item.photo_urls) ? item.photo_urls : []).filter(Boolean).slice(0, 8);
           const sku = `${(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase()}-${String(item.id || '').slice(0, 6).toUpperCase()}`;
           const missing = []; // fields this specific item couldn't be auto-matched for
 
