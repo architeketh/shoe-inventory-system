@@ -6360,32 +6360,21 @@
       const exportItems = getExportItems();
       const reviewNotes = []; // collects "SKU: what needs a manual check" messages
 
-      // These three values are asked for once and then remembered (saved in the browser)
-      // so you don't have to retype them every time you export.
+      // Asked for once and then remembered (saved in the browser) so you don't have to
+      // retype it every time you export.
       const location = promptForExportSetting(
         'shoeInventoryDepopLocation',
         "Enter the Location you ship from, exactly as it appears in Depop's Location dropdown (e.g. United States)."
       );
       if (!location) return;
-      const domesticShipping = promptForExportSetting(
-        'shoeInventoryDepopDomesticShippingPrice',
-        'Enter your Domestic Shipping price (number only, no currency symbol, e.g. 5.00).'
-      );
-      if (!domesticShipping) return;
-      const internationalShipping = promptForExportSetting(
-        'shoeInventoryDepopInternationalShippingPrice',
-        'Enter your International Shipping price (number only, no currency symbol, e.g. 20.00).'
-      );
-      if (!internationalShipping) return;
 
       // Depop's real template starts with a "Template version" row, then the header row.
-      const templateVersionRow = ['Template version: 6', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+      const templateVersionRow = ['Template version: 6', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
       const headerRow = [
         'Description', 'Category', 'Price', 'Brand', 'Condition', 'Size', 'Color 1', 'Color 2',
         'Source 1', 'Source 2', 'Age', 'Style 1', 'Style 2', 'Style 3', 'Location',
         'Picture Hero url', 'Picture 2 url', 'Picture 3 url', 'Picture 4 url', 'Picture 5 url',
-        'Picture 6 url', 'Picture 7 url', 'Picture 8 url',
-        'Domestic Shipping price', 'International Shipping price', 'SKU'
+        'Picture 6 url', 'Picture 7 url', 'Picture 8 url', 'SKU'
       ];
 
       const lines = [
@@ -6483,8 +6472,6 @@
             photos[5] || '',
             photos[6] || '',
             photos[7] || '',
-            domesticShipping,
-            internationalShipping,
             sku
           ];
         })
