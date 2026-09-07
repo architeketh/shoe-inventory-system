@@ -6369,12 +6369,14 @@
       if (!location) return;
 
       // Depop's real template starts with a "Template version" row, then the header row.
-      const templateVersionRow = ['Template version: 6', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+      const templateVersionRow = ['Template version: 6', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
       const headerRow = [
         'Description', 'Category', 'Price', 'Brand', 'Condition', 'Size', 'Color 1', 'Color 2',
         'Source 1', 'Source 2', 'Age', 'Style 1', 'Style 2', 'Style 3', 'Location',
         'Picture Hero url', 'Picture 2 url', 'Picture 3 url', 'Picture 4 url', 'Picture 5 url',
-        'Picture 6 url', 'Picture 7 url', 'Picture 8 url', 'SKU'
+        'Picture 6 url', 'Picture 7 url', 'Picture 8 url',
+        '', '', // Depop's Domestic/International Shipping price columns - kept blank, header text and all
+        'SKU'
       ];
 
       const lines = [
@@ -6472,6 +6474,7 @@
             photos[5] || '',
             photos[6] || '',
             photos[7] || '',
+            '', '', // Domestic/International Shipping price - left blank on purpose
             sku
           ];
         })
