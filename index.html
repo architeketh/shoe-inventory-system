@@ -6319,19 +6319,19 @@
       return item.gender === 'kids' ? `Size ${cleanNumber}Y` : `Size ${cleanNumber}`;
     }
 
-    // Builds a short Depop-style title for the Description column, e.g. "Adidas Women's Multi Trainers Size 7.5".
-    // This is intentionally short (Brand + gender + main color + shoe type + size) - full details like
-    // materials, box status, etc. still belong in Depop's own listing photos/description if needed.
-    // Uses the shoe's own saved Description field (the one shown in the main inventory table,
-    // e.g. "Nike Kids' Grey (GS) Trainers Size 7Y") as Depop's Description column. Falls back to
-    // building a simple Brand + gender + color + type + size title only if that field is empty.
+    // Builds Depop's Description column using the shoe's own saved Description field (the one
+    // shown in the main inventory table, e.g. "Classic white sneaker with colorful lining.")
+    // plus the size appended at the end (e.g. "...Size 6.5Y"). Falls back to building a simple
+    // Brand + gender + color + type + size title only if the saved Description field is empty.
     function buildDepopTitle(item) {
       const savedDescription = cleanExportText(item.description);
-      if (savedDescription) return savedDescription.slice(0, 1000);
+      const sizeLabel = buildDepopSizeLabel(item);
+      if (savedDescription) {
+        return cleanExportText(sizeLabel ? `${savedDescription} ${sizeLabel}` : savedDescription).slice(0, 1000);
+      }
       const genderPossessive = item.gender === 'womens' ? "Women's" : item.gender === 'kids' ? "Kids'" : item.gender === 'mens' ? "Men's" : '';
       const categoryNoun = DEPOP_CATEGORY_NOUN[normalizeLookupKey(item.category_2)] || 'Shoes';
       const primaryColor = cleanExportText(item.colors).split(/[,/&]+/)[0]?.trim() || '';
-      const sizeLabel = buildDepopSizeLabel(item);
       return cleanExportText([item.brand, genderPossessive, primaryColor, categoryNoun, sizeLabel].filter(Boolean).join(' '));
     }
 
