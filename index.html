@@ -5684,7 +5684,11 @@
 
     function downloadCsv(filename, lines) {
       const csv = lines.map((row) => row.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      // The BOM (byte-order mark) tells Excel and similar programs "this file is UTF-8" -
+      // without it, Excel guesses wrong and turns special characters (curly quotes, bullets,
+      // em dashes, etc.) into garbled text like "â€¢" when the file is opened.
+      const bom = '\uFEFF';
+      const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -6083,6 +6087,18 @@
       return String(value ?? '').replace(/\s+/g, ' ').trim();
     }
 
+    // Swaps "smart" typographic characters (curly quotes, bullets, em/en dashes, ellipsis) for
+    // plain ASCII equivalents. Depop's importer and some spreadsheet programs can mangle these
+    // into garbled text (e.g. a bullet "•" showing up as "â€¢"), so plain characters are safer.
+    function sanitizeDepopText(value) {
+      return String(value ?? '')
+        .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+        .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+        .replace(/[\u2022\u2023\u25E6\u2043]/g, '-')
+        .replace(/[\u2013\u2014]/g, '-')
+        .replace(/\u2026/g, '...');
+    }
+
     function buildExportTitle(item, maxLength = 80, includeSize = false) {
       const preferredTitle = cleanExportText(item.title);
       const baseTitle = preferredTitle || cleanExportText([item.brand, item.brand_style_name || item.description].filter(Boolean).join(' '));
@@ -6324,7 +6340,7 @@
     // plus the size appended at the end (e.g. "...Size 6.5Y"). Falls back to building a simple
     // Brand + gender + color + type + size title only if the saved Description field is empty.
     function buildDepopTitle(item) {
-      const savedDescription = cleanExportText(item.description);
+      const savedDescription = sanitizeDepopText(cleanExportText(item.description));
       const sizeLabel = buildDepopSizeLabel(item);
       if (savedDescription) {
         return cleanExportText(sizeLabel ? `${savedDescription} ${sizeLabel}` : savedDescription).slice(0, 1000);
