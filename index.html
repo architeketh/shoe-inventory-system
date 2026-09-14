@@ -6438,9 +6438,62 @@
     // This builds a CSV that matches Depop's own "Bulk listing" template exactly:
     // same column names, same column order, and the same "Template version: 6" line on top.
     // That file can be uploaded directly in Depop under Bulk listing > Upload CSV file.
-    function exportDepopCsv() {
+    function validateDepopPhotoUrl(url, timeoutMs = 8000) {
+      return new Promise((resolve) => {
+        const cleanUrl = String(url || '').trim();
+        if (!cleanUrl) {
+          resolve(false);
+          return;
+        }
+
+        let settled = false;
+        const finish = (result) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          resolve(result);
+        };
+
+        const image = new Image();
+        image.onload = () => finish(image.naturalWidth > 0 && image.naturalHeight > 0);
+        image.onerror = () => finish(false);
+
+        const timer = setTimeout(() => finish(false), timeoutMs);
+        image.src = cleanUrl;
+      });
+    }
+
+    async function exportDepopCsv() {
       const exportItems = getExportItems();
       const reviewNotes = []; // collects "SKU: what needs a manual check" messages
+      const photoReviewNotes = [];
+
+      if (!exportItems.length) {
+        alert('No inventory items are available for the Depop export.');
+        return;
+      }
+
+      elements.depopButton.disabled = true;
+      const originalDepopButtonText = elements.depopButton.textContent;
+      elements.depopButton.textContent = 'Checking photos...';
+
+      // Preflight every public photo URL before building the CSV. Depop can reject an entire
+      // listing when even one supplied image cannot be downloaded or processed.
+      const checkedPhotoUrls = new Map();
+      try {
+        const uniqueUrls = [...new Set(
+          exportItems.flatMap((item) => Array.isArray(item.photo_urls) ? item.photo_urls : [])
+            .map((url) => String(url || '').trim())
+            .filter(Boolean)
+        )];
+
+        await Promise.all(uniqueUrls.map(async (url) => {
+          checkedPhotoUrls.set(url, await validateDepopPhotoUrl(url));
+        }));
+      } finally {
+        elements.depopButton.disabled = false;
+        elements.depopButton.textContent = originalDepopButtonText;
+      }
 
       // Asked for once and then remembered (saved in the browser) so you don't have to
       // retype it every time you export.
@@ -6465,10 +6518,22 @@
         templateVersionRow,
         headerRow,
         ...exportItems.map((item) => {
-          // filter(Boolean) drops any empty/null slots so a gap in the photo list doesn't
-          // push a real photo out past the 8-picture limit.
-          const photos = (Array.isArray(item.photo_urls) ? item.photo_urls : []).filter(Boolean).slice(0, 8);
+          // Keep only photo URLs that successfully loaded during the preflight check.
+          // A bad image can cause Depop to skip the whole row even when the CSV upload itself succeeds.
+          const originalPhotos = (Array.isArray(item.photo_urls) ? item.photo_urls : [])
+            .map((url) => String(url || '').trim())
+            .filter(Boolean)
+            .slice(0, 8);
+          const photos = originalPhotos.filter((url) => checkedPhotoUrls.get(url) !== false);
           const sku = `${(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase()}-${String(item.id || '').slice(0, 6).toUpperCase()}`;
+
+          const failedPhotoCount = originalPhotos.length - photos.length;
+          if (failedPhotoCount > 0) {
+            photoReviewNotes.push(`${sku}: ${failedPhotoCount} photo${failedPhotoCount === 1 ? '' : 's'} failed the public-image check and ${failedPhotoCount === 1 ? 'was' : 'were'} omitted`);
+          }
+          if (!photos.length) {
+            photoReviewNotes.push(`${sku}: no usable photo remains - Depop requires at least one image`);
+          }
           const missing = []; // fields this specific item couldn't be auto-matched for
 
           // Category: only confirmed for "Sneakers" per gender right now.
@@ -6563,12 +6628,13 @@
       ];
       downloadCsv(`depop-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
 
-      if (reviewNotes.length) {
-        const preview = reviewNotes.slice(0, 15).join('\n');
-        const more = reviewNotes.length > 15 ? `\n...and ${reviewNotes.length - 15} more.` : '';
-        alert(`Depop CSV exported. ${reviewNotes.length} item(s) have fields that couldn't be auto-matched to a Depop dropdown code and were left blank - fill these in manually in the CSV or in Depop before uploading:\n\n${preview}${more}`);
+      const combinedNotes = [...photoReviewNotes, ...reviewNotes];
+      if (combinedNotes.length) {
+        const preview = combinedNotes.slice(0, 15).join('\n');
+        const more = combinedNotes.length > 15 ? `\n...and ${combinedNotes.length - 15} more.` : '';
+        alert(`Depop CSV exported with preflight checks. ${combinedNotes.length} item(s) need attention:\n\n${preview}${more}\n\nRows with no usable photo will still be in the CSV, but Depop may skip them because at least one valid image is required.`);
       } else {
-        alert('Depop CSV exported using Depop\'s official bulk listing column layout. All fields were matched to known Depop dropdown codes - do a quick spot check before uploading.');
+        alert('Depop CSV exported using Depop\'s official bulk listing layout. All dropdown fields matched and every exported photo passed the public-image preflight check.');
       }
     }
 
