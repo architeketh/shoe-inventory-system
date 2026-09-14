@@ -4201,6 +4201,33 @@
       elements.singleCardContent.innerHTML = '';
     }
 
+    let inventoryUrlEditHandled = false;
+
+    function openInventoryItemFromUrl() {
+      if (inventoryUrlEditHandled) return;
+
+      const params = new URLSearchParams(window.location.search);
+      const requestedId = params.get('edit');
+      if (!requestedId) return;
+
+      const item = state.inventory.find((entry) => String(entry.id) === String(requestedId));
+      if (!item) {
+        inventoryUrlEditHandled = true;
+        showBanner('error', 'Inventory item not found', 'The shoe linked from Marketing could not be found in the current inventory.');
+        return;
+      }
+
+      inventoryUrlEditHandled = true;
+      startEdit(item.id);
+
+      // Remove the one-time edit parameter after opening so a later refresh/sync
+      // does not unexpectedly reopen the editor.
+      params.delete('edit');
+      const query = params.toString();
+      const cleanUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+
     async function loadInventory() {
       if (!SUPABASE_READY) {
         state.lastInventorySyncAt = null;
@@ -4224,6 +4251,7 @@
         updateInventoryStatusCard(`Synced ${state.inventory.length} pairs`);
         renderStats();
         renderInventory();
+        openInventoryItemFromUrl();
       } catch (error) {
         updateInventoryStatusCard('Sync failed');
         showBanner('error', 'Inventory load failed', error.message || String(error));
