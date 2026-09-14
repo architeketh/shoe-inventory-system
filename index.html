@@ -64,6 +64,51 @@
       gap: 18px;
     }
 
+    .app-topbar {
+      padding: 10px 14px;
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      background: var(--surface);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      box-shadow: var(--shadow);
+    }
+
+    .app-topbar-brand {
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .app-topbar-nav {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .app-topbar-nav a {
+      text-decoration: none;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-weight: 700;
+      transition: 0.18s ease;
+    }
+
+    .app-topbar-nav a:hover {
+      color: var(--accent-deep);
+      background: #fff7f2;
+    }
+
+    .app-topbar-nav a.active {
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+      box-shadow: 0 10px 20px rgba(143, 47, 22, 0.16);
+    }
+
     .hero,
     .panel,
     .inventory-card {
@@ -1287,6 +1332,19 @@
         margin-top: 10px;
       }
 
+      .app-topbar {
+        align-items: flex-start;
+      }
+
+      .app-topbar-nav {
+        width: 100%;
+      }
+
+      .app-topbar-nav a {
+        flex: 1;
+        text-align: center;
+      }
+
       .hero,
       .panel {
         padding: 18px;
@@ -1471,6 +1529,14 @@
 </head>
 <body>
   <div class="app-shell">
+    <header class="app-topbar">
+      <div class="app-topbar-brand">ABC IS FOR XYZ · Shoe Inventory System</div>
+      <nav class="app-topbar-nav" aria-label="Application navigation">
+        <a class="active" href="./index.html">Inventory</a>
+        <a href="./marketing.html">Marketing</a>
+      </nav>
+    </header>
+
     <section class="hero">
       <div>
         <div class="eyebrow">Shoe Inventory System</div>

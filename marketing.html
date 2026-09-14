@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Marketing Center | Shoe Inventory System</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--ink:#24170f;--muted:#6f6258;--line:rgba(52,33,18,.12);--accent:#bf5a2a;--deep:#8f2f16;--sage:#31574a;--surface:rgba(255,252,247,.9);--shadow:0 20px 60px rgba(77,45,20,.14)}
+*{box-sizing:border-box}body{margin:0;font-family:Outfit,sans-serif;color:var(--ink);background:radial-gradient(circle at top left,rgba(255,166,77,.28),transparent 30%),radial-gradient(circle at bottom right,rgba(49,87,74,.16),transparent 28%),linear-gradient(180deg,#f6f0e7,#eadbc6);min-height:100vh}
+.shell{width:min(1180px,calc(100% - 24px));margin:18px auto 40px;display:grid;gap:18px}.top,.hero,.panel{background:var(--surface);border:1px solid rgba(255,255,255,.75);box-shadow:var(--shadow);backdrop-filter:blur(16px)}
+.top{padding:10px 14px;border-radius:22px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.nav{display:flex;gap:8px}.nav a{text-decoration:none;padding:10px 16px;border-radius:999px;font-weight:700;color:var(--muted)}.nav .active{background:linear-gradient(135deg,var(--accent),var(--deep));color:#fff}
+.hero{padding:28px;border-radius:30px;display:flex;justify-content:space-between;align-items:end;gap:18px}.eyebrow{font:700 12px/1 Space Mono,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--deep);margin-bottom:8px}h1,h2,h3,p{margin:0}.hero h1{font-size:clamp(2.2rem,5vw,4rem);line-height:1;letter-spacing:-.05em}.hero p{margin-top:10px;color:var(--muted);max-width:650px}.button{display:inline-flex;text-decoration:none;border-radius:999px;padding:12px 18px;background:linear-gradient(135deg,var(--accent),var(--deep));color:#fff;font-weight:700}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.metric{padding:18px;border-radius:20px;border:1px solid var(--line);background:rgba(255,255,255,.82)}.metric:nth-child(1){background:#eaf4ff}.metric:nth-child(2){background:#eaf7ee}.metric:nth-child(3){background:#fff4dc}.metric:nth-child(4){background:#ffe9e5}.metric:nth-child(5){background:#f2eaff}.value{font-size:2rem;font-weight:800;margin:8px 0 2px}.label{font-weight:800}.note{font-size:.78rem;color:var(--muted);margin-top:6px}
+.grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,.8fr);gap:18px}.panel{padding:22px;border-radius:26px}.products{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}.product{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:rgba(255,255,255,.84)}.photo{aspect-ratio:1.2/1;background:#fff;display:flex;align-items:center;justify-content:center}.photo img{width:100%;height:100%;object-fit:contain}.copy{padding:12px;display:grid;gap:5px}.meta{font-size:.8rem;color:var(--muted)}.price{font-weight:800;color:var(--sage)}.reason{font-size:.76rem;color:var(--deep)}
+.actions{display:grid;gap:10px;margin-top:14px}.action{padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.82);text-decoration:none;color:var(--ink)}.action strong{display:block}.action span{display:block;color:var(--muted);font-size:.78rem;margin-top:3px}.status{font:700 .75rem/1.2 Space Mono,monospace;color:var(--muted);margin-top:6px}.empty{grid-column:1/-1;padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:16px}
+@media(max-width:900px){.metrics{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.products{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.hero{display:block;padding:20px}.hero .button{margin-top:15px;width:100%;justify-content:center}.nav{width:100%}.nav a{flex:1;text-align:center}.products{grid-template-columns:1fr 1fr}.metric{padding:14px}}
+</style>
+</head>
+<body><main class="shell">
+<header class="top"><strong>ABC IS FOR XYZ · Shoe Inventory System</strong><nav class="nav"><a href="./index.html">Inventory</a><a class="active" href="./marketing.html">Marketing</a></nav></header>
+<section class="hero"><div><div class="eyebrow">Marketing Center</div><h1>Turn inventory into sales.</h1><p>Live recommendations from the same Supabase inventory used by your existing shoe inventory system. This page is read-only.</p></div><a class="button" href="./index.html">Open Inventory</a></section>
+<section class="metrics">
+<div class="metric"><div>📣</div><div class="value" id="recommended">—</div><div class="label">Recommended to Promote</div><div class="note">Active pairs with strong listing readiness</div></div>
+<div class="metric"><div>✨</div><div class="value" id="new">—</div><div class="label">New Arrivals</div><div class="note">Added in the last 14 days</div></div>
+<div class="metric"><div>⏰</div><div class="value" id="attention">—</div><div class="label">Needs Attention</div><div class="note">45+ days in inventory</div></div>
+<div class="metric"><div>🏷️</div><div class="value" id="priceDrops">—</div><div class="label">Price Drop Candidates</div><div class="note">Older active inventory with a price</div></div>
+<div class="metric"><div>📦</div><div class="value" id="notDepop">—</div><div class="label">Not on Depop</div><div class="note">Active inventory not marked Depop</div></div>
+</section>
+<section class="grid">
+<div class="panel"><div class="eyebrow">Today's Top Picks</div><h2>What to promote now</h2><p class="status" id="sync">Loading inventory…</p><div class="products" id="products"></div></div>
+<aside class="panel"><div class="eyebrow">Quick Actions</div><h2>Sell more</h2><div class="actions">
+<a class="action" href="./index.html"><strong>Select Products in Inventory</strong><span>Use the current selection system before exports.</span></a>
+<a class="action" href="./index.html"><strong>Export to Depop CSV</strong><span>Uses your existing exporter; no export logic changed.</span></a>
+<a class="action" href="https://www.depop.com/abc_isfor_xyz/" target="_blank" rel="noopener"><strong>Open Depop Shop</strong><span>Review live listings and activity.</span></a>
+<div class="action"><strong>Social Content</strong><span>Next phase.</span></div>
+<div class="action"><strong>A–Z Campaigns</strong><span>Next phase.</span></div>
+<div class="action"><strong>Public Storefront</strong><span>Next phase.</span></div>
+</div></aside></section>
+</main>
+<script>
+const client=supabase.createClient('https://ozyefxmaeltienuagmcq.supabase.co','sb_publishable_63KSwhRg3Tl_q2Hj0Xs7cQ_cGAE1T9b');
+const $=id=>document.getElementById(id);
+const esc=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const age=i=>{const t=new Date(i.created_at).getTime();return Number.isFinite(t)?Math.max(0,Math.floor((Date.now()-t)/86400000)):0};
+const active=i=>!i.sold;
+const depop=i=>(Array.isArray(i.platforms_listed)?i.platforms_listed:[]).some(p=>String(p).toLowerCase()==='depop');
+const title=i=>[i.brand,i.brand_style_name||i.description].filter(Boolean).join(' ')||'Untitled shoe';
+const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Number(n||0));
+const score=i=>{let s=0;if(active(i))s+=3;if(i.brand)s++;if(i.size)s++;if(i.condition)s++;if(Number(i.price)>0)s+=2;if(i.photo_urls?.length)s+=2;if(i.description||i.brand_style_name)s++;if(Number(i.price||0)-Number(i.purchased_price||0)>20)s++;if(age(i)>30)s++;if(age(i)>90)s--;return s};
+function reason(i){if(!depop(i))return'Not yet marked as listed on Depop';if(age(i)>=60)return`${age(i)} days in inventory — give it fresh exposure`;if(i.photo_urls?.length>=3)return'Strong photo set for promotion';return'Good active listing to keep visible'}
+function card(i){return`<article class="product"><div class="photo">${i.photo_urls?.[0]?`<img src="${esc(i.photo_urls[0])}" alt="">`:'<div class="empty">No photo</div>'}</div><div class="copy"><h3>${esc(title(i))}</h3><div class="meta">Size ${esc(i.size||'—')} · ${esc(i.condition||'Condition not set')}</div><div class="price">${money(i.price)}</div><div class="reason">${esc(reason(i))}</div></div></article>`}
+async function load(){try{const{data,error}=await client.from('shoe_inventory').select('id,brand,description,size,price,purchased_price,sold,condition,brand_style_name,platforms_listed,photo_urls,created_at').order('created_at',{ascending:false});if(error)throw error;const all=data||[],a=all.filter(active),rec=a.filter(i=>score(i)>=8).sort((x,y)=>score(y)-score(x)),fresh=a.filter(i=>age(i)<=14),att=a.filter(i=>age(i)>=45),pd=a.filter(i=>age(i)>=45&&Number(i.price)>0),nd=a.filter(i=>!depop(i));$('recommended').textContent=rec.length;$('new').textContent=fresh.length;$('attention').textContent=att.length;$('priceDrops').textContent=pd.length;$('notDepop').textContent=nd.length;const picks=(rec.length?rec:a).slice(0,8);$('products').innerHTML=picks.length?picks.map(card).join(''):'<div class="empty">No active inventory found.</div>';$('sync').textContent=`Synced ${all.length} pairs · ${new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`}catch(e){$('sync').textContent='Sync failed';$('products').innerHTML=`<div class="empty">${esc(e.message||e)}</div>`}}
+load();
+</script></body></html>
