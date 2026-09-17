@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABC is for XYZ — Depop Sync Launcher</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f6f7f9;color:#111827;margin:0}.wrap{max-width:760px;margin:50px auto;padding:24px}.card{background:white;border:1px solid #e5e7eb;border-radius:18px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.06)}h1{margin:0 0 8px;font-size:28px}.sub{color:#6b7280;margin-bottom:24px;line-height:1.5}.steps{display:grid;gap:14px}.step{border:1px solid #e5e7eb;border-radius:14px;padding:18px}.step strong{display:block;margin-bottom:7px}.btn{display:inline-block;border:0;border-radius:10px;padding:12px 16px;background:#111827;color:white;text-decoration:none;font-weight:700;cursor:pointer;margin:5px 6px 5px 0}.btn.secondary{background:#fff;color:#111827;border:1px solid #d1d5db}.bookmark{background:#eef2ff;color:#312e81;border:1px dashed #818cf8}.note{margin-top:20px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px;line-height:1.45;font-size:14px}code{word-break:break-all}</style>
+</head>
+<body><div class="wrap"><div class="card">
+<h1>Depop Sync Launcher</h1>
+<div class="sub">Safe test launcher for ABC is for XYZ. This does not change the Inventory app or the existing Depop scraper.</div>
+<div class="steps">
+<div class="step"><strong>1. Install the scraper bookmark once</strong><div>Drag this button to your browser bookmarks bar:</div>
+<a class="btn bookmark" href="javascript:(function(){const s=document.createElement('script');s.src='https://architeketh.github.io/resale-dashboard/depop_scraper_github.js?t='+Date.now();document.body.appendChild(s);})();">ABC Depop Sync</a>
+<div style="font-size:13px;color:#6b7280;margin-top:7px">If dragging is blocked, right-click/copy the link address and create a bookmark manually with that JavaScript as the URL.</div></div>
+<div class="step"><strong>2. Open your Depop shop</strong><a class="btn" href="https://www.depop.com/abc_isfor_xyz/" target="_blank" rel="noopener">Open ABC Depop Shop</a></div>
+<div class="step"><strong>3. Run the scraper on Depop</strong><div>While the Depop shop tab is active, click <b>ABC Depop Sync</b> in your bookmarks bar. The existing scraper will scroll the listings, collect For Sale/Sold details, download its JSON, and ask whether to sync to Supabase.</div></div>
+<div class="step"><strong>4. Return to Depop Status</strong><a class="btn secondary" href="https://architeketh.github.io/shoe-inventory-system/depop-status.html">Open Depop Status</a></div>
+</div>
+<div class="note"><b>Why the bookmark is needed:</b> browsers do not allow the Inventory site to inject JavaScript into a separate Depop tab. Running the bookmark while Depop is active gives your existing scraper access to the listing page exactly as it has today.</div>
+</div></div></body></html>
