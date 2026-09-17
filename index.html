@@ -6656,6 +6656,27 @@
       ];
       downloadCsv(`depop-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
 
+      // Keep a lightweight local history of what this browser exported to Depop.
+      // This does not change the CSV or any Supabase inventory data.
+      try {
+        const trackingKey = 'abcDepopExportTrackingV1';
+        const tracking = JSON.parse(localStorage.getItem(trackingKey) || '{}') || {};
+        const exportedAt = new Date().toISOString();
+        exportItems.forEach((item) => {
+          const sku = `${(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase()}-${String(item.id || '').slice(0, 6).toUpperCase()}`;
+          tracking[String(item.id)] = {
+            id: String(item.id),
+            sku,
+            price: Number(item.price || 0),
+            exportedAt,
+            title: [item.brand, item.brand_style_name || item.description].filter(Boolean).join(' ') || 'Untitled shoe'
+          };
+        });
+        localStorage.setItem(trackingKey, JSON.stringify(tracking));
+      } catch (trackingError) {
+        console.warn('Depop export tracking could not be saved.', trackingError);
+      }
+
       const combinedNotes = [...photoReviewNotes, ...reviewNotes];
       if (combinedNotes.length) {
         const preview = combinedNotes.slice(0, 15).join('\n');
