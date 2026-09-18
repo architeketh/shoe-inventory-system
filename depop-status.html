@@ -31,7 +31,7 @@
 <section class="panel"><div class="eyebrow">Live Reconciliation</div><h2>Inventory ↔ Depop</h2>
 <div class="toolbar"><input id="search" class="search" placeholder="Search brand, style, size or SKU…"><select id="filter"><option value="all">All statuses</option><option value="ready">Inventory only</option><option value="exported">Matched</option><option value="changed">Price mismatch</option><option value="sold-check">Status mismatch</option><option value="depop-only">Depop only</option></select><span class="statusline" id="sync">Loading…</span></div>
 <div class="table-wrap"><table><thead><tr><th>Shoe</th><th>Current Price</th><th>Depop</th><th>Status</th><th>Depop Listing</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
-<div class="help"><strong>Matching:</strong> exact saved Depop URLs are definitive. Otherwise a strong combination of brand, description and price is required. If Depop shows clothing or another non-shoe item, click <strong>Not a Shoe</strong> once and it will stay out of this shoe reconciliation page on this device.</div>
+<div class="help"><strong>Matching:</strong> exact saved Depop URLs are definitive. Otherwise a strong combination of brand, description and price is required. If Depop shows clothing or another non-shoe item, click <strong>Not a Shoe</strong>. It will be hidden from this shoe reconciliation page on this device. This does not delete the item from Depop or from the resale database.</div>
 </section></main>
 <script>
 const client=supabase.createClient('https://ozyefxmaeltienuagmcq.supabase.co','sb_publishable_63KSwhRg3Tl_q2Hj0Xs7cQ_cGAE1T9b');
@@ -107,39 +107,8 @@ function depopOnlyRow(d){
   <td><div class="money">${money(d.price)}</div><div class="sub">${esc(d.status||'—')} · ${d.scraped_at?new Date(d.scraped_at).toLocaleString():'—'}</div></td>
   <td><span class="badge url-needed">Depop only</span></td>
   <td>${d.url?`<a class="btn depop" href="${esc(d.url)}" target="_blank" rel="noopener">View Depop</a>`:'<span class="sub">—</span>'}</td>
-  <td><div class="actions"><button class="btn primary" type="button" onclick="addDepopToInventory('${esc(String(d.id))}')">Add to Inventory</button><button class="btn" type="button" onclick="ignoreNonShoe('${esc(String(d.id))}')">Not a Shoe</button></div></td></tr>`;
+  <td><div class="actions"><button class="btn" type="button" onclick="ignoreNonShoe('${esc(String(d.id))}')">Not a Shoe</button></div></td></tr>`;
 }
-async function addDepopToInventory(depopId){
-  const d=depop.find(x=>String(x.id)===String(depopId));
-  if(!d)return;
-  if(d.url){
-    const existing=Object.entries(urls).find(([,u])=>String(u||'').replace(/\/+$/,'')===String(d.url||'').replace(/\/+$/,''));
-    if(existing){alert('This Depop listing is already connected to an Inventory shoe.');location.href=`./index.html?edit=${encodeURIComponent(existing[0])}`;return;}
-  }
-  const ok=confirm(`Add this Depop shoe to Inventory?\n\n${[d.brand,d.description].filter(Boolean).join(' ')}\n${money(d.price)}\n\nSize will start as TBD. You can fill in the real size, photos, cost and other details next.`);
-  if(!ok)return;
-  const payload={
-    brand:d.brand||'Unknown',
-    description:d.description||'Imported from Depop',
-    size:'TBD',
-    category_2:'Shoes',
-    price:Number(d.price||0),
-    sold:d.status==='Sold',
-    reviewed:false,
-    has_box:false,
-    source_method:'depop_import',
-    platforms_listed:['Depop'],
-    notes:d.url?`Imported from Depop: ${d.url}`:'Imported from Depop',
-    photo_urls:[],
-    photo_paths:[]
-  };
-  const {data,error}=await client.from('shoe_inventory').insert(payload).select('id').single();
-  if(error){alert(`Could not add shoe to Inventory: ${error.message||error}`);return;}
-  if(d.url&&data?.id){urls[String(data.id)]=d.url;localStorage.setItem(URLS,JSON.stringify(urls));}
-  alert('Added to Inventory. Complete any missing shoe details and save.');
-  location.href=`./index.html?edit=${encodeURIComponent(data.id)}`;
-}
-
 function render(){
  const q=$('search').value.trim().toLowerCase(),f=$('filter').value;
  const invRows=matches.filter(m=>{const s=statusFor(m),hay=[title(m.i),m.i.brand,m.i.size,m.d?.description,m.d?.status].join(' ').toLowerCase();return(!q||hay.includes(q))&&(f==='all'||s===f)});
