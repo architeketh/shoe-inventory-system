@@ -25,11 +25,11 @@
 <div class="metric"><div class="value" id="ready">—</div><div class="label">Inventory Only</div><div class="note">No confident Depop match found</div></div>
 <div class="metric"><div class="value" id="exported">—</div><div class="label">Matched</div><div class="note">Inventory and Depop agree</div></div>
 <div class="metric"><div class="value" id="changed">—</div><div class="label">Price Mismatch</div><div class="note">Inventory and Depop prices differ</div></div>
-<div class="metric"><div class="value" id="urlNeeded">—</div><div class="label">Depop Only</div><div class="note">Matched but no exact listing link saved</div></div>
+<div class="metric"><div class="value" id="urlNeeded">—</div><div class="label">Depop Only</div><div class="note">On Depop but not matched to Inventory</div></div>
 <div class="metric"><div class="value" id="soldCheck">—</div><div class="label">Status Mismatch</div><div class="note">Sold/for-sale states disagree</div></div>
 </section>
 <section class="panel"><div class="eyebrow">Live Reconciliation</div><h2>Inventory ↔ Depop</h2>
-<div class="toolbar"><input id="search" class="search" placeholder="Search brand, style, size or SKU…"><select id="filter"><option value="all">All statuses</option><option value="ready">Ready to export</option><option value="exported">Matched</option><option value="changed">Price changed</option><option value="url-needed">Needs URL</option><option value="sold-check">Sold / check Depop</option></select><span class="statusline" id="sync">Loading…</span></div>
+<div class="toolbar"><input id="search" class="search" placeholder="Search brand, style, size or SKU…"><select id="filter"><option value="all">All statuses</option><option value="ready">Inventory only</option><option value="exported">Matched</option><option value="changed">Price mismatch</option><option value="sold-check">Status mismatch</option><option value="depop-only">Depop only</option></select><span class="statusline" id="sync">Loading…</span></div>
 <div class="table-wrap"><table><thead><tr><th>Shoe</th><th>Current Price</th><th>Depop</th><th>Status</th><th>Depop Listing</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div class="help"><strong>Matching:</strong> exact saved Depop URLs are treated as definitive. Otherwise the page requires a strong combination of brand, listing-description words and price before it calls two records a match. Uncertain items remain Inventory Only or Depop Only so the dashboard does not silently pair the wrong shoes.</div>
 </section></main>
@@ -87,15 +87,59 @@ function row(m){
  <td>${u?`<a class="btn depop" href="${esc(u)}" target="_blank" rel="noopener">View Depop</a>`:'<span class="sub">—</span>'}</td>
  <td><div class="actions"><a class="btn primary" href="./index.html?edit=${encodeURIComponent(id)}">Edit Inventory</a></div></td></tr>`;
 }
+
+function unmatchedDepop(){
+  const matchedIds=new Set(matches.filter(m=>m.d).map(m=>String(m.d.id)));
+  return depop.filter(d=>!matchedIds.has(String(d.id)));
+}
+function depopOnlyRow(d){
+  return `<tr><td><div class="shoe"><div><strong>${esc([d.brand,d.description].filter(Boolean).join(' ')||'Depop listing')}</strong><div class="sub">Found on Depop · not in Inventory</div></div></div></td>
+  <td class="money">—</td>
+  <td><div class="money">${money(d.price)}</div><div class="sub">${esc(d.status||'—')} · ${d.scraped_at?new Date(d.scraped_at).toLocaleString():'—'}</div></td>
+  <td><span class="badge url-needed">Depop only</span></td>
+  <td>${d.url?`<a class="btn depop" href="${esc(d.url)}" target="_blank" rel="noopener">View Depop</a>`:'<span class="sub">—</span>'}</td>
+  <td><div class="actions"><button class="btn primary" type="button" onclick="addDepopToInventory('${esc(String(d.id))}')">Add to Inventory</button></div></td></tr>`;
+}
+async function addDepopToInventory(depopId){
+  const d=depop.find(x=>String(x.id)===String(depopId));
+  if(!d)return;
+  if(d.url){
+    const existing=Object.entries(urls).find(([,u])=>String(u||'').replace(/\/+$/,'')===String(d.url||'').replace(/\/+$/,''));
+    if(existing){alert('This Depop listing is already connected to an Inventory shoe.');location.href=`./index.html?edit=${encodeURIComponent(existing[0])}`;return;}
+  }
+  const ok=confirm(`Add this Depop shoe to Inventory?\n\n${[d.brand,d.description].filter(Boolean).join(' ')}\n${money(d.price)}\n\nYou can fill in size, photos, cost and other details next.`);
+  if(!ok)return;
+  const payload={
+    brand:d.brand||'Unknown',
+    description:d.description||'Imported from Depop',
+    price:Number(d.price||0),
+    sold:d.status==='Sold',
+    reviewed:false,
+    has_box:false,
+    source_method:'depop_import',
+    platforms_listed:['Depop'],
+    notes:d.url?`Imported from Depop: ${d.url}`:'Imported from Depop',
+    photo_urls:[],
+    photo_paths:[]
+  };
+  const {data,error}=await client.from('shoe_inventory').insert(payload).select('id').single();
+  if(error){alert(`Could not add shoe to Inventory: ${error.message||error}`);return;}
+  if(d.url&&data?.id){urls[String(data.id)]=d.url;localStorage.setItem(URLS,JSON.stringify(urls));}
+  alert('Added to Inventory. Complete any missing shoe details and save.');
+  location.href=`./index.html?edit=${encodeURIComponent(data.id)}`;
+}
+
 function render(){
  const q=$('search').value.trim().toLowerCase(),f=$('filter').value;
- const shown=matches.filter(m=>{const s=statusFor(m),hay=[title(m.i),m.i.brand,m.i.size,m.d?.description,m.d?.status].join(' ').toLowerCase();return(!q||hay.includes(q))&&(f==='all'||s===f)});
- $('rows').innerHTML=shown.length?shown.map(row).join(''):'<tr><td colspan="6" style="padding:28px;text-align:center;color:var(--muted)">No matching records.</td></tr>';
+ const invRows=matches.filter(m=>{const s=statusFor(m),hay=[title(m.i),m.i.brand,m.i.size,m.d?.description,m.d?.status].join(' ').toLowerCase();return(!q||hay.includes(q))&&(f==='all'||s===f)});
+ const depRows=unmatchedDepop().filter(d=>{const hay=[d.brand,d.description,d.status,d.url].join(' ').toLowerCase();return(!q||hay.includes(q))&&(f==='all'||f==='depop-only')});
+ const html=[...invRows.map(row),...depRows.map(depopOnlyRow)];
+ $('rows').innerHTML=html.length?html.join(''):'<tr><td colspan="6" style="padding:28px;text-align:center;color:var(--muted)">No matching records.</td></tr>';
  const ss=matches.map(statusFor);
  $('ready').textContent=ss.filter(x=>x==='ready').length;
  $('exported').textContent=ss.filter(x=>x==='exported').length;
  $('changed').textContent=ss.filter(x=>x==='changed').length;
- $('urlNeeded').textContent=depop.filter(d=>!matches.some(m=>m.d&&String(m.d.id)===String(d.id))).length;
+ $('urlNeeded').textContent=unmatchedDepop().length;
  $('soldCheck').textContent=ss.filter(x=>x==='sold-check').length;
 }
 $('search').addEventListener('input',render);$('filter').addEventListener('change',render);

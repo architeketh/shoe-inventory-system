@@ -64,51 +64,6 @@
       gap: 18px;
     }
 
-    .app-topbar {
-      padding: 10px 14px;
-      border-radius: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      background: var(--surface);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.75);
-      box-shadow: var(--shadow);
-    }
-
-    .app-topbar-brand {
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
-
-    .app-topbar-nav {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .app-topbar-nav a {
-      text-decoration: none;
-      color: var(--muted);
-      border-radius: 999px;
-      padding: 10px 16px;
-      font-weight: 700;
-      transition: 0.18s ease;
-    }
-
-    .app-topbar-nav a:hover {
-      color: var(--accent-deep);
-      background: #fff7f2;
-    }
-
-    .app-topbar-nav a.active {
-      color: #fff;
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
-      box-shadow: 0 10px 20px rgba(143, 47, 22, 0.16);
-    }
-
     .hero,
     .panel,
     .inventory-card {
@@ -1332,19 +1287,6 @@
         margin-top: 10px;
       }
 
-      .app-topbar {
-        align-items: flex-start;
-      }
-
-      .app-topbar-nav {
-        width: 100%;
-      }
-
-      .app-topbar-nav a {
-        flex: 1;
-        text-align: center;
-      }
-
       .hero,
       .panel {
         padding: 18px;
@@ -1529,14 +1471,6 @@
 </head>
 <body>
   <div class="app-shell">
-    <header class="app-topbar">
-      <div class="app-topbar-brand">ABC IS FOR XYZ · Shoe Inventory System</div>
-      <nav class="app-topbar-nav" aria-label="Application navigation">
-        <a class="active" href="./index.html">Inventory</a>
-        <a href="./marketing.html">Marketing</a>
-      </nav>
-    </header>
-
     <section class="hero">
       <div>
         <div class="eyebrow">Shoe Inventory System</div>
@@ -1823,6 +1757,7 @@
               <option value="kids_only">Kids only</option>
               <option value="for_sale_only">For sale only</option>
               <option value="sold_only">Sold only</option>
+              <option value="depop_only">Depop listed only</option>
             </select>
           <input class="search-input" id="search-input" type="search" placeholder="Search + Enter (brand, size, platform)" aria-label="Search shoes">
           <button class="button secondary" type="button" id="search-clear-button">Clear</button>
@@ -3917,6 +3852,9 @@
         case 'sold_only':
           items = items.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold');
           break;
+        case 'depop_only':
+          items = items.filter((item) => getItemPlatforms(item).some((platform) => String(platform || '').toLowerCase() === 'depop'));
+          break;
         default:
           items = items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
           break;
@@ -4201,33 +4139,6 @@
       elements.singleCardContent.innerHTML = '';
     }
 
-    let inventoryUrlEditHandled = false;
-
-    function openInventoryItemFromUrl() {
-      if (inventoryUrlEditHandled) return;
-
-      const params = new URLSearchParams(window.location.search);
-      const requestedId = params.get('edit');
-      if (!requestedId) return;
-
-      const item = state.inventory.find((entry) => String(entry.id) === String(requestedId));
-      if (!item) {
-        inventoryUrlEditHandled = true;
-        showBanner('error', 'Inventory item not found', 'The shoe linked from Marketing could not be found in the current inventory.');
-        return;
-      }
-
-      inventoryUrlEditHandled = true;
-      startEdit(item.id);
-
-      // Remove the one-time edit parameter after opening so a later refresh/sync
-      // does not unexpectedly reopen the editor.
-      params.delete('edit');
-      const query = params.toString();
-      const cleanUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`;
-      window.history.replaceState({}, '', cleanUrl);
-    }
-
     async function loadInventory() {
       if (!SUPABASE_READY) {
         state.lastInventorySyncAt = null;
@@ -4251,7 +4162,6 @@
         updateInventoryStatusCard(`Synced ${state.inventory.length} pairs`);
         renderStats();
         renderInventory();
-        openInventoryItemFromUrl();
       } catch (error) {
         updateInventoryStatusCard('Sync failed');
         showBanner('error', 'Inventory load failed', error.message || String(error));
@@ -6466,62 +6376,9 @@
     // This builds a CSV that matches Depop's own "Bulk listing" template exactly:
     // same column names, same column order, and the same "Template version: 6" line on top.
     // That file can be uploaded directly in Depop under Bulk listing > Upload CSV file.
-    function validateDepopPhotoUrl(url, timeoutMs = 8000) {
-      return new Promise((resolve) => {
-        const cleanUrl = String(url || '').trim();
-        if (!cleanUrl) {
-          resolve(false);
-          return;
-        }
-
-        let settled = false;
-        const finish = (result) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          resolve(result);
-        };
-
-        const image = new Image();
-        image.onload = () => finish(image.naturalWidth > 0 && image.naturalHeight > 0);
-        image.onerror = () => finish(false);
-
-        const timer = setTimeout(() => finish(false), timeoutMs);
-        image.src = cleanUrl;
-      });
-    }
-
-    async function exportDepopCsv() {
+    function exportDepopCsv() {
       const exportItems = getExportItems();
       const reviewNotes = []; // collects "SKU: what needs a manual check" messages
-      const photoReviewNotes = [];
-
-      if (!exportItems.length) {
-        alert('No inventory items are available for the Depop export.');
-        return;
-      }
-
-      elements.depopButton.disabled = true;
-      const originalDepopButtonText = elements.depopButton.textContent;
-      elements.depopButton.textContent = 'Checking photos...';
-
-      // Preflight every public photo URL before building the CSV. Depop can reject an entire
-      // listing when even one supplied image cannot be downloaded or processed.
-      const checkedPhotoUrls = new Map();
-      try {
-        const uniqueUrls = [...new Set(
-          exportItems.flatMap((item) => Array.isArray(item.photo_urls) ? item.photo_urls : [])
-            .map((url) => String(url || '').trim())
-            .filter(Boolean)
-        )];
-
-        await Promise.all(uniqueUrls.map(async (url) => {
-          checkedPhotoUrls.set(url, await validateDepopPhotoUrl(url));
-        }));
-      } finally {
-        elements.depopButton.disabled = false;
-        elements.depopButton.textContent = originalDepopButtonText;
-      }
 
       // Asked for once and then remembered (saved in the browser) so you don't have to
       // retype it every time you export.
@@ -6546,22 +6403,10 @@
         templateVersionRow,
         headerRow,
         ...exportItems.map((item) => {
-          // Keep only photo URLs that successfully loaded during the preflight check.
-          // A bad image can cause Depop to skip the whole row even when the CSV upload itself succeeds.
-          const originalPhotos = (Array.isArray(item.photo_urls) ? item.photo_urls : [])
-            .map((url) => String(url || '').trim())
-            .filter(Boolean)
-            .slice(0, 8);
-          const photos = originalPhotos.filter((url) => checkedPhotoUrls.get(url) !== false);
+          // filter(Boolean) drops any empty/null slots so a gap in the photo list doesn't
+          // push a real photo out past the 8-picture limit.
+          const photos = (Array.isArray(item.photo_urls) ? item.photo_urls : []).filter(Boolean).slice(0, 8);
           const sku = `${(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase()}-${String(item.id || '').slice(0, 6).toUpperCase()}`;
-
-          const failedPhotoCount = originalPhotos.length - photos.length;
-          if (failedPhotoCount > 0) {
-            photoReviewNotes.push(`${sku}: ${failedPhotoCount} photo${failedPhotoCount === 1 ? '' : 's'} failed the public-image check and ${failedPhotoCount === 1 ? 'was' : 'were'} omitted`);
-          }
-          if (!photos.length) {
-            photoReviewNotes.push(`${sku}: no usable photo remains - Depop requires at least one image`);
-          }
           const missing = []; // fields this specific item couldn't be auto-matched for
 
           // Category: only confirmed for "Sneakers" per gender right now.
@@ -6656,34 +6501,12 @@
       ];
       downloadCsv(`depop-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
 
-      // Keep a lightweight local history of what this browser exported to Depop.
-      // This does not change the CSV or any Supabase inventory data.
-      try {
-        const trackingKey = 'abcDepopExportTrackingV1';
-        const tracking = JSON.parse(localStorage.getItem(trackingKey) || '{}') || {};
-        const exportedAt = new Date().toISOString();
-        exportItems.forEach((item) => {
-          const sku = `${(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase()}-${String(item.id || '').slice(0, 6).toUpperCase()}`;
-          tracking[String(item.id)] = {
-            id: String(item.id),
-            sku,
-            price: Number(item.price || 0),
-            exportedAt,
-            title: [item.brand, item.brand_style_name || item.description].filter(Boolean).join(' ') || 'Untitled shoe'
-          };
-        });
-        localStorage.setItem(trackingKey, JSON.stringify(tracking));
-      } catch (trackingError) {
-        console.warn('Depop export tracking could not be saved.', trackingError);
-      }
-
-      const combinedNotes = [...photoReviewNotes, ...reviewNotes];
-      if (combinedNotes.length) {
-        const preview = combinedNotes.slice(0, 15).join('\n');
-        const more = combinedNotes.length > 15 ? `\n...and ${combinedNotes.length - 15} more.` : '';
-        alert(`Depop CSV exported with preflight checks. ${combinedNotes.length} item(s) need attention:\n\n${preview}${more}\n\nRows with no usable photo will still be in the CSV, but Depop may skip them because at least one valid image is required.`);
+      if (reviewNotes.length) {
+        const preview = reviewNotes.slice(0, 15).join('\n');
+        const more = reviewNotes.length > 15 ? `\n...and ${reviewNotes.length - 15} more.` : '';
+        alert(`Depop CSV exported. ${reviewNotes.length} item(s) have fields that couldn't be auto-matched to a Depop dropdown code and were left blank - fill these in manually in the CSV or in Depop before uploading:\n\n${preview}${more}`);
       } else {
-        alert('Depop CSV exported using Depop\'s official bulk listing layout. All dropdown fields matched and every exported photo passed the public-image preflight check.');
+        alert('Depop CSV exported using Depop\'s official bulk listing column layout. All fields were matched to known Depop dropdown codes - do a quick spot check before uploading.');
       }
     }
 
