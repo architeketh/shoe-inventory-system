@@ -1467,9 +1467,35 @@
         display: none;
       }
     }
+  
+    .abc-main-nav {
+      width: min(1180px, calc(100% - 24px)); margin: 18px auto 0; padding: 10px 14px;
+      display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+      background:var(--surface); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.75);
+      border-radius:22px; box-shadow:var(--shadow);
+    }
+    .abc-main-nav-links { display:flex; gap:8px; flex-wrap:wrap; }
+    .abc-main-nav a { text-decoration:none; padding:10px 16px; border-radius:999px; font-weight:700; color:var(--muted); }
+    .abc-main-nav a.active { background:linear-gradient(135deg,var(--accent),var(--accent-deep)); color:#fff; }
+    @media (max-width:600px) {
+      .abc-main-nav-links { width:100%; }
+      .abc-main-nav a { flex:1; text-align:center; padding:9px 8px; font-size:.82rem; }
+    }
+
   </style>
 </head>
 <body>
+
+  <header class="abc-main-nav">
+    <strong>ABC IS FOR XYZ · Shoe Inventory System</strong>
+    <nav class="abc-main-nav-links">
+      <a class="active" href="./index.html">Inventory</a>
+      <a href="./marketing.html">Marketing</a>
+      <a href="./depop-status.html">Depop Status</a>
+      <a href="./depop-sync-launcher.html">Sync Depop</a>
+    </nav>
+  </header>
+
   <div class="app-shell">
     <section class="hero">
       <div>
