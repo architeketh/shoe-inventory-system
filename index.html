@@ -4188,6 +4188,21 @@
         updateInventoryStatusCard(`Synced ${state.inventory.length} pairs`);
         renderStats();
         renderInventory();
+
+        // Open a specific shoe when another page links to index.html?edit=<shoe-id>.
+        const requestedEditId = new URLSearchParams(window.location.search).get('edit');
+        if (requestedEditId) {
+          const requestedItem = state.inventory.find((item) => String(item.id) === String(requestedEditId));
+          if (requestedItem) {
+            startEdit(requestedItem.id);
+
+            // Remove the edit parameter after opening so later inventory refreshes
+            // do not reopen the edit window.
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('edit');
+            window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+          }
+        }
       } catch (error) {
         updateInventoryStatusCard('Sync failed');
         showBanner('error', 'Inventory load failed', error.message || String(error));
