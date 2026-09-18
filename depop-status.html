@@ -31,20 +31,29 @@
 <section class="panel"><div class="eyebrow">Live Reconciliation</div><h2>Inventory ↔ Depop</h2>
 <div class="toolbar"><input id="search" class="search" placeholder="Search brand, style, size or SKU…"><select id="filter"><option value="all">All statuses</option><option value="ready">Inventory only</option><option value="exported">Matched</option><option value="changed">Price mismatch</option><option value="sold-check">Status mismatch</option><option value="depop-only">Depop only</option></select><span class="statusline" id="sync">Loading…</span></div>
 <div class="table-wrap"><table><thead><tr><th>Shoe</th><th>Current Price</th><th>Depop</th><th>Status</th><th>Depop Listing</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
-<div class="help"><strong>Matching:</strong> exact saved Depop URLs are treated as definitive. Otherwise the page requires a strong combination of brand, listing-description words and price before it calls two records a match. Uncertain items remain Inventory Only or Depop Only so the dashboard does not silently pair the wrong shoes.</div>
+<div class="help"><strong>Matching:</strong> exact saved Depop URLs are definitive. Otherwise a strong combination of brand, description and price is required. If Depop shows clothing or another non-shoe item, click <strong>Not a Shoe</strong> once and it will stay out of this shoe reconciliation page on this device.</div>
 </section></main>
 <script>
 const client=supabase.createClient('https://ozyefxmaeltienuagmcq.supabase.co','sb_publishable_63KSwhRg3Tl_q2Hj0Xs7cQ_cGAE1T9b');
 const RESALE_URL='https://fuhphebvnstgszapvitz.supabase.co';
 const RESALE_KEY='sb_publishable_EGfpETai_j_7Ksw53GyF8Q_noZTOHko';
-const $=id=>document.getElementById(id), URLS='abcDepopListingUrlsV1';
-let inv=[],depop=[],urls={},matches=[];
+const $=id=>document.getElementById(id), URLS='abcDepopListingUrlsV1', IGNORED='abcDepopIgnoredNonShoesV1';
+let inv=[],depop=[],urls={},ignored={},matches=[];
 const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(n||0));
 const title=i=>[i.brand,i.brand_style_name||i.description].filter(Boolean).join(' ')||'Untitled shoe';
 const norm=v=>String(v||'').toLowerCase().replace(/[^a-z0-9.]+/g,' ').trim();
 const words=v=>new Set(norm(v).split(/\s+/).filter(x=>x.length>1));
-function loadLocal(){try{urls=JSON.parse(localStorage.getItem(URLS)||'{}')||{}}catch{urls={}}}
+function loadLocal(){
+  try{urls=JSON.parse(localStorage.getItem(URLS)||'{}')||{}}catch{urls={}}
+  try{ignored=JSON.parse(localStorage.getItem(IGNORED)||'{}')||{}}catch{ignored={}}
+}
+function isIgnored(d){return Boolean(ignored[String(d.id)]||(d.url&&ignored[d.url]));}
+function ignoreNonShoe(depopId){
+  const d=depop.find(x=>String(x.id)===String(depopId)); if(!d)return;
+  ignored[String(d.id)]=true; if(d.url)ignored[d.url]=true;
+  localStorage.setItem(IGNORED,JSON.stringify(ignored)); buildMatches(); render();
+}
 function overlap(a,b){const A=words(a),B=words(b);if(!A.size||!B.size)return 0;let n=0;A.forEach(x=>B.has(x)&&n++);return n/Math.max(A.size,B.size)}
 function exactUrl(i,d){const u=urls[String(i.id)]||'';return u&&d.url&&u.replace(/\/+$/,'')===d.url.replace(/\/+$/,'')}
 function score(i,d){
@@ -63,7 +72,7 @@ function buildMatches(){
   const used=new Set(); matches=[];
   inv.forEach(i=>{
     let best=null,bestScore=-1;
-    depop.forEach(d=>{if(used.has(String(d.id)))return;const s=score(i,d);if(s>bestScore){best=d;bestScore=s}});
+    depop.forEach(d=>{if(used.has(String(d.id))||isIgnored(d))return;const s=score(i,d);if(s>bestScore){best=d;bestScore=s}});
     // Conservative: exact URL always matches; otherwise require a strong multi-signal score.
     if(best&&(bestScore>=65||exactUrl(i,best))){used.add(String(best.id));matches.push({i,d:best,score:bestScore})}
     else matches.push({i,d:null,score:bestScore});
@@ -90,7 +99,7 @@ function row(m){
 
 function unmatchedDepop(){
   const matchedIds=new Set(matches.filter(m=>m.d).map(m=>String(m.d.id)));
-  return depop.filter(d=>!matchedIds.has(String(d.id)));
+  return depop.filter(d=>!matchedIds.has(String(d.id))&&!isIgnored(d));
 }
 function depopOnlyRow(d){
   return `<tr><td><div class="shoe"><div><strong>${esc([d.brand,d.description].filter(Boolean).join(' ')||'Depop listing')}</strong><div class="sub">Found on Depop · not in Inventory</div></div></div></td>
@@ -98,7 +107,7 @@ function depopOnlyRow(d){
   <td><div class="money">${money(d.price)}</div><div class="sub">${esc(d.status||'—')} · ${d.scraped_at?new Date(d.scraped_at).toLocaleString():'—'}</div></td>
   <td><span class="badge url-needed">Depop only</span></td>
   <td>${d.url?`<a class="btn depop" href="${esc(d.url)}" target="_blank" rel="noopener">View Depop</a>`:'<span class="sub">—</span>'}</td>
-  <td><div class="actions"><button class="btn primary" type="button" onclick="addDepopToInventory('${esc(String(d.id))}')">Add to Inventory</button></div></td></tr>`;
+  <td><div class="actions"><button class="btn primary" type="button" onclick="addDepopToInventory('${esc(String(d.id))}')">Add to Inventory</button><button class="btn" type="button" onclick="ignoreNonShoe('${esc(String(d.id))}')">Not a Shoe</button></div></td></tr>`;
 }
 async function addDepopToInventory(depopId){
   const d=depop.find(x=>String(x.id)===String(depopId));
@@ -107,11 +116,13 @@ async function addDepopToInventory(depopId){
     const existing=Object.entries(urls).find(([,u])=>String(u||'').replace(/\/+$/,'')===String(d.url||'').replace(/\/+$/,''));
     if(existing){alert('This Depop listing is already connected to an Inventory shoe.');location.href=`./index.html?edit=${encodeURIComponent(existing[0])}`;return;}
   }
-  const ok=confirm(`Add this Depop shoe to Inventory?\n\n${[d.brand,d.description].filter(Boolean).join(' ')}\n${money(d.price)}\n\nYou can fill in size, photos, cost and other details next.`);
+  const ok=confirm(`Add this Depop shoe to Inventory?\n\n${[d.brand,d.description].filter(Boolean).join(' ')}\n${money(d.price)}\n\nSize will start as TBD. You can fill in the real size, photos, cost and other details next.`);
   if(!ok)return;
   const payload={
     brand:d.brand||'Unknown',
     description:d.description||'Imported from Depop',
+    size:'TBD',
+    category_2:'Shoes',
     price:Number(d.price||0),
     sold:d.status==='Sold',
     reviewed:false,
