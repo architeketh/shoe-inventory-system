@@ -6729,10 +6729,11 @@
     // ===== ABC V3 workspace navigation =====
     function updateV3Stats() {
       if (typeof state === 'undefined' || !Array.isArray(state.inventory)) return;
-      const total = state.inventory.length;
-      const sold = state.inventory.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold').length;
-      const boxed = state.inventory.filter((item) => item.has_box).length;
-      const active = total - sold;
+      const visibleItems = typeof sortedInventory === 'function' ? sortedInventory() : [...state.inventory];
+      const total = visibleItems.length;
+      const sold = visibleItems.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold').length;
+      const boxed = visibleItems.filter((item) => item.has_box).length;
+      const active = visibleItems.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'active').length;
       const map = { 'v3-total': total, 'v3-active': active, 'v3-sold': sold, 'v3-boxed': boxed };
       Object.entries(map).forEach(([id,value]) => { const el=document.getElementById(id); if(el) el.textContent=String(value); });
     }
@@ -6786,7 +6787,32 @@
     document.body.dataset.v3View='inventory';
     const originalRenderStatsV3 = renderStats;
     renderStats = function(){ originalRenderStatsV3(); updateV3Stats(); };
+    const originalRenderInventoryV3 = renderInventory;
+    renderInventory = function(){ originalRenderInventoryV3(); updateV3Stats(); };
     window.setTimeout(updateV3Stats, 0);
+
+
+    // ===== V3 verified photo-control bridge =====
+    // Keep the original hidden file inputs and original handlePhotoSelection() workflow.
+    // This bridge only makes the three visible buttons reliably trigger those inputs.
+    document.addEventListener('click', (event) => {
+      const photoButton = event.target.closest('#choose-photos-button, #use-camera-button, #browse-files-button');
+      if (!photoButton) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const inputId =
+        photoButton.id === 'choose-photos-button' ? 'photo-input' :
+        photoButton.id === 'use-camera-button' ? 'camera-input' :
+        'file-browser-input';
+
+      const input = document.getElementById(inputId);
+      if (!input) {
+        console.error('Photo input not found:', inputId);
+        return;
+      }
+      input.click();
+    }, true);
 
 </script>
 </body>
