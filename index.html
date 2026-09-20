@@ -1483,6 +1483,16 @@
     }
 
   
+
+    /* V3 screen separation refinements */
+    body[data-v3-view="inventory"] .workspace-inventory > .inventory-toolbar > .toolbar-compact:last-child,
+    body[data-v3-view="inventory"] .workspace-inventory > .chart-panel {
+      display:none !important;
+    }
+    body[data-v3-view="sales"] .workspace-inventory > .chart-panel {
+      display:none !important;
+    }
+
     /* ===== ABC V3 workspace shell ===== */
     body { background:#f5f0e8; }
     .abc-main-nav {
@@ -1606,10 +1616,10 @@
       </nav>
     </section>
     <section class="abc-v3-stats" id="v3-stats">
-      <article class="abc-v3-stat"><span>Pairs</span><strong id="v3-total">0</strong></article>
-      <article class="abc-v3-stat"><span>Active</span><strong id="v3-active">0</strong></article>
-      <article class="abc-v3-stat"><span>Sold</span><strong id="v3-sold">0</strong></article>
-      <article class="abc-v3-stat"><span>With Box</span><strong id="v3-boxed">0</strong></article>
+      <article class="abc-v3-stat"><span>Pairs</span><strong id="v3-total">—</strong></article>
+      <article class="abc-v3-stat"><span>Active</span><strong id="v3-active">—</strong></article>
+      <article class="abc-v3-stat"><span>Sold</span><strong id="v3-sold">—</strong></article>
+      <article class="abc-v3-stat"><span>With Box</span><strong id="v3-boxed">—</strong></article>
     </section>
     <section class="hero legacy-hero">
       <div>
@@ -6713,7 +6723,7 @@
   
     // ===== ABC V3 workspace navigation =====
     function updateV3Stats() {
-      if (!window.state || !Array.isArray(state.inventory)) return;
+      if (typeof state === 'undefined' || !Array.isArray(state.inventory)) return;
       const total = state.inventory.length;
       const sold = state.inventory.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold').length;
       const boxed = state.inventory.filter((item) => item.has_box).length;
