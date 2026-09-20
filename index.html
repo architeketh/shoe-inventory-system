@@ -1482,118 +1482,6 @@
       .abc-main-nav a { flex:1; text-align:center; padding:9px 8px; font-size:.82rem; }
     }
 
-  
-
-
-    /* Photo intake interaction fix */
-    body[data-v3-view="add"] #add-panel { display:block !important; }
-    body[data-v3-view="add"] #add-panel > summary { display:none !important; }
-
-    /* V3 screen separation refinements */
-    body[data-v3-view="inventory"] .workspace-inventory > .inventory-toolbar > .toolbar-compact:last-child,
-    body[data-v3-view="inventory"] .workspace-inventory > .chart-panel {
-      display:none !important;
-    }
-    body[data-v3-view="sales"] .workspace-inventory > .chart-panel {
-      display:none !important;
-    }
-
-    /* ===== ABC V3 workspace shell ===== */
-    body { background:#f5f0e8; }
-    .abc-main-nav {
-      width:100%; margin:0; border-radius:0; border:0; border-bottom:1px solid #e7ddd3;
-      box-shadow:none; background:#fffdf9; padding:14px 26px; position:sticky; top:0; z-index:40;
-    }
-    .abc-main-nav strong { font-size:1.02rem; letter-spacing:-.02em; }
-    .abc-main-nav-links a { display:none; }
-    .app-shell { width:min(1380px, calc(100% - 32px)); margin:22px auto 110px; padding-bottom:0; gap:16px; }
-    .legacy-hero,.legacy-intake { display:none !important; }
-    .abc-v3-head {
-      display:flex; align-items:flex-end; justify-content:space-between; gap:18px;
-      padding:2px 2px 4px;
-    }
-    .abc-v3-head h1 { margin:0; font-size:clamp(1.8rem,4vw,2.7rem); line-height:1; letter-spacing:-.045em; }
-    .abc-v3-head p { margin:7px 0 0; color:var(--muted); }
-    .abc-v3-tabs {
-      display:flex; gap:7px; flex-wrap:wrap; padding:6px; border:1px solid var(--line);
-      background:#fffdf9; border-radius:14px; box-shadow:0 8px 26px rgba(77,45,20,.06);
-    }
-    .abc-v3-tab {
-      appearance:none; border:0; background:transparent; color:var(--muted); font-weight:750;
-      padding:10px 14px; border-radius:10px; cursor:pointer;
-    }
-    .abc-v3-tab.active { background:var(--accent-deep); color:#fff; }
-    .abc-v3-tab.marketing { text-decoration:none; display:inline-flex; align-items:center; }
-    .abc-v3-stats {
-      display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px;
-    }
-    .abc-v3-stat {
-      background:#fffdf9; border:1px solid var(--line); border-radius:16px; padding:15px 17px;
-      box-shadow:0 8px 26px rgba(77,45,20,.055);
-    }
-    .abc-v3-stat span { display:block; color:var(--muted); font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
-    .abc-v3-stat strong { display:block; margin-top:4px; font-size:1.7rem; letter-spacing:-.04em; }
-    .workspace-add,.workspace-inventory { display:none; }
-    body[data-v3-view="inventory"] .workspace-inventory,
-    body[data-v3-view="sales"] .workspace-inventory,
-    body[data-v3-view="tools"] .workspace-inventory { display:block; }
-    body[data-v3-view="add"] .workspace-add { display:block; }
-    .workspace-add { border-radius:20px; padding:22px; }
-    .workspace-add > summary { display:none; }
-    .workspace-add > div { padding-top:0 !important; }
-    .workspace-add .config-grid { display:none !important; }
-    .workspace-add #required-copy { display:none !important; }
-    .workspace-add .section-head { margin-bottom:10px; }
-    .workspace-add:before {
-      content:"Add Shoes"; display:block; font-size:1.7rem; font-weight:800; letter-spacing:-.04em; margin-bottom:16px;
-    }
-    .workspace-inventory { border-radius:20px; padding:20px; }
-    body[data-v3-view="inventory"] .workspace-inventory > .eyebrow::after { content:" · Active workspace"; }
-    body[data-v3-view="sales"] .workspace-inventory > .eyebrow { font-size:0; }
-    body[data-v3-view="sales"] .workspace-inventory > .eyebrow::after { content:"Sales"; font-size:12px; }
-    body[data-v3-view="tools"] .workspace-inventory > .eyebrow { font-size:0; }
-    body[data-v3-view="tools"] .workspace-inventory > .eyebrow::after { content:"Tools"; font-size:12px; }
-    body[data-v3-view="tools"] .workspace-inventory > .section-head,
-    body[data-v3-view="tools"] .workspace-inventory > .inventory-head,
-    body[data-v3-view="tools"] .workspace-inventory > #inventory-list,
-    body[data-v3-view="tools"] .workspace-inventory > .toolbar-compact,
-    body[data-v3-view="tools"] .workspace-inventory > .inventory-toolbar > .toolbar-compact:first-child {
-      display:none !important;
-    }
-    body[data-v3-view="tools"] .workspace-inventory > .inventory-toolbar {
-      justify-content:flex-start; padding:14px; background:#faf6f1; border:1px solid var(--line);
-      border-radius:14px; margin-bottom:14px !important;
-    }
-    body[data-v3-view="tools"] .workspace-inventory > .inventory-toolbar > .toolbar-compact:last-child {
-      display:flex; flex-wrap:wrap;
-    }
-    body[data-v3-view="sales"] .workspace-inventory .chart-panel { display:none; }
-    body[data-v3-view="sales"] .workspace-inventory > .toolbar-compact { display:none; }
-    body[data-v3-view="sales"] .workspace-inventory > .inventory-toolbar > .toolbar-compact:last-child { display:none; }
-    body[data-v3-view="sales"] .workspace-inventory > .section-head h2 { font-size:0; }
-    body[data-v3-view="sales"] .workspace-inventory > .section-head h2::after { content:"Sold Shoes"; font-size:2rem; }
-    .bottom-sticky-card { display:none !important; }
-    .abc-v3-mobile { display:none; }
-    @media(max-width:760px){
-      .abc-main-nav { padding:12px 14px; }
-      .app-shell { width:calc(100% - 20px); margin:14px auto 82px; }
-      .abc-v3-head { align-items:flex-start; }
-      .abc-v3-head p { font-size:.88rem; }
-      .abc-v3-tabs { display:none; }
-      .abc-v3-stats { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
-      .abc-v3-stat { padding:10px 6px; text-align:center; }
-      .abc-v3-stat span { font-size:.58rem; letter-spacing:.02em; }
-      .abc-v3-stat strong { font-size:1.15rem; }
-      .workspace-add,.workspace-inventory { padding:14px; border-radius:16px; }
-      .workspace-add:before { font-size:1.45rem; }
-      .abc-v3-mobile {
-        display:grid; grid-template-columns:repeat(4,1fr); position:fixed; left:0; right:0; bottom:0;
-        z-index:60; background:#fffdf9; border-top:1px solid var(--line); padding:6px 5px calc(6px + env(safe-area-inset-bottom));
-      }
-      .abc-v3-mobile button { border:0; background:transparent; color:var(--muted); padding:8px 2px; font-size:.72rem; font-weight:700; }
-      .abc-v3-mobile button.active { color:var(--accent-deep); }
-    }
-
   </style>
 </head>
 <body>
@@ -1607,26 +1495,7 @@
   </header>
 
   <div class="app-shell">
-    <section class="abc-v3-head">
-      <div>
-        <h1 id="v3-title">Inventory</h1>
-        <p id="v3-subtitle">Manage your shoes without scrolling through unrelated tools.</p>
-      </div>
-      <nav class="abc-v3-tabs" aria-label="Inventory sections">
-        <button class="abc-v3-tab active" type="button" data-v3-view="inventory">Inventory</button>
-        <button class="abc-v3-tab" type="button" data-v3-view="add">Add Shoes</button>
-        <button class="abc-v3-tab" type="button" data-v3-view="sales">Sales</button>
-        <button class="abc-v3-tab" type="button" data-v3-view="tools">Tools</button>
-        <a class="abc-v3-tab marketing" href="./marketing.html">Marketing</a>
-      </nav>
-    </section>
-    <section class="abc-v3-stats" id="v3-stats">
-      <article class="abc-v3-stat"><span>Pairs</span><strong id="v3-total">—</strong></article>
-      <article class="abc-v3-stat"><span>Active</span><strong id="v3-active">—</strong></article>
-      <article class="abc-v3-stat"><span>Sold</span><strong id="v3-sold">—</strong></article>
-      <article class="abc-v3-stat"><span>With Box</span><strong id="v3-boxed">—</strong></article>
-    </section>
-    <section class="hero legacy-hero">
+    <section class="hero">
       <div>
         <div class="eyebrow">Shoe Inventory System</div>
         <h1>Shoe inventory built for phone-first intake.</h1>
@@ -1657,7 +1526,7 @@
       </div>
     </section>
 
-    <details class="panel collapsible legacy-intake">
+    <details class="panel collapsible">
       <summary class="summary-pill"><span>Intake logic</span><span>+</span></summary>
       <div style="padding-top:18px;">
         <div class="pill-row" style="margin-bottom:18px;">
@@ -1683,7 +1552,7 @@
       </div>
     </details>
 
-    <details class="panel collapsible workspace-add" id="add-panel" open>
+    <details class="panel collapsible" id="add-panel">
       <summary class="summary-pill"><span>Add a pair</span><span>+</span></summary>
       <div style="padding-top:18px;">
         <div class="section-head">
@@ -1899,7 +1768,7 @@
       </div>
     </details>
 
-    <section class="panel workspace-inventory" id="inventory-workspace">
+    <section class="panel">
       <div class="eyebrow">Inventory</div>
       <div class="inventory-toolbar" style="margin-bottom:12px;">
         <div class="toolbar-compact">
@@ -4985,15 +4854,7 @@
             <div style="margin-bottom:8px;color:#555;">Current view total: ${escapeHtml(currency(exportTotal))}</div>
             <div style="margin-bottom:20px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} · ${exportItems.length} pair(s) in current view</div>
             ${rows || '<p>No inventory available.</p>'}
-          
-  <nav class="abc-v3-mobile" aria-label="Mobile inventory sections">
-    <button class="active" type="button" data-v3-view="inventory">Inventory</button>
-    <button type="button" data-v3-view="add">＋ Add</button>
-    <button type="button" data-v3-view="sales">Sales</button>
-    <button type="button" data-v3-view="tools">Tools</button>
-  </nav>
-
-</body>
+          </body>
         </html>
       `);
       reportWindow.document.close();
@@ -6725,95 +6586,6 @@
     setOriginalTagsMode(false);
     setEditOriginalTagsMode(false);
     loadInventory();
-  
-    // ===== ABC V3 workspace navigation =====
-    function updateV3Stats() {
-      if (typeof state === 'undefined' || !Array.isArray(state.inventory)) return;
-      const visibleItems = typeof sortedInventory === 'function' ? sortedInventory() : [...state.inventory];
-      const total = visibleItems.length;
-      const sold = visibleItems.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold').length;
-      const boxed = visibleItems.filter((item) => item.has_box).length;
-      const active = visibleItems.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'active').length;
-      const map = { 'v3-total': total, 'v3-active': active, 'v3-sold': sold, 'v3-boxed': boxed };
-      Object.entries(map).forEach(([id,value]) => { const el=document.getElementById(id); if(el) el.textContent=String(value); });
-    }
-
-    function setV3View(view) {
-      const allowed = ['inventory','add','sales','tools'];
-      if (!allowed.includes(view)) view = 'inventory';
-      document.body.dataset.v3View = view;
-      const copy = {
-        inventory:['Inventory','Search, filter and manage your shoes.'],
-        add:['Add Shoes','Photos and shoe details are ready immediately — no instruction screen first.'],
-        sales:['Sales','Review sold inventory in its own workspace.'],
-        tools:['Tools','Reports, exports, charts and matching tools live here.']
-      };
-      const title=document.getElementById('v3-title'), subtitle=document.getElementById('v3-subtitle');
-      if(title) title.textContent=copy[view][0];
-      if(subtitle) subtitle.textContent=copy[view][1];
-      document.querySelectorAll('[data-v3-view]').forEach(b=>b.classList.toggle('active',b.dataset.v3View===view));
-
-      if (view === 'add') {
-        const add=document.getElementById('add-panel'); if(add) add.open=true;
-      }
-      const sort=document.getElementById('sort-select');
-      if (sort && view === 'sales') {
-        sort.value='sold_only';
-        sort.dispatchEvent(new Event('change',{bubbles:true}));
-      } else if (sort && view === 'inventory' && sort.value === 'sold_only') {
-        sort.value='all';
-        sort.dispatchEvent(new Event('change',{bubbles:true}));
-      }
-      window.scrollTo({top:0,behavior:'instant'});
-    }
-
-    document.addEventListener('click',(event)=>{
-      const button=event.target.closest('[data-v3-view]');
-      if(!button) return;
-      event.preventDefault();
-      setV3View(button.dataset.v3View);
-    });
-
-    
-    const v3AddPanel = document.getElementById('add-panel');
-    if (v3AddPanel) {
-      v3AddPanel.open = true;
-      v3AddPanel.addEventListener('toggle', () => {
-        if (document.body.dataset.v3View === 'add' && !v3AddPanel.open) {
-          v3AddPanel.open = true;
-        }
-      });
-    }
-    document.body.dataset.v3View='inventory';
-    const originalRenderStatsV3 = renderStats;
-    renderStats = function(){ originalRenderStatsV3(); updateV3Stats(); };
-    const originalRenderInventoryV3 = renderInventory;
-    renderInventory = function(){ originalRenderInventoryV3(); updateV3Stats(); };
-    window.setTimeout(updateV3Stats, 0);
-
-
-    // ===== V3 verified photo-control bridge =====
-    // Keep the original hidden file inputs and original handlePhotoSelection() workflow.
-    // This bridge only makes the three visible buttons reliably trigger those inputs.
-    document.addEventListener('click', (event) => {
-      const photoButton = event.target.closest('#choose-photos-button, #use-camera-button, #browse-files-button');
-      if (!photoButton) return;
-      event.preventDefault();
-      event.stopPropagation();
-
-      const inputId =
-        photoButton.id === 'choose-photos-button' ? 'photo-input' :
-        photoButton.id === 'use-camera-button' ? 'camera-input' :
-        'file-browser-input';
-
-      const input = document.getElementById(inputId);
-      if (!input) {
-        console.error('Photo input not found:', inputId);
-        return;
-      }
-      input.click();
-    }, true);
-
-</script>
+  </script>
 </body>
 </html>
