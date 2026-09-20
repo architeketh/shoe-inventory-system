@@ -1484,6 +1484,11 @@
 
   
 
+
+    /* Photo intake interaction fix */
+    body[data-v3-view="add"] #add-panel { display:block !important; }
+    body[data-v3-view="add"] #add-panel > summary { display:none !important; }
+
     /* V3 screen separation refinements */
     body[data-v3-view="inventory"] .workspace-inventory > .inventory-toolbar > .toolbar-compact:last-child,
     body[data-v3-view="inventory"] .workspace-inventory > .chart-panel {
@@ -1678,7 +1683,7 @@
       </div>
     </details>
 
-    <details class="panel collapsible workspace-add" id="add-panel">
+    <details class="panel collapsible workspace-add" id="add-panel" open>
       <summary class="summary-pill"><span>Add a pair</span><span>+</span></summary>
       <div style="padding-top:18px;">
         <div class="section-head">
@@ -6768,6 +6773,16 @@
       setV3View(button.dataset.v3View);
     });
 
+    
+    const v3AddPanel = document.getElementById('add-panel');
+    if (v3AddPanel) {
+      v3AddPanel.open = true;
+      v3AddPanel.addEventListener('toggle', () => {
+        if (document.body.dataset.v3View === 'add' && !v3AddPanel.open) {
+          v3AddPanel.open = true;
+        }
+      });
+    }
     document.body.dataset.v3View='inventory';
     const originalRenderStatsV3 = renderStats;
     renderStats = function(){ originalRenderStatsV3(); updateV3Stats(); };
