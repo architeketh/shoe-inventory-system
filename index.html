@@ -1482,14 +1482,95 @@
       .abc-main-nav a { flex:1; text-align:center; padding:9px 8px; font-size:.82rem; }
     }
 
+
+    /* ABC Inventory V2 visual refresh — keeps existing application logic intact */
+    body { background:#f6f1e9; }
+    .abc-main-nav { width:100%; margin:0; padding:12px 28px; border-radius:0; border:0; border-bottom:1px solid #e7ddd4; box-shadow:none; background:rgba(255,253,249,.96); position:sticky; top:0; z-index:40; }
+    .abc-brand-block { display:grid; line-height:1.05; }
+    .abc-brand-block strong { font-size:1.18rem; letter-spacing:-.025em; }
+    .abc-brand-block span { margin-top:4px; color:var(--muted); font:700 .62rem/1 var(--mono); letter-spacing:.14em; text-transform:uppercase; }
+    .abc-main-nav-links { align-items:center; }
+    .abc-main-nav a,.abc-nav-button { appearance:none; border:0; background:transparent; text-decoration:none; padding:10px 14px; border-radius:10px; font-weight:700; color:var(--ink); cursor:pointer; }
+    .abc-main-nav a.active { background:#f1e2d7; color:var(--accent-deep); }
+    .abc-main-nav a:hover,.abc-nav-button:hover { background:#f5ede6; }
+    .app-shell { width:min(1320px,calc(100% - 36px)); margin:22px auto 40px; gap:16px; }
+    .hero,.panel,.inventory-card { backdrop-filter:none; border-color:#e7ddd4; box-shadow:0 10px 30px rgba(70,45,25,.07); background:#fffdf9; }
+    .hero { padding:24px; border-radius:20px; grid-template-columns:minmax(0,1fr) minmax(360px,.9fr); align-items:center; }
+    .hero h1 { font-size:clamp(2.2rem,4vw,3.4rem); line-height:1; max-width:none; letter-spacing:-.045em; }
+    .hero p { margin-top:8px; font-size:1.05rem; }
+    .v2-hero-actions { display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; }
+    .hero-grid { grid-template-columns:1fr; }
+    #connection-banner { padding:11px 14px; border-radius:12px; font-size:.78rem; }
+    #connection-banner p { margin-top:3px!important; font-size:.74rem; line-height:1.25; }
+    .stat-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .stat-chip { padding:14px; border-radius:14px; background:#fff; }
+    .stat-value { margin-top:4px; font-size:2rem; }
+    .v2-intake-help { display:none; }
+    .panel { padding:20px; border-radius:18px; }
+    #add-panel { scroll-margin-top:90px; }
+    #add-panel > .summary-pill { background:var(--accent-deep); color:#fff; border-color:var(--accent-deep); border-radius:12px; padding:14px 16px; }
+    #v2-inventory-panel { order:-1; scroll-margin-top:88px; }
+    #v2-inventory-panel > .eyebrow { display:none; }
+    #v2-inventory-panel .section-head h2 { font-size:1.75rem; }
+    .inventory-toolbar { background:#faf7f3; border:1px solid #e7ddd4; padding:12px; border-radius:14px; align-items:center; }
+    .toolbar-compact { flex-wrap:wrap; }
+    .search-input { width:min(340px,44vw); min-width:220px; border-radius:10px; }
+    .sort-select { border-radius:10px; }
+    .button { border-radius:10px; }
+    .button.primary { background:var(--accent-deep); box-shadow:0 8px 18px rgba(143,47,22,.16); }
+    .button.secondary,.button.ghost { background:#fff; }
+    .inventory-head { background:#faf7f3; border:1px solid #e7ddd4; border-bottom:0; border-radius:12px 12px 0 0; padding:12px 16px; }
+    .inventory-list { gap:0; border:1px solid #e7ddd4; border-radius:0 0 12px 12px; overflow:hidden; }
+    .inventory-card { border:0; border-bottom:1px solid #eee5dd; border-radius:0; box-shadow:none; background:#fff!important; }
+    .inventory-card:last-child { border-bottom:0; }
+    .inventory-card.gender-womens,.inventory-card.gender-mens,.inventory-card.gender-kids { background:#fff!important; }
+    .photo-thumb { border-radius:10px; }
+    .inventory-tag { padding:6px 9px; }
+    .v2-tools-panel { scroll-margin-top:88px; }
+    .v2-tool-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .v2-tool-card { appearance:none; text-align:left; border:1px solid #e7ddd4; background:#fff; border-radius:14px; padding:16px; cursor:pointer; color:var(--ink); }
+    .v2-tool-card:hover { transform:translateY(-1px); box-shadow:0 8px 18px rgba(70,45,25,.08); }
+    .v2-tool-card b { display:block; font-size:1rem; }
+    .v2-tool-card span { display:block; margin-top:4px; color:var(--muted); font-size:.84rem; }
+    .bottom-sticky-card { border-radius:14px; box-shadow:0 12px 30px rgba(70,45,25,.13); }
+    .v2-mobile-nav { display:none; }
+    @media(max-width:760px){
+      .abc-main-nav { padding:11px 14px; }
+      .abc-main-nav-links { display:none; }
+      .app-shell { width:calc(100% - 20px); margin:10px auto 90px; padding-bottom:140px; }
+      .hero { grid-template-columns:1fr; padding:18px; }
+      .hero h1 { font-size:2rem; }
+      #connection-banner { display:none; }
+      .stat-grid { grid-template-columns:repeat(3,1fr); }
+      .stat-chip { padding:10px 8px; text-align:center; }
+      .stat-label { font-size:.62rem; }
+      .stat-value { font-size:1.45rem; }
+      .panel { padding:14px; }
+      .inventory-toolbar { display:grid; gap:10px; }
+      .toolbar-compact { width:100%; }
+      .search-input { width:100%; min-width:0; flex:1; }
+      #v2-inventory-panel .inventory-toolbar .toolbar-compact:nth-child(2) { display:none; }
+      .inventory-head { display:none; }
+      .inventory-list { border:0; gap:10px; overflow:visible; }
+      .inventory-card { border:1px solid #e7ddd4; border-radius:14px; box-shadow:0 6px 16px rgba(70,45,25,.05); }
+      .v2-tool-grid { grid-template-columns:1fr; }
+      .v2-mobile-nav { display:grid; grid-template-columns:repeat(4,1fr); position:fixed; left:0; right:0; bottom:0; z-index:60; background:#fffdf9; border-top:1px solid #e7ddd4; padding:7px 4px calc(7px + env(safe-area-inset-bottom)); }
+      .v2-mobile-nav button { border:0; background:transparent; color:var(--muted); font-weight:700; font-size:.7rem; }
+      .v2-mobile-nav button span { display:block; font-size:1.2rem; color:var(--accent-deep); }
+      .bottom-sticky-card { bottom:70px; }
+    }
+
   </style>
 </head>
 <body>
 
   <header class="abc-main-nav">
-    <strong>ABC IS FOR XYZ · Shoe Inventory System</strong>
+    <div class="abc-brand-block"><strong>ABC IS FOR XYZ</strong><span>Inventory Management</span></div>
     <nav class="abc-main-nav-links">
-      <a class="active" href="./index.html">Inventory</a>
+      <a class="active" href="#inventory-list">Inventory</a>
+      <button type="button" class="abc-nav-button" id="v2-add-nav">+ Add Shoes</button>
+      <button type="button" class="abc-nav-button" id="v2-sales-nav">Sales</button>
+      <button type="button" class="abc-nav-button" id="v2-tools-nav">Tools</button>
       <a href="./marketing.html">Marketing</a>
     </nav>
   </header>
@@ -1497,9 +1578,10 @@
   <div class="app-shell">
     <section class="hero">
       <div>
-        <div class="eyebrow">Shoe Inventory System</div>
-        <h1>Shoe inventory built for phone-first intake.</h1>
-        <p>Capture up to four photos, answer whether the pair has a box, save brand, description, size, and price, and optionally run an AI-assisted lookup from your box or shoe photos before storing everything in Supabase.</p>
+        <div class="eyebrow">ABC IS FOR XYZ</div>
+        <h1>Inventory</h1>
+        <p>Manage your inventory. Sell everywhere. Keep it simple.</p>
+        <div class="v2-hero-actions"><button class="button primary" type="button" id="v2-add-hero">+ Add Shoes</button><button class="button secondary" type="button" id="v2-search-hero">Search Inventory</button></div>
       </div>
       <div class="hero-grid">
         <div class="status-banner warning" id="connection-banner">
@@ -1511,22 +1593,22 @@
         </div>
         <div class="stat-grid">
           <article class="stat-chip">
-            <div class="stat-label" id="saved-label">Pairs saved</div>
+            <div class="stat-label" id="saved-label">Total Inventory</div>
             <div class="stat-value" id="total-pairs">0</div>
           </article>
           <article class="stat-chip">
-            <div class="stat-label">Pairs sold</div>
+            <div class="stat-label">Sold</div>
             <div class="stat-value" id="sold-count">0</div>
           </article>
           <article class="stat-chip">
-            <div class="stat-label">With box</div>
+            <div class="stat-label">With Box</div>
             <div class="stat-value" id="boxed-count">0</div>
           </article>
         </div>
       </div>
     </section>
 
-    <details class="panel collapsible">
+    <details class="panel collapsible v2-intake-help">
       <summary class="summary-pill"><span>Intake logic</span><span>+</span></summary>
       <div style="padding-top:18px;">
         <div class="pill-row" style="margin-bottom:18px;">
@@ -1768,7 +1850,19 @@
       </div>
     </details>
 
-    <section class="panel">
+    <section class="panel v2-tools-panel" id="v2-tools-panel">
+      <div class="section-head"><div><div class="eyebrow">Advanced Functions</div><h2>Tools</h2></div></div>
+      <div class="v2-tool-grid">
+        <button type="button" class="v2-tool-card" data-v2-tool="review"><b>Reports</b><span>Review inventory and create reports</span></button>
+        <button type="button" class="v2-tool-card" data-v2-tool="chart"><b>Brand × Size Chart</b><span>See inventory by brand and size</span></button>
+        <button type="button" class="v2-tool-card" data-v2-tool="threadup"><b>ThredUp Sold Match</b><span>Find and match sold items</span></button>
+        <button type="button" class="v2-tool-card" data-v2-tool="csv"><b>CSV Import / Export</b><span>Export the current inventory view</span></button>
+        <button type="button" class="v2-tool-card" data-v2-tool="depop"><b>Depop CSV Export</b><span>Existing bulk listing workflow</span></button>
+        <button type="button" class="v2-tool-card" data-v2-tool="whatnot"><b>Whatnot Export</b><span>Export selected items for Whatnot</span></button>
+      </div>
+    </section>
+
+    <section class="panel" id="v2-inventory-panel">
       <div class="eyebrow">Inventory</div>
       <div class="inventory-toolbar" style="margin-bottom:12px;">
         <div class="toolbar-compact">
@@ -1846,6 +1940,13 @@
       <div id="inventory-list" class="inventory-list"></div>
     </section>
   </div>
+
+  <nav class="v2-mobile-nav" aria-label="Mobile navigation">
+    <button type="button" id="v2-mobile-inventory"><span>⌂</span>Inventory</button>
+    <button type="button" id="v2-mobile-add"><span>＋</span>Add</button>
+    <button type="button" id="v2-mobile-sales"><span>▥</span>Sales</button>
+    <button type="button" id="v2-mobile-tools"><span>⚒</span>Tools</button>
+  </nav>
 
 <div class="bottom-sticky-card">
     <div class="bottom-sticky-top">
@@ -6586,6 +6687,52 @@
     setOriginalTagsMode(false);
     setEditOriginalTagsMode(false);
     loadInventory();
-  </script>
+  
+
+    // V2 navigation helpers. These only drive existing controls/functions.
+    function v2OpenAdd() {
+      if (elements.addPanel) elements.addPanel.open = true;
+      elements.addPanel?.scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+    function v2ShowSold() {
+      if (elements.sortSelect) {
+        elements.sortSelect.value = 'sold_only';
+        elements.sortSelect.dispatchEvent(new Event('change', { bubbles:true }));
+      }
+      document.getElementById('v2-inventory-panel')?.scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+    function v2ShowInventory() {
+      if (elements.sortSelect) {
+        elements.sortSelect.value = 'all';
+        elements.sortSelect.dispatchEvent(new Event('change', { bubbles:true }));
+      }
+      document.getElementById('v2-inventory-panel')?.scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+    document.getElementById('v2-add-nav')?.addEventListener('click', v2OpenAdd);
+    document.getElementById('v2-add-hero')?.addEventListener('click', v2OpenAdd);
+    document.getElementById('v2-mobile-add')?.addEventListener('click', v2OpenAdd);
+    document.getElementById('v2-sales-nav')?.addEventListener('click', v2ShowSold);
+    document.getElementById('v2-mobile-sales')?.addEventListener('click', v2ShowSold);
+    document.getElementById('v2-mobile-inventory')?.addEventListener('click', v2ShowInventory);
+    document.getElementById('v2-tools-nav')?.addEventListener('click', () => document.getElementById('v2-tools-panel')?.scrollIntoView({behavior:'smooth',block:'start'}));
+    document.getElementById('v2-mobile-tools')?.addEventListener('click', () => document.getElementById('v2-tools-panel')?.scrollIntoView({behavior:'smooth',block:'start'}));
+    document.getElementById('v2-search-hero')?.addEventListener('click', () => { document.getElementById('v2-inventory-panel')?.scrollIntoView({behavior:'smooth',block:'start'}); setTimeout(()=>elements.searchInput?.focus(),350); });
+    document.querySelectorAll('[data-v2-tool]').forEach((button) => button.addEventListener('click', () => {
+      const tool = button.dataset.v2Tool;
+      if (tool === 'review') elements.reviewHtmlButton?.click();
+      if (tool === 'csv') elements.xlsButton?.click();
+      if (tool === 'depop') elements.depopButton?.click();
+      if (tool === 'whatnot') elements.whatnotButton?.click();
+      if (tool === 'chart') {
+        const details = document.querySelector('#v2-inventory-panel details.chart-panel:nth-of-type(1)');
+        if (details) { details.open = true; details.scrollIntoView({behavior:'smooth',block:'center'}); }
+      }
+      if (tool === 'threadup') {
+        const panels = document.querySelectorAll('#v2-inventory-panel details.chart-panel');
+        const details = panels[1];
+        if (details) { details.open = true; details.scrollIntoView({behavior:'smooth',block:'center'}); }
+      }
+    }));
+</script>
 </body>
 </html>
