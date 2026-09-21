@@ -276,6 +276,7 @@
   .action span { color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
   .action.soon { border-style: dashed; background: transparent; }
   .action.soon strong { color: var(--muted); }
+  .action.soon.off strong::after { content: "Turned off"; }
   .action.soon strong::after {
     content: "Coming soon";
     margin-left: 8px;
@@ -349,7 +350,9 @@
         <a class="action" href="./index.html"><strong>Select products in inventory</strong><span>Use the current selection system before exports.</span></a>
         <a class="action" href="./index.html"><strong>Export to Depop CSV</strong><span>Uses your existing exporter. Nothing about exports changed.</span></a>
         <a class="action" href="https://www.depop.com/abc_isfor_xyz/" target="_blank" rel="noopener"><strong>Open Depop shop</strong><span>Review live listings and activity.</span></a>
-        <a class="action" href="./depop-status.html"><strong>Depop status</strong><span>See ready-to-export, exported, price-changed, URL-needed and sold/check items.</span></a>
+        <!-- Turned off. To bring it back, replace this line with:
+        <a class="action" href="./depop-status.html"><strong>Depop status</strong><span>See ready-to-export, exported, price-changed, URL-needed and sold/check items.</span></a> -->
+        <div class="action soon off" aria-disabled="true"><strong>Depop status</strong></div>
         <div class="action soon"><strong>Social content</strong></div>
         <div class="action soon"><strong>A&ndash;Z campaigns</strong></div>
         <div class="action soon"><strong>Public storefront</strong></div>
