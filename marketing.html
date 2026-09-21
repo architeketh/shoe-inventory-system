@@ -193,8 +193,8 @@
     margin-top: 14px;
   }
   .product {
-    display: grid;
-    grid-template-rows: auto 1fr;
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--line);
     border-radius: 12px;
     background: #fff;
@@ -202,15 +202,15 @@
     min-width: 0;
   }
   .photo {
+    position: relative;
     aspect-ratio: 1;
+    overflow: hidden;
     background: #fff;
-    display: grid;
-    place-items: center;
     border-bottom: 1px solid var(--line-soft);
   }
-  .photo img { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .photo .no-photo { color: var(--muted); font-size: 0.8rem; }
-  .copy { padding: 10px; display: grid; gap: 4px; align-content: start; }
+  .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+  .photo .no-photo { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 0.8rem; }
+  .copy { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .copy h3 {
     font-size: 0.95rem;
     font-weight: 700;
@@ -224,8 +224,7 @@
   .meta { font-size: 0.8rem; color: var(--muted); }
   .price { font-stretch: 108%; font-weight: 800; font-size: 1.05rem; }
   .reason {
-    align-self: start;
-    justify-self: start;
+    align-self: flex-start;
     padding: 3px 8px;
     border-radius: 6px;
     background: var(--accent-soft);
@@ -235,7 +234,7 @@
     line-height: 1.35;
   }
   .reason.warn { background: var(--warn-soft); color: var(--warn); }
-  .product-actions { margin-top: 6px; }
+  .product-actions { margin-top: auto; padding-top: 8px; }
   .edit-link {
     display: flex;
     align-items: center;
