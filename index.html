@@ -1195,10 +1195,8 @@
     }
     .ep-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
-    .ep-actions {
-      display: flex;
-      border-top: 1px solid var(--line);
-    }
+    .ep-actions { display: grid; }
+    .ep-row { display: flex; border-top: 1px solid var(--line); }
 
     .ep-actions button {
       appearance: none;
@@ -1212,7 +1210,8 @@
       cursor: pointer;
     }
     .ep-actions button + button { border-left: 1px solid var(--line); }
-    .ep-actions button:hover { background: var(--line-soft); }
+    .ep-actions button:disabled { color: #c3c7cd; cursor: not-allowed; background: #fafafa; }
+    .ep-actions button:hover:not(:disabled) { background: var(--line-soft); }
     .ep-actions svg { width: 18px; height: 18px; }
     .ep-actions .ep-delete { color: var(--danger); }
 
@@ -1837,7 +1836,7 @@
               <h3>Photos</h3>
               <span class="count" id="edit-photo-count">0 of 6</span>
             </div>
-            <div class="hint">Tap a photo to crop it or make a white background. The star sets the main photo. Photo changes save right away.</div>
+            <div class="hint">Tap a photo to crop it or make a white background. Use the arrows to reorder. The first photo is the main one. Photo changes save right away.</div>
             <div class="edit-photo-grid" id="edit-photo-grid"></div>
             <input class="sr-only" id="edit-photo-add-input" type="file" accept="image/*" multiple>
             <input class="sr-only" id="edit-photo-camera-input" type="file" accept="image/*" capture="environment">
@@ -6645,6 +6644,9 @@
     const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>';
     const ICON_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 
+    const ICON_LEFT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>';
+    const ICON_RIGHT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+
     state.editPhotoBusy = false;
 
     // ---- Add sheet ------------------------------------------------------
@@ -6799,8 +6801,14 @@
           <button class="ep-img" type="button" data-ep-open="${index}" aria-label="Open photo ${index + 1}"><img src="${escapeHtml(url)}" alt="Photo ${index + 1}"></button>
           ${index === 0 ? '<span class="tile-badge">Main</span>' : ''}
           <div class="ep-actions">
-            ${index === 0 ? '' : `<button type="button" class="ep-main" data-ep-main="${index}" aria-label="Make photo ${index + 1} the main photo">${ICON_STAR}</button>`}
-            <button type="button" class="ep-delete" data-ep-delete="${index}" aria-label="Delete photo ${index + 1}">${ICON_TRASH}</button>
+            <div class="ep-row">
+              <button type="button" data-ep-move="-1" data-ep-index="${index}" aria-label="Move photo ${index + 1} left"${index === 0 ? ' disabled' : ''}>${ICON_LEFT}</button>
+              <button type="button" data-ep-move="1" data-ep-index="${index}" aria-label="Move photo ${index + 1} right"${index === photos.length - 1 ? ' disabled' : ''}>${ICON_RIGHT}</button>
+            </div>
+            <div class="ep-row">
+              ${index === 0 ? '' : `<button type="button" class="ep-main" data-ep-main="${index}" aria-label="Make photo ${index + 1} the main photo">${ICON_STAR}</button>`}
+              <button type="button" class="ep-delete" data-ep-delete="${index}" aria-label="Delete photo ${index + 1}">${ICON_TRASH}</button>
+            </div>
           </div>
         </div>`).join('');
       const addTile = photos.length < 6
@@ -6879,6 +6887,29 @@
       }
     }
 
+    async function moveEditingPhoto(index, direction) {
+      const item = getEditingItem();
+      if (!SUPABASE_READY || !item || state.editPhotoBusy) return;
+      const urls = [...(item.photo_urls || [])];
+      const paths = [...(item.photo_paths || [])];
+      const target = index + direction;
+      if (index < 0 || index >= urls.length || target < 0 || target >= urls.length) return;
+
+      setEditPhotoBusy(true, 'Moving photo...');
+      try {
+        [urls[index], urls[target]] = [urls[target], urls[index]];
+        // Keep the storage paths in the same order as the photos.
+        if (paths.length === urls.length) [paths[index], paths[target]] = [paths[target], paths[index]];
+        await savePhotoLists(item, urls, paths);
+        await loadInventory();
+        setEditPhotoStatus('success', target === 0 || index === 0 ? 'Photo moved. The main photo changed.' : 'Photo moved.');
+      } catch (error) {
+        setEditPhotoStatus('error', error?.message || String(error));
+      } finally {
+        setEditPhotoBusy(false);
+      }
+    }
+
     async function deleteEditingPhoto(index) {
       const item = getEditingItem();
       if (!SUPABASE_READY || !item || state.editPhotoBusy) return;
@@ -6915,6 +6946,11 @@
       const openButton = event.target.closest('[data-ep-open]');
       if (openButton) {
         openPhotoModal(item.photo_urls, Number(openButton.dataset.epOpen), item.id);
+        return;
+      }
+      const moveButton = event.target.closest('[data-ep-move]');
+      if (moveButton) {
+        moveEditingPhoto(Number(moveButton.dataset.epIndex), Number(moveButton.dataset.epMove));
         return;
       }
       const mainButton = event.target.closest('[data-ep-main]');
