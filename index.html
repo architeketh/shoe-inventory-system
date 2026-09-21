@@ -2,455 +2,64 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#16181c">
   <title>Shoe Inventory System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    /* ------------------------------------------------------------------
+       DESIGN TOKENS
+       Change a color or size here and it updates everywhere in the app.
+       ------------------------------------------------------------------ */
     :root {
-      --bg: #f5efe6;
-      --surface: rgba(255, 252, 247, 0.88);
-      --surface-strong: #fffaf3;
-      --ink: #24170f;
-      --muted: #6f6258;
-      --line: rgba(52, 33, 18, 0.12);
-      --accent: #bf5a2a;
-      --accent-deep: #8f2f16;
-      --accent-soft: rgba(191, 90, 42, 0.14);
-      --sage: #31574a;
-      --warn: #8f4a16;
-      --danger: #a23428;
-      --shadow: 0 20px 60px rgba(77, 45, 20, 0.14);
-      --radius-xl: 28px;
-      --radius-lg: 20px;
-      --radius-md: 14px;
-      --sans: "Outfit", "Segoe UI", sans-serif;
-      --mono: "Space Mono", Consolas, monospace;
+      --paper: #f2f2ee;
+      --card: #ffffff;
+      --ink: #16181c;
+      --ink-2: #3f454e;
+      --muted: #5f6670;
+      --line: #dcdfe3;
+      --line-soft: #eceef0;
+      --accent: #2b46e0;
+      --accent-ink: #1f34b3;
+      --accent-soft: #e9edff;
+      --ok: #14735a;
+      --ok-soft: #e2f3ec;
+      --warn: #8a5a00;
+      --warn-soft: #fff0d0;
+      --danger: #b3261e;
+      --danger-soft: #fdeceb;
+      --mens: #4d7ac2;
+      --womens: #c4507f;
+      --kids: #d69a1c;
+      --font: "Archivo", "Helvetica Neue", Arial, sans-serif;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    .hidden { display: none !important; }
+
+    html { -webkit-text-size-adjust: 100%; }
 
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: var(--sans);
+      background: var(--paper);
       color: var(--ink);
-      background:
-        radial-gradient(circle at top left, rgba(255, 166, 77, 0.28), transparent 30%),
-        radial-gradient(circle at bottom right, rgba(49, 87, 74, 0.16), transparent 28%),
-        linear-gradient(180deg, #f6f0e7 0%, #eadbc6 100%);
+      font: 400 16px/1.45 var(--font);
     }
 
-    a {
-      color: var(--accent-deep);
-    }
+    body.modal-open { overflow: hidden; }
 
-    button,
-    input,
-    textarea,
-    select {
-      font: inherit;
-    }
+    h1, h2, h3, h4, p { margin: 0; }
+    a { color: var(--accent-ink); }
+    button, input, select, textarea { font: inherit; color: inherit; }
 
-    .app-shell {
-      width: min(1180px, calc(100% - 24px));
-      margin: 18px auto 40px;
-      padding-bottom: 150px;
-      display: grid;
-      gap: 18px;
-    }
-
-    .hero,
-    .panel,
-    .inventory-card {
-      min-width: 0;
-      background: var(--surface);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.75);
-      box-shadow: var(--shadow);
-    }
-
-    .hero {
-      padding: 28px;
-      border-radius: 32px;
-      display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.9fr);
-      gap: 18px;
-    }
-
-    .eyebrow {
-      margin-bottom: 10px;
-      font: 700 12px/1.2 var(--mono);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--accent-deep);
-    }
-
-    h1,
-    h2,
-    h3,
-    p {
-      margin: 0;
-    }
-
-    .hero h1 {
-      font-size: clamp(2.4rem, 6vw, 4.9rem);
-      line-height: 0.95;
-      letter-spacing: -0.06em;
-      max-width: 11ch;
-    }
-
-    .hero p {
-      margin-top: 16px;
-      max-width: 58ch;
-      line-height: 1.6;
-      color: var(--muted);
-      font-size: 1rem;
-    }
-
-    .hero-grid {
-      display: grid;
-      gap: 12px;
-      align-content: start;
-    }
-
-    .stat-chip,
-    .status-banner,
-    .flow-card,
-    .inventory-card,
-    .photo-tile,
-    .prompt-box,
-    .config-box,
-    .detail-card {
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.72);
-      border-radius: var(--radius-lg);
-    }
-
-    .stat-chip,
-    .status-banner,
-    .flow-card,
-    .detail-card {
-      padding: 18px;
-    }
-
-    .stat-grid,
-    .flow-grid,
-    .config-grid,
-    .detail-grid {
-      display: grid;
-      gap: 16px;
-    }
-
-    .stat-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .stat-value {
-      margin-top: 8px;
-      font-size: clamp(1.8rem, 4vw, 2.5rem);
-      font-weight: 700;
-      letter-spacing: -0.05em;
-    }
-
-    .stat-label,
-    .mini-label,
-    .helper,
-    .inventory-meta,
-    .empty-state,
-    .config-box p,
-    .status-banner p,
-    .flow-card p,
-    .detail-card p {
-      color: var(--muted);
-    }
-
-    .panel {
-      padding: 24px;
-      border-radius: var(--radius-xl);
-    }
-
-    .section-head {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: end;
-      margin-bottom: 18px;
-    }
-
-    .section-head h2 {
-      font-size: clamp(1.8rem, 4vw, 2.8rem);
-      letter-spacing: -0.05em;
-    }
-
-    .collapsible {
-      overflow: hidden;
-    }
-
-    .collapsible summary {
-      list-style: none;
-      cursor: pointer;
-    }
-
-    .collapsible summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .summary-pill {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.86);
-      border-radius: 999px;
-      padding: 14px 18px;
-      font: 700 0.82rem/1 var(--mono);
-      color: var(--accent-deep);
-    }
-
-    .summary-pill span:last-child {
-      font-size: 1rem;
-    }
-
-    .chart-summary-pill {
-      border-color: rgba(70, 118, 170, 0.28);
-      background: linear-gradient(135deg, rgba(224, 238, 255, 0.96) 0%, rgba(210, 231, 255, 0.92) 100%);
-      color: #244b77;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
-    }
-
-    .pill-row,
-    .toggle-row,
-    .button-row,
-    .summary-row,
-    .inventory-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .toolbar-compact {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .toolbar-label {
-      color: var(--muted);
-      font: 700 0.72rem/1 var(--mono);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .pill,
-    .toggle-pill,
-    .inventory-tag {
-      border-radius: 999px;
-      padding: 10px 14px;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.86);
-      font: 700 0.74rem/1 var(--mono);
-      color: var(--muted);
-    }
-
-    .pill.strong,
-    .inventory-tag.boxed {
-      color: var(--accent-deep);
-      background: rgba(255, 244, 236, 0.95);
-    }
-
-    .inventory-tag.no-box {
-      color: var(--warn);
-      background: rgba(255, 247, 237, 0.95);
-    }
-
-    .inventory-tag.gender-womens {
-      color: #a84c79;
-      background: rgba(253, 242, 248, 0.98);
-      border-color: rgba(236, 72, 153, 0.14);
-    }
-
-    .inventory-tag.gender-mens {
-      color: #336b98;
-      background: rgba(239, 246, 255, 0.98);
-      border-color: rgba(59, 130, 246, 0.14);
-    }
-
-    .inventory-tag.strike {
-      text-decoration: line-through;
-      text-decoration-thickness: 2px;
-    }
-
-    .inventory-tag.sold {
-      color: #7f1d1d;
-      background: rgba(254, 226, 226, 0.96);
-      border-color: rgba(239, 68, 68, 0.18);
-    }
-
-    .inventory-tag.draft {
-      color: #7a5a13;
-      background: rgba(254, 243, 199, 0.96);
-      border-color: rgba(245, 158, 11, 0.18);
-    }
-
-    .inventory-tag.empty {
-      min-width: 48px;
-      color: transparent;
-      background: rgba(255, 255, 255, 0.55);
-      border-color: rgba(52, 33, 18, 0.12);
-    }
-
-    .inventory-pill-button {
-      appearance: none;
-      border: 0;
-      background: transparent;
-      padding: 0;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .inventory-tag.ai {
-      color: var(--sage);
-      background: rgba(239, 248, 243, 0.96);
-    }
-
-    .inventory-tag.womens {
-      color: #9d3d6c;
-      background: rgba(252, 231, 243, 0.96);
-    }
-
-    .inventory-tag.mens {
-      color: #215b8f;
-      background: rgba(219, 234, 254, 0.96);
-    }
-
-    .gender-pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 28px;
-      border-radius: 999px;
-      padding: 7px 9px;
-      border: 1px solid var(--line);
-      font: 700 0.72rem/1 var(--mono);
-    }
-
-    .gender-pill.womens {
-      color: #9d3d6c;
-      background: rgba(252, 231, 243, 0.96);
-    }
-
-    .gender-pill.mens {
-      color: #215b8f;
-      background: rgba(219, 234, 254, 0.96);
-    }
-
-    .gender-pill.kids {
-      color: #6b4e16;
-      background: rgba(254, 243, 199, 0.96);
-    }
-
-    .toggle-pill {
-      cursor: pointer;
-      transition: 0.18s ease;
-    }
-
-    .toggle-pill.active {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-      transform: translateY(-1px);
-    }
-
-    #edit-box-toggle {
-      flex-direction: row;
-      align-items: center;
-      flex-wrap: nowrap;
-    }
-
-    #edit-box-toggle .toggle-pill {
-      width: auto;
-      flex: 1 1 0;
-    }
-
-    .flow-grid,
-    .detail-grid,
-    .inventory-grid {
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .field,
-    .field-stack {
-      display: grid;
-      gap: 8px;
-    }
-
-    .field-stack {
-      grid-column: 1 / -1;
-    }
-
-    label {
-      font-weight: 600;
-      font-size: 0.98rem;
-    }
-
-    input,
-    textarea,
-    select {
-      width: 100%;
-      border: 1px solid rgba(72, 48, 30, 0.16);
-      border-radius: 14px;
-      padding: 14px 15px;
-      color: var(--ink);
-      background: rgba(255, 255, 255, 0.96);
-      outline: none;
-      transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 104px;
-    }
-
-    input:focus,
-    textarea:focus,
-    select:focus {
-      border-color: rgba(191, 90, 42, 0.5);
-      box-shadow: 0 0 0 4px rgba(191, 90, 42, 0.14);
-      transform: translateY(-1px);
-    }
-
-    .helper,
-    .mini-label {
-      font-size: 0.88rem;
-      line-height: 1.45;
-    }
-
-    .button-row {
-      margin-top: 12px;
-    }
-
-    .upload-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 8px;
+    :focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
     }
 
     .sr-only {
@@ -465,394 +74,514 @@
       border: 0;
     }
 
-    .button {
-      appearance: none;
-      border: 0;
-      border-radius: 999px;
-      padding: 13px 18px;
-      cursor: pointer;
-      font-weight: 700;
-      transition: 0.18s ease;
-    }
-
-    .button:disabled {
-      opacity: 0.56;
-      cursor: wait;
-      transform: none;
-    }
-
-    .button.primary {
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+    /* ------------------------------------------------------------------
+       TOP BAR
+       ------------------------------------------------------------------ */
+    .abc-main-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--ink);
       color: #fff;
-      box-shadow: 0 14px 24px rgba(143, 47, 22, 0.2);
     }
 
-    .button.secondary {
-      background: #fff7f2;
-      color: var(--accent-deep);
-      border: 1px solid rgba(191, 90, 42, 0.16);
-    }
-
-    .button.sync-ok {
-      background: linear-gradient(135deg, #4da86f 0%, #2f7f51 100%);
-      color: #fff;
-      border: 1px solid rgba(47, 127, 81, 0.2);
-      box-shadow: 0 14px 24px rgba(47, 127, 81, 0.18);
-    }
-
-    .button.ghost {
-      background: rgba(255, 255, 255, 0.82);
-      color: var(--sage);
-      border: 1px solid rgba(49, 87, 74, 0.16);
-    }
-
-    .button:hover:not(:disabled) {
-      transform: translateY(-2px);
-    }
-
-    .prompt-box,
-    .config-box {
-      padding: 16px 18px;
-    }
-
-    .form-status {
-      margin-top: 14px;
-      padding: 14px 16px;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.82);
-      color: var(--muted);
-      line-height: 1.45;
-    }
-
-    .form-status.success {
-      color: var(--sage);
-      background: rgba(239, 248, 243, 0.95);
-      border-color: rgba(49, 87, 74, 0.18);
-    }
-
-    .form-status.error {
-      color: var(--danger);
-      background: rgba(255, 241, 240, 0.95);
-      border-color: rgba(162, 52, 40, 0.2);
-    }
-
-    .prompt-box {
-      margin-top: 14px;
-      background: linear-gradient(180deg, rgba(255, 248, 241, 0.94) 0%, rgba(255, 255, 255, 0.85) 100%);
-    }
-
-    .prompt-box strong,
-    .config-box strong,
-    .status-banner strong {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 0.92rem;
-    }
-
-    .photo-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      gap: 12px;
-      margin-top: 10px;
-    }
-
-    .photo-tile {
-      overflow: hidden;
-      min-height: 154px;
-      position: relative;
-    }
-
-    .photo-tile img {
-      width: 100%;
-      height: 154px;
-      object-fit: cover;
-      display: block;
-    }
-
-    .photo-caption {
-      padding: 10px 12px;
-      font-size: 0.82rem;
-      line-height: 1.35;
-      color: var(--muted);
-      background: rgba(255, 255, 255, 0.94);
-      border-top: 1px solid var(--line);
-    }
-
-    .inventory-list {
-      display: grid;
+    .abc-main-nav-in {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 12px;
     }
 
-    .inventory-card {
-      position: relative;
-      padding: 14px 16px;
-      overflow-x: auto;
-    }
-
-    .review-status-dot {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      width: 12px;
-      height: 12px;
-      border-radius: 999px;
-      border: 2px solid rgba(255, 255, 255, 0.92);
-      box-shadow: 0 0 0 1px rgba(140, 119, 102, 0.18);
-      background: #d7483e;
-    }
-
-    .review-status-dot.reviewed {
-      background: #2f8f58;
-    }
-
-    .inventory-card.gender-womens {
-      background: linear-gradient(180deg, rgba(253, 242, 248, 0.92) 0%, rgba(255, 255, 255, 0.88) 100%);
-      border-color: rgba(236, 72, 153, 0.14);
-    }
-
-    .inventory-card.gender-mens {
-      background: linear-gradient(180deg, rgba(239, 246, 255, 0.92) 0%, rgba(255, 255, 255, 0.88) 100%);
-      border-color: rgba(59, 130, 246, 0.14);
-    }
-
-    .inventory-card.gender-kids {
-      background: linear-gradient(180deg, rgba(254, 249, 195, 0.92) 0%, rgba(255, 255, 255, 0.88) 100%);
-      border-color: rgba(245, 158, 11, 0.16);
-    }
-
-    .inventory-card-highlight {
-      box-shadow: 0 0 0 3px rgba(70, 118, 170, 0.28), var(--shadow);
-      transition: box-shadow 0.2s ease;
-    }
-
-    .inventory-card h3 {
-      font-size: 1rem;
-      letter-spacing: -0.03em;
-    }
-
-    .inventory-meta {
-      margin-top: 2px;
-      font-size: 0.9rem;
-      line-height: 1.35;
-      word-break: break-word;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .inventory-line {
-      display: grid;
-      grid-template-columns: 78px 110px minmax(250px, 1.5fr) 68px 68px 96px 112px 128px;
-      gap: 10px;
-      align-items: center;
-      min-width: 900px;
-    }
-
-    .inventory-cell {
-      min-width: 0;
-    }
-
-    .inventory-head {
-      display: grid;
-      grid-template-columns: 78px 110px minmax(250px, 1.5fr) 68px 68px 96px 112px 128px;
-      gap: 10px;
-      align-items: center;
-      padding: 0 16px 10px;
-      color: var(--muted);
-      font: 700 0.72rem/1.2 var(--mono);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .inventory-head [data-sort-key] {
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .price {
-      font-size: 1.15rem;
+    .wordmark {
+      font-stretch: 125%;
       font-weight: 800;
-      letter-spacing: -0.04em;
-      color: var(--sage);
+      font-size: 0.95rem;
+      line-height: 1.1;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
     }
 
-    .photo-preview-wrap {
-      display: grid;
-      gap: 6px;
-      justify-items: start;
-    }
-
-    .photo-thumb {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 78px;
-      height: 78px;
-      padding: 0;
-      cursor: pointer;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      background: #fff;
-    }
-
-    .photo-thumb.primary {
-      width: 94px;
-      height: 94px;
-      background: #fffdf9;
-    }
-
-    .photo-thumb img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      background: #fff;
-    }
-
-    .photo-count {
+    .wordmark small {
+      display: block;
+      margin-top: 2px;
+      font-stretch: 100%;
+      font-weight: 500;
       font-size: 0.72rem;
-      color: var(--muted);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      letter-spacing: 0;
+      color: rgba(255, 255, 255, 0.68);
     }
 
-    .attachments-empty {
-      color: var(--muted);
-      font-size: 0.88rem;
+    .abc-main-nav-links { display: flex; gap: 4px; }
+
+    .abc-main-nav a {
+      text-decoration: none;
+      padding: 9px 13px;
+      border-radius: 9px;
+      font-weight: 650;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.78);
     }
 
-    .inventory-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      justify-content: flex-start;
-      align-items: flex-start;
-    }
-
-    .price-ai-meta-note {
-      font-size: 0.7rem;
-      line-height: 1.3;
-      color: var(--muted);
-      white-space: normal;
-    }
-
-    .price-ai-meta-note.locked {
-      color: var(--sage);
-      font-weight: 700;
-    }
-
-    .checkbox-group {
-      display: grid;
-      gap: 8px;
-      padding: 12px 14px;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.82);
-    }
-
-    .checkbox-option {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 0.92rem;
+    .abc-main-nav a.active {
+      background: #fff;
       color: var(--ink);
     }
 
-    .checkbox-option input {
-      width: 16px;
-      height: 16px;
-      accent-color: var(--sage);
-    }
-
-    .inventory-actions.end {
+    /* ------------------------------------------------------------------
+       PAGE LAYOUT
+       ------------------------------------------------------------------ */
+    .app-shell {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 18px 14px 130px;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      align-items: stretch;
+      gap: 16px;
     }
 
-    .inventory-status-stack {
+    .page-head {
       display: flex;
-      flex-direction: column;
-      gap: 8px;
-      align-items: flex-start;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px 24px;
     }
 
-    .sort-select {
-      width: auto;
-      min-width: 168px;
-      padding: 12px 14px;
-      border-radius: 999px;
+    .page-head h1 {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      font-stretch: 118%;
+      font-weight: 800;
+      font-size: clamp(1.7rem, 5vw, 2.3rem);
+      line-height: 1;
+      letter-spacing: -0.01em;
     }
 
-    .search-input {
-      min-width: 150px;
-      width: 150px;
-      padding: 12px 14px;
-      border-radius: 999px;
-    }
-
-    .mini-button {
+    .stat-strip {
+      display: flex;
+      flex: 1 1 auto;
+      max-width: 460px;
+      background: var(--card);
       border: 1px solid var(--line);
-      background: #fff;
-      color: var(--accent-deep);
-      border-radius: 999px;
-      padding: 8px 12px;
-      font: 700 0.72rem/1 var(--mono);
-      cursor: pointer;
-    }
-
-    .mini-button.price-ai-used {
-      color: #ffffff;
-      background: linear-gradient(135deg, #3f8f68 0%, #2c6c4d 100%);
-      border-color: rgba(49, 87, 74, 0.28);
-    }
-
-    .mini-button .mobile-label {
-      display: none;
-    }
-
-    .report-note {
-      margin-top: 10px;
-      color: var(--muted);
-      font-size: 0.88rem;
-      line-height: 1.4;
-    }
-
-    .inventory-summary {
-      margin-top: 12px;
-      padding: 12px 16px;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.78);
-      color: var(--sage);
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-
-    .chart-panel {
-      margin-bottom: 14px;
-      max-width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.72);
+      border-radius: 14px;
       overflow: hidden;
     }
 
-    .chart-panel-body {
-      min-width: 0;
-      padding: 14px;
+    .stat {
+      display: grid;
+      flex: 1;
+      gap: 2px;
+      padding: 9px 16px;
+      min-width: 84px;
     }
 
-    .chart-scroll {
-      width: 100%;
-      min-width: 0;
-      max-width: 100%;
-      overflow-x: auto;
-      overflow-y: hidden;
+    .stat + .stat { border-left: 1px solid var(--line); }
+
+    .stat strong {
+      font-stretch: 108%;
+      font-weight: 800;
+      font-size: 1.35rem;
+      line-height: 1.1;
     }
+
+    .stat span {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    /* ------------------------------------------------------------------
+       BUTTONS
+       ------------------------------------------------------------------ */
+    .button {
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1.5px solid transparent;
+      border-radius: 10px;
+      font-weight: 650;
+      line-height: 1.1;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+    }
+
+    .button:active:not(:disabled) { transform: translateY(1px); }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .button.primary { background: var(--ink); color: #fff; }
+    .button.primary:hover:not(:disabled) { background: #000; }
+
+    .button.secondary {
+      background: #fff;
+      border-color: var(--ink);
+      color: var(--ink);
+    }
+    .button.secondary:hover:not(:disabled) { background: var(--line-soft); }
+
+    .button.ghost {
+      background: transparent;
+      border-color: var(--line);
+      color: var(--ink-2);
+    }
+    .button.ghost:hover:not(:disabled) { background: var(--line-soft); }
+
+    .button.danger {
+      background: #fff;
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+    .button.danger:hover:not(:disabled) { background: var(--danger-soft); }
+
+    .button.sync-ok { border-color: var(--ok); color: var(--ok); }
+
+    .button.small { min-height: 38px; padding: 0 12px; font-size: 0.9rem; }
+
+    .icon-btn {
+      appearance: none;
+      display: inline-grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--line-soft);
+      color: var(--ink);
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    .icon-btn:hover { background: var(--line); }
+    .icon-btn svg { width: 20px; height: 20px; }
+
+    .mini-button {
+      appearance: none;
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 9px;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 650;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .mini-button:hover { background: var(--line-soft); }
+    .mini-button.price-ai-used { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
+
+    /* ------------------------------------------------------------------
+       FORM CONTROLS
+       ------------------------------------------------------------------ */
+    label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--ink-2);
+    }
+
+    input, textarea, select {
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      font-size: 16px;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(43, 70, 224, 0.18);
+    }
+
+    textarea { resize: vertical; min-height: 92px; line-height: 1.4; }
+
+    select {
+      appearance: none;
+      padding-right: 36px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235f6670' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      min-height: 0;
+      padding: 0;
+      accent-color: var(--ink);
+      flex: 0 0 auto;
+    }
+
+    .field, .field-stack { display: grid; gap: 6px; align-content: start; min-width: 0; }
+    .span-2, .field-stack { grid-column: 1 / -1; }
+
+    .form-grid, .edit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .helper, .hint {
+      font-size: 0.85rem;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+
+    .segmented {
+      display: inline-grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      border: 1.5px solid var(--ink);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .segmented .toggle-pill {
+      appearance: none;
+      min-height: 42px;
+      padding: 0 16px;
+      border: 0;
+      background: transparent;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .segmented .toggle-pill + .toggle-pill { border-left: 1.5px solid var(--ink); }
+    .segmented .toggle-pill.active { background: var(--ink); color: #fff; }
+
+    .toggle-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 22px;
+    }
+
+    .toggle-block { display: grid; gap: 6px; }
+
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .checkbox-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      font-size: 0.95rem;
+      font-weight: 550;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .form-status {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--line-soft);
+      color: var(--ink-2);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+    .form-status.success { background: var(--ok-soft); color: var(--ok); }
+    .form-status.error { background: var(--danger-soft); color: var(--danger); }
+
+    /* ------------------------------------------------------------------
+       TOOLBAR (search, filters, select, export)
+       ------------------------------------------------------------------ */
+    .toolbar {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+
+    .search-wrap {
+      position: relative;
+      display: flex;
+      gap: 8px;
+    }
+
+    .search-wrap svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    .search-input { padding-left: 38px; }
+    .search-input:placeholder-shown ~ #search-clear-button { display: none; }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 2px 0 4px;
+      scrollbar-width: none;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+
+    .chip {
+      appearance: none;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1.5px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--ink-2);
+      cursor: pointer;
+    }
+    .chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .chip.notice { background: var(--accent-soft); border-color: transparent; color: var(--accent-ink); cursor: default; }
+    .chip.notice button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      padding: 0 0 0 2px;
+      font-size: 1.1rem;
+      line-height: 1;
+      cursor: pointer;
+      color: inherit;
+    }
+
+    .toolbar-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+    }
+
+    .select-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--line-soft);
+      color: var(--ink-2);
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .menu { position: relative; }
+
+    .menu > summary {
+      list-style: none;
+      cursor: pointer;
+    }
+    .menu > summary::-webkit-details-marker { display: none; }
+    .menu > summary::after {
+      content: "";
+      width: 8px;
+      height: 8px;
+      margin-left: 2px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: translateY(-2px) rotate(45deg);
+    }
+
+    .menu-panel {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 30;
+      width: min(340px, calc(100vw - 28px));
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 14px 40px rgba(22, 24, 28, 0.18);
+    }
+
+    .menu-item {
+      appearance: none;
+      display: grid;
+      gap: 1px;
+      width: 100%;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+    .menu-item:hover { background: var(--line-soft); }
+    .menu-item strong { font-size: 0.95rem; }
+    .menu-item span { font-size: 0.8rem; color: var(--muted); }
+    .menu-note { padding: 8px 12px 6px; font-size: 0.8rem; line-height: 1.4; color: var(--muted); border-top: 1px solid var(--line-soft); margin-top: 4px; }
+
+    /* ------------------------------------------------------------------
+       TOOLS (collapsible chart + sold match)
+       ------------------------------------------------------------------ */
+    .tools { display: grid; gap: 8px; }
+
+    .tool {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .tool > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 16px;
+      font-weight: 650;
+      cursor: pointer;
+      list-style: none;
+    }
+    .tool > summary::-webkit-details-marker { display: none; }
+    .tool > summary::after {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid var(--muted);
+      border-bottom: 2px solid var(--muted);
+      transform: rotate(45deg);
+      transition: transform 0.15s;
+    }
+    .tool[open] > summary::after { transform: rotate(-135deg); }
+
+    .tool-stack { display: grid; grid-auto-rows: max-content; gap: 8px; padding: 0 12px 12px; }
+
+    .chart-panel-body, .match-panel-body { padding: 4px 16px 16px; display: grid; gap: 12px; min-width: 0; }
+
+    .chart-scroll { width: 100%; max-width: 100%; overflow-x: auto; }
+
+    .report-note { color: var(--muted); font-size: 0.88rem; line-height: 1.4; }
 
     .brand-size-chart {
       width: max-content;
@@ -862,965 +591,907 @@
       font-size: 0.9rem;
     }
 
-    .brand-size-chart th,
-    .brand-size-chart td {
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(161, 120, 82, 0.14);
+    .brand-size-chart th, .brand-size-chart td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--line-soft);
       text-align: center;
       white-space: nowrap;
     }
 
-    .brand-size-chart th:first-child,
-    .brand-size-chart td:first-child {
+    .brand-size-chart th:first-child, .brand-size-chart td:first-child {
       text-align: left;
       position: sticky;
       left: 0;
-      background: rgba(255, 252, 247, 0.96);
+      background: #fff;
       z-index: 1;
     }
 
     .brand-size-chart thead th {
       position: sticky;
       top: 0;
-      background: rgba(255, 248, 240, 0.98);
-      color: var(--accent-deep);
-      font: 700 0.74rem/1.1 var(--mono);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      background: var(--line-soft);
+      font-size: 0.8rem;
+      font-weight: 700;
       z-index: 2;
     }
-
-    .brand-size-chart thead th:first-child {
-      z-index: 3;
-    }
-
-    .brand-size-chart .adult-divider {
-      border-left: 2px solid rgba(161, 120, 82, 0.28);
-    }
-
-    .brand-size-chart tbody tr:last-child td {
-      border-bottom: none;
-    }
-
-    .brand-size-brand {
-      font-weight: 700;
-      color: var(--ink);
-    }
+    .brand-size-chart thead th:first-child { z-index: 3; }
+    .brand-size-chart .adult-divider { border-left: 2px solid var(--ink); }
+    .brand-size-chart tbody tr:last-child td { border-bottom: 0; }
+    .brand-size-brand { font-weight: 700; }
 
     .chart-count {
       display: inline-flex;
       min-width: 32px;
       justify-content: center;
       padding: 4px 8px;
-      border-radius: 999px;
-      background: rgba(200, 220, 210, 0.42);
-      color: var(--sage-deep);
+      border-radius: 8px;
+      background: var(--accent-soft);
+      color: var(--accent-ink);
       font-weight: 700;
     }
+    .chart-count.empty { background: transparent; color: var(--muted); font-weight: 500; font-size: 0; }
+    .chart-count.empty::before { content: "-"; font-size: 0.9rem; }
+    .chart-filter-button { border: 0; cursor: pointer; font: inherit; font-weight: 700; }
+    .chart-filter-button.active { background: var(--ink); color: #fff; }
 
-    .chart-count.empty {
-      background: transparent;
-      color: var(--muted);
-      font-weight: 500;
-      font-size: 0;
-    }
+    .match-toolbar, .match-summary-row, .match-card-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .match-results { display: grid; gap: 10px; }
+    .match-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fff; }
+    .match-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; margin-top: 8px; font-size: 0.9rem; }
+    .match-card-actions { margin-top: 12px; }
+    .match-group-title { margin-top: 4px; font-weight: 700; color: var(--ink-2); }
+    .match-pill-strong, .match-pill-reviewed { background: var(--ok-soft); color: var(--ok); }
+    .match-pill-possible { background: var(--warn-soft); color: var(--warn); }
+    .match-pill-mismatch { background: var(--danger-soft); color: var(--danger); }
 
-    .chart-count.empty::before {
-      content: '-';
-      font-size: 0.9rem;
-    }
-
-    .match-panel-body {
-      display: grid;
-      gap: 12px;
-      padding: 14px;
-    }
-
-    .match-toolbar {
+    /* ------------------------------------------------------------------
+       INVENTORY LIST + CARDS
+       ------------------------------------------------------------------ */
+    .list-head {
       display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .match-summary-row {
-      display: flex;
-      gap: 10px;
       flex-wrap: wrap;
       align-items: center;
-    }
-
-    .match-results {
-      display: grid;
-      gap: 10px;
-    }
-
-    .match-card {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 12px 14px;
-      background: rgba(255, 255, 255, 0.78);
-    }
-
-    .match-card strong {
-      color: var(--ink);
-    }
-
-    .match-card-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px 16px;
-      margin-top: 8px;
-      font-size: 0.92rem;
-    }
-
-    .match-card-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-    }
-
-    .match-group-title {
-      margin: 4px 0 0;
-      color: var(--accent-deep);
-      font: 700 0.8rem/1 var(--mono);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .match-pill-strong {
-      border-color: rgba(57, 125, 90, 0.24);
-      background: rgba(219, 240, 230, 0.82);
-      color: #255b43;
-    }
-
-    .match-pill-possible {
-      border-color: rgba(181, 137, 48, 0.24);
-      background: rgba(250, 238, 205, 0.82);
-      color: #7a5a1e;
-    }
-
-    .match-pill-reviewed {
-      border-color: rgba(57, 125, 90, 0.24);
-      background: rgba(219, 240, 230, 0.82);
-      color: #255b43;
-    }
-
-    .match-pill-mismatch {
-      border-color: rgba(196, 84, 84, 0.24);
-      background: rgba(251, 226, 226, 0.82);
-      color: #8a3131;
-    }
-
-    .chart-filter-button {
-      border: none;
-      cursor: pointer;
-      font: inherit;
-    }
-
-    .chart-filter-button.active {
-      background: linear-gradient(135deg, #3f8f68 0%, #2c6c4d 100%);
-      color: #ffffff;
-    }
-
-    .bottom-sticky-card {
-      position: fixed;
-      left: 50%;
-      bottom: 14px;
-      transform: translateX(-50%);
-      width: min(calc(100% - 24px), 1180px);
-      display: grid;
-      gap: 10px;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      background: rgba(255, 252, 247, 0.96);
-      backdrop-filter: blur(12px);
-      box-shadow: 0 18px 48px rgba(20, 12, 6, 0.16);
-      z-index: 40;
-    }
-
-    .bottom-sticky-top {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .bottom-sync-pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 44px;
-      padding: 10px 14px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: #fff;
-      color: var(--accent-deep);
-      font: 700 0.78rem/1.2 var(--mono);
-      text-align: center;
-      white-space: nowrap;
-    }
-
-    .modal {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      background: rgba(20, 12, 6, 0.72);
-      z-index: 1000;
-    }
-
-    .modal.hidden {
-      display: none !important;
-    }
-
-    .modal-card {
-      position: relative;
-      width: min(100%, 760px);
-      max-height: calc(100vh - 36px);
-      padding: 14px;
-      border-radius: 24px;
-      background: rgba(255, 252, 247, 0.98);
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
-    }
-
-    .viewer-toolbar {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      right: 12px;
-      display: flex;
       justify-content: space-between;
-      align-items: center;
+      gap: 8px 16px;
+    }
+
+    .list-head h2 {
+      font-stretch: 112%;
+      font-weight: 800;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: baseline;
       gap: 10px;
-      z-index: 5;
+    }
+
+    .list-head h2 .count { font-stretch: 100%; font-weight: 500; font-size: 0.9rem; color: var(--muted); }
+    @media (max-width: 480px) { .list-head h2 { font-size: 1.05rem; } }
+
+    .inventory-head { display: flex; align-items: center; gap: 4px; }
+    .inventory-head .sort-label { font-size: 0.85rem; color: var(--muted); margin-right: 4px; }
+
+    .sort-btn {
+      appearance: none;
+      min-height: 34px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink-2);
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+    .sort-btn:hover { background: var(--line-soft); }
+    .sort-btn.active { background: var(--ink); color: #fff; }
+    .sort-btn.active[data-dir="asc"]::after { content: " \2191"; }
+    .sort-btn.active[data-dir="desc"]::after { content: " \2193"; }
+
+    .inventory-list {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .inventory-card {
+      position: relative;
+      padding: 12px 12px 10px 17px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--card);
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .inventory-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 5px;
+      background: var(--stripe, var(--line));
+    }
+    .inventory-card.gender-mens { --stripe: var(--mens); }
+    .inventory-card.gender-womens { --stripe: var(--womens); }
+    .inventory-card.gender-kids { --stripe: var(--kids); }
+
+    .inventory-card-highlight { box-shadow: 0 0 0 3px var(--accent); transition: box-shadow 0.2s; }
+
+    .card-main {
+      display: grid;
+      grid-template-columns: 84px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .card-photo { position: relative; width: 84px; height: 84px; }
+
+    .photo-thumb {
+      appearance: none;
+      display: block;
+      width: 84px;
+      height: 84px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .photo-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .is-sold .photo-thumb img { filter: grayscale(1); opacity: 0.6; }
+
+    .photo-none {
+      display: grid;
+      place-items: center;
+      width: 84px;
+      height: 84px;
+      border: 1.5px dashed var(--line);
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-align: center;
+    }
+
+    .photo-count {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: rgba(22, 24, 28, 0.78);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 600;
       pointer-events: none;
     }
 
-    .viewer-toolbar-actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      pointer-events: auto;
+    .select-box {
+      position: absolute;
+      left: 4px;
+      top: 4px;
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 0 0 1px var(--line);
+      cursor: pointer;
     }
 
-    .viewer-toolbar .button,
-    .viewer-toolbar .pill {
-      pointer-events: auto;
+    .card-info {
+      min-width: 0;
+      cursor: pointer;
+      border-radius: 8px;
     }
+
+    .card-info h3 {
+      font-weight: 750;
+      font-size: 1.05rem;
+      line-height: 1.2;
+      letter-spacing: -0.005em;
+      overflow-wrap: anywhere;
+    }
+
+    .card-title {
+      margin-top: 2px;
+      color: var(--ink-2);
+      font-size: 0.9rem;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+
+    .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+
+    .tag {
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: var(--line-soft);
+      color: var(--ink-2);
+      font-size: 0.76rem;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+    .tag.box { background: var(--accent-soft); color: var(--accent-ink); }
+    .tag.sold { background: var(--danger-soft); color: var(--danger); }
+    .tag.draft { background: var(--warn-soft); color: var(--warn); }
+
+    .card-side { display: grid; justify-items: end; gap: 8px; }
+
+    .size-tile {
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      gap: 2px;
+      min-width: 58px;
+      max-width: 84px;
+      height: 58px;
+      padding: 3px 6px;
+      border: 2px solid var(--ink);
+      border-radius: 7px;
+      background: #fff;
+      line-height: 1;
+    }
+    .size-tile .size-cap { font-size: 0.66rem; font-weight: 600; color: var(--muted); }
+    .size-tile .size-val {
+      font-stretch: 112%;
+      font-weight: 800;
+      font-size: 1.3rem;
+      max-width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .size-tile.long .size-val { font-size: 1rem; }
+    .size-tile.xlong .size-val { font-size: 0.78rem; }
+
+    .price {
+      font-stretch: 108%;
+      font-weight: 800;
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+    }
+
+    .card-foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line-soft);
+    }
+
+    .card-status { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 0.78rem; color: var(--muted); }
+    .card-status .review-state::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 5px;
+      border-radius: 50%;
+      background: #d7483e;
+    }
+    .card-status .review-state.reviewed::before { background: #2f8f58; }
+    .card-status .locked { color: var(--ok); font-weight: 650; }
+
+    .card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .card-actions .mini-button.edit { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .card-actions .mini-button.danger { color: var(--danger); }
+
+    .empty-state {
+      padding: 32px 20px;
+      border: 1.5px dashed var(--line);
+      border-radius: 14px;
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .empty-state strong { display: block; color: var(--ink); font-size: 1.05rem; margin-bottom: 2px; }
+
+    .build-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 16px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    /* ------------------------------------------------------------------
+       BOTTOM BAR
+       ------------------------------------------------------------------ */
+    .bottom-sticky-card {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 60;
+      background: #fff;
+      border-top: 1px solid var(--line);
+      padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .bottom-in {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bottom-info { flex: 1; min-width: 0; }
+
+    .inventory-summary {
+      font-weight: 700;
+      font-size: 0.92rem;
+      line-height: 1.25;
+    }
+
+    .bottom-sync-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+      font-size: 0.76rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bottom-sync-pill::before {
+      content: "";
+      flex: 0 0 auto;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #b8bdc4;
+    }
+    .bottom-sync-pill.ok::before { background: #2f8f58; }
+
+    /* ------------------------------------------------------------------
+       TOAST (replaces the old banner)
+       ------------------------------------------------------------------ */
+    .status-banner {
+      position: fixed;
+      top: 62px;
+      left: 50%;
+      z-index: 1300;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      width: min(calc(100% - 24px), 520px);
+      padding: 12px 12px 12px 14px;
+      border-radius: 12px;
+      border-left: 5px solid var(--ok);
+      background: var(--ink);
+      color: #fff;
+      box-shadow: 0 12px 34px rgba(22, 24, 28, 0.3);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -10px);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .status-banner.visible { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+    .status-banner.warning { border-left-color: #f0b429; }
+    .status-banner.error { border-left-color: #ff6b5e; }
+    .status-banner .toast-text { flex: 1; min-width: 0; }
+    .status-banner strong { display: block; font-size: 0.95rem; }
+    .status-banner p { margin-top: 1px; font-size: 0.85rem; line-height: 1.35; color: rgba(255, 255, 255, 0.82); overflow-wrap: anywhere; }
+    .toast-close {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: #fff;
+      font-size: 1.4rem;
+      line-height: 1;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      opacity: 0.8;
+    }
+
+    /* ------------------------------------------------------------------
+       SHEETS (Add, Edit, Card, Price AI) - slide up on phones, centered on desktop
+       ------------------------------------------------------------------ */
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      background: rgba(22, 24, 28, 0.55);
+    }
+    .modal.hidden { display: none !important; }
+
+    .sheet {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-height: 94dvh;
+      background: var(--paper);
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -12px 40px rgba(22, 24, 28, 0.25);
+      overflow: hidden;
+      animation: sheet-in 0.22s ease-out;
+    }
+
+    @keyframes sheet-in {
+      from { transform: translateY(28px); opacity: 0; }
+      to { transform: none; opacity: 1; }
+    }
+
+    @media (min-width: 760px) {
+      .modal { align-items: center; padding: 24px; }
+      .sheet { width: min(100%, 720px); max-height: calc(100dvh - 48px); border-radius: 20px; }
+      .sheet.narrow { width: min(100%, 560px); }
+    }
+
+    .sheet-form { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+
+    .sheet-head {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 12px 12px 18px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .sheet-head h2 { font-stretch: 112%; font-weight: 800; font-size: 1.2rem; line-height: 1.15; }
+    .sheet-head p { margin-top: 2px; font-size: 0.85rem; color: var(--muted); }
+
+    .sheet-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 14px 14px 20px;
+      display: grid;
+      grid-auto-rows: max-content;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .sheet-foot {
+      flex: 0 0 auto;
+      display: grid;
+      gap: 8px;
+      padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+      background: #fff;
+      border-top: 1px solid var(--line);
+    }
+    .sheet-foot .form-status:empty { display: none; }
+    .foot-buttons { display: flex; gap: 8px; }
+    .foot-buttons .button { flex: 1; }
+    .foot-buttons .button.primary { flex: 2; }
+
+    .group {
+      padding: 14px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .group-head h3 { font-weight: 750; font-size: 1.02rem; }
+    .group-head .count { font-size: 0.85rem; color: var(--muted); }
+
+    .fold { border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden; }
+    .fold > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      list-style: none;
+    }
+    .fold > summary::-webkit-details-marker { display: none; }
+    .fold > summary::after {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid var(--muted);
+      border-bottom: 2px solid var(--muted);
+      transform: rotate(45deg);
+      transition: transform 0.15s;
+    }
+    .fold[open] > summary::after { transform: rotate(-135deg); }
+    .fold-body { padding: 2px 14px 14px; display: grid; gap: 12px; }
+
+    .help-note { font-size: 0.85rem; line-height: 1.45; color: var(--ink-2); display: grid; gap: 6px; }
+    .help-note strong { color: var(--ink); }
+
+    .upload-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .upload-actions .button { flex: 1 1 0; min-width: 96px; }
+
+    /* Photo tiles in the Add sheet */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .photo-grid:empty { display: none; }
+
+    .photo-tile {
+      position: relative;
+      aspect-ratio: 1;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .photo-tile img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+    .tile-badge {
+      position: absolute;
+      left: 6px;
+      top: 6px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .tile-remove {
+      appearance: none;
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(22, 24, 28, 0.8);
+      color: #fff;
+      font-size: 1.2rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    /* Photo manager inside the Edit sheet */
+    .edit-photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    @media (min-width: 560px) { .edit-photo-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+    .ep-tile {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .ep-tile.is-main { border: 2px solid var(--accent); }
+
+    .ep-img {
+      appearance: none;
+      display: block;
+      width: 100%;
+      aspect-ratio: 1;
+      padding: 0;
+      border: 0;
+      background: #fff;
+      cursor: pointer;
+    }
+    .ep-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+    .ep-actions {
+      display: flex;
+      border-top: 1px solid var(--line);
+    }
+
+    .ep-actions button {
+      appearance: none;
+      flex: 1;
+      display: grid;
+      place-items: center;
+      min-height: 42px;
+      border: 0;
+      background: #fff;
+      color: var(--ink-2);
+      cursor: pointer;
+    }
+    .ep-actions button + button { border-left: 1px solid var(--line); }
+    .ep-actions button:hover { background: var(--line-soft); }
+    .ep-actions svg { width: 18px; height: 18px; }
+    .ep-actions .ep-delete { color: var(--danger); }
+
+    .ep-add {
+      appearance: none;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 4px;
+      min-height: 100px;
+      border: 1.5px dashed var(--ink-2);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--ink-2);
+      font-weight: 650;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .ep-add svg { width: 22px; height: 22px; }
+
+    .edit-photo-grid.is-busy { opacity: 0.55; pointer-events: none; }
+
+    .danger-zone { display: flex; flex-wrap: wrap; gap: 8px; }
+    .danger-zone .button { flex: 1 1 140px; }
+
+    /* Card view sheet */
+    .card-view-photos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .card-view-photos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }
+    .card-view-empty { grid-column: 1 / -1; display: grid; place-items: center; min-height: 120px; border: 1.5px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 0.85rem; }
+    .card-view-list { display: grid; gap: 6px; margin: 0; font-size: 0.92rem; }
+    .card-view-list div { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 10px; }
+    .card-view-list dt { color: var(--muted); }
+    .card-view-list dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+
+    /* Price AI */
+    .price-ai-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    @media (min-width: 560px) { .price-ai-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .price-ai-card { padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+    .price-ai-card .mini-label { font-size: 0.8rem; color: var(--muted); }
+    .price-ai-card strong { display: block; margin-top: 4px; font-stretch: 108%; font-size: 1.35rem; font-weight: 800; }
+    .price-ai-meta { display: grid; gap: 6px; font-size: 0.88rem; line-height: 1.4; color: var(--ink-2); }
+    .price-ai-meta span { display: block; }
+    .price-ai-actions { display: grid; gap: 8px; grid-template-columns: 1fr; }
+    @media (min-width: 560px) { .price-ai-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+    /* ------------------------------------------------------------------
+       PHOTO VIEWER (full screen, dark)
+       ------------------------------------------------------------------ */
+    #photo-modal { z-index: 1100; background: #0d0f12; align-items: stretch; padding: 0; }
+
+    .viewer-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      color: #fff;
+    }
+
+    .viewer-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+    }
+    .viewer-top .icon-btn { background: #232830; color: #fff; }
+    .viewer-top .icon-btn:hover { background: #333a45; }
+    .viewer-top .pill { background: #232830; color: #fff; }
+    .viewer-counter { margin-left: auto; font-size: 0.9rem; color: rgba(255, 255, 255, 0.75); }
+
+    .viewer-body {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+    }
+
+    .modal-image-stage { position: relative; width: 100%; max-width: 1000px; }
 
     .modal-image {
+      display: block;
       width: 100%;
-      max-height: calc(100vh - 120px);
+      max-height: calc(100dvh - 190px);
       object-fit: contain;
-      display: block;
-      border-radius: 18px;
-      background: #f2ece4;
+      border-radius: 8px;
+      background: #000;
     }
 
-    .modal-image-stage {
-      position: relative;
-    }
-
-    .crop-overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-      display: none;
-      cursor: crosshair;
-      touch-action: none;
-    }
-
-    .crop-overlay.active {
-      display: block;
-    }
-
+    .crop-overlay { position: absolute; inset: 0; z-index: 1; display: none; cursor: crosshair; touch-action: none; }
+    .crop-overlay.active { display: block; }
     .crop-mask {
       position: absolute;
-      border: 2px solid rgba(191, 90, 42, 0.95);
-      background: rgba(191, 90, 42, 0.16);
-      box-shadow: 0 0 0 9999px rgba(24, 16, 10, 0.34);
-      border-radius: 8px;
+      border: 2px solid #fff;
+      background: rgba(43, 70, 224, 0.2);
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+      border-radius: 4px;
       pointer-events: none;
     }
 
     .viewer-arrow {
       position: absolute;
       top: 50%;
+      z-index: 2;
       transform: translateY(-50%);
       width: 44px;
       height: 44px;
-      border-radius: 999px;
       border: 0;
-      background: rgba(36, 23, 15, 0.78);
+      border-radius: 50%;
+      background: rgba(22, 24, 28, 0.7);
       color: #fff;
-      font-size: 1.35rem;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .viewer-arrow.prev {
-      left: 12px;
-    }
-
-    .viewer-arrow.next {
-      right: 12px;
-    }
-
-    .edit-modal-card {
-      position: relative;
-      width: min(100%, 760px);
-      max-height: calc(100vh - 36px);
-      overflow: auto;
-      padding: 18px;
-      border-radius: 24px;
-      background: rgba(255, 252, 247, 0.98);
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
-    }
-
-    .price-ai-modal-card {
-      position: relative;
-      width: min(100%, 640px);
-      max-height: calc(100vh - 36px);
-      overflow: auto;
-      padding: 20px;
-      border-radius: 24px;
-      background: rgba(255, 252, 247, 0.98);
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
-    }
-
-    .single-card-modal-card {
-      position: relative;
-      width: min(100%, 760px);
-      max-height: calc(100vh - 36px);
-      overflow: auto;
-      padding: 20px;
-      border-radius: 24px;
-      background: rgba(255, 252, 247, 0.98);
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
-    }
-
-    .price-ai-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin: 14px 0;
-    }
-
-    .price-ai-card {
-      padding: 14px;
-      border-radius: 18px;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.88);
-    }
-
-    .price-ai-card strong {
-      display: block;
-      margin-top: 6px;
       font-size: 1.5rem;
-      letter-spacing: -0.04em;
-      color: var(--sage);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+    .viewer-arrow.prev { left: 10px; }
+    .viewer-arrow.next { right: 10px; }
+
+    .viewer-toolbar {
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+      background: #15181d;
     }
 
-    .price-ai-meta {
-      display: grid;
+    .viewer-toolbar-actions {
+      display: flex;
       gap: 8px;
-      margin: 12px 0 16px;
-      color: var(--muted);
-      line-height: 1.45;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .viewer-toolbar-actions::-webkit-scrollbar { display: none; }
+
+    .viewer-toolbar .button {
+      flex: 0 0 auto;
+      min-height: 44px;
+      background: #232830;
+      border-color: #3a414c;
+      color: #fff;
+    }
+    .viewer-toolbar .button:hover:not(:disabled) { background: #2f3641; }
+    .viewer-toolbar .button.secondary { background: #fff; color: var(--ink); border-color: #fff; }
+    .viewer-toolbar .button.danger { color: #ff8f86; border-color: #6b2b27; }
+
+    /* ------------------------------------------------------------------
+       LARGER SCREENS
+       ------------------------------------------------------------------ */
+    @media (min-width: 640px) {
+      .page-head h1 { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
     }
 
-    .price-ai-meta span {
-      display: block;
+    @media (min-width: 1000px) {
+      .inventory-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
-    .edit-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
+    @media (max-width: 420px) {
+      .stat { min-width: 0; padding: 8px 12px; }
+      .stat-strip { width: 100%; }
+      .stat { flex: 1; }
+      .card-main { grid-template-columns: 76px minmax(0, 1fr) auto; gap: 10px; }
+      .card-photo, .photo-thumb, .photo-none { width: 76px; height: 76px; }
+      .card-actions { width: 100%; }
+      .card-actions .mini-button { flex: 1 1 0; padding: 0 6px; }
+      .card-actions .mini-button.edit { flex: 1.4 1 0; }
+      .match-card-grid { grid-template-columns: 1fr; }
     }
 
-    .empty-state {
-      padding: 28px;
-      border-radius: var(--radius-lg);
-      border: 1px dashed rgba(52, 33, 18, 0.24);
-      background: rgba(255, 255, 255, 0.46);
-      text-align: center;
-      line-height: 1.6;
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
     }
-
-    .status-banner.success {
-      background: rgba(239, 248, 243, 0.95);
-      border-color: rgba(49, 87, 74, 0.18);
-    }
-
-    .status-banner.warning {
-      background: rgba(255, 248, 238, 0.95);
-      border-color: rgba(191, 90, 42, 0.22);
-    }
-
-    .status-banner.error {
-      background: rgba(255, 241, 240, 0.95);
-      border-color: rgba(162, 52, 40, 0.2);
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    @media (max-width: 900px) {
-      .hero,
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .app-shell {
-        width: min(100% - 16px, 1180px);
-        margin-top: 10px;
-      }
-
-      .hero,
-      .panel {
-        padding: 18px;
-        border-radius: 24px;
-      }
-
-      .stat-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-
-      .stat-chip {
-        padding: 10px;
-      }
-
-      .stat-value {
-        font-size: 1.05rem;
-      }
-
-      .stat-label {
-        font-size: 0.62rem;
-      }
-
-      .button,
-      .toggle-pill,
-      .pill {
-        width: 100%;
-        justify-content: center;
-        text-align: center;
-      }
-
-      .button-row,
-      .toggle-row {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .inventory-toolbar {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 8px;
-      }
-
-      .chart-panel-body {
-        padding: 12px;
-      }
-
-      .toolbar-compact {
-        display: grid;
-        grid-template-columns: auto 1fr 1fr;
-        gap: 8px;
-        align-items: center;
-      }
-
-      .toolbar-compact .button {
-        width: 100%;
-      }
-
-        .sort-select {
-          min-width: 0;
-          width: 100%;
-        }
-
-        .search-input {
-          min-width: 0;
-          width: 100%;
-        }
-
-      .photo-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .inventory-head {
-        display: none;
-      }
-
-      .inventory-line { min-width: 900px; }
-
-      .inventory-line .inventory-actions .mini-button[data-price-ai-id] {
-        min-width: 42px;
-        padding: 8px 10px;
-      }
-
-      .inventory-line .inventory-actions .mini-button[data-price-ai-id] .desktop-label {
-        display: none;
-      }
-
-      .inventory-line .inventory-actions .mini-button[data-price-ai-id] .mobile-label {
-        display: inline;
-      }
-
-      .modal {
-        padding: 0;
-      }
-
-      .modal-card {
-        width: 100vw;
-        max-height: 100vh;
-        padding: 0;
-        border-radius: 0;
-        background: transparent;
-        box-shadow: none;
-      }
-
-      .modal-image {
-        max-height: 100vh;
-        border-radius: 0;
-        background: transparent;
-      }
-
-      .viewer-toolbar {
-        top: 10px;
-        left: 10px;
-        right: 10px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-      }
-
-      .viewer-toolbar-actions {
-        flex-wrap: wrap;
-        gap: 8px;
-        max-width: calc(100vw - 20px);
-      }
-
-      .viewer-toolbar .button,
-      .viewer-toolbar .pill {
-        width: auto;
-        font-size: 0.82rem;
-        padding: 10px 12px;
-      }
-
-      .viewer-arrow {
-        width: 40px;
-        height: 40px;
-        background: rgba(20, 12, 6, 0.58);
-      }
-
-      .viewer-arrow.prev {
-        left: 8px;
-      }
-
-      .viewer-arrow.next {
-        right: 8px;
-      }
-
-      .edit-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .price-ai-modal-card {
-        width: min(100%, 640px);
-        padding: 16px;
-        border-radius: 20px;
-      }
-
-      .price-ai-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .bottom-sticky-card {
-        left: 12px;
-        right: 12px;
-        bottom: 12px;
-        transform: none;
-        width: auto;
-        padding: 12px;
-      }
-
-      .bottom-sticky-top {
-        grid-template-columns: 1fr;
-      }
-
-      .bottom-sync-pill {
-        white-space: normal;
-      }
-
-      .bottom-sticky-card .report-note {
-        display: none;
-      }
-    }
-  
-    .abc-main-nav {
-      width: min(1180px, calc(100% - 24px)); margin: 18px auto 0; padding: 10px 14px;
-      display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
-      background:var(--surface); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.75);
-      border-radius:22px; box-shadow:var(--shadow);
-    }
-    .abc-main-nav-links { display:flex; gap:8px; flex-wrap:wrap; }
-    .abc-main-nav a { text-decoration:none; padding:10px 16px; border-radius:999px; font-weight:700; color:var(--muted); }
-    .abc-main-nav a.active { background:linear-gradient(135deg,var(--accent),var(--accent-deep)); color:#fff; }
-    @media (max-width:600px) {
-      .abc-main-nav-links { width:100%; }
-      .abc-main-nav a { flex:1; text-align:center; padding:9px 8px; font-size:.82rem; }
-    }
-
   </style>
 </head>
 <body>
 
   <header class="abc-main-nav">
-    <strong>ABC IS FOR XYZ · Shoe Inventory System</strong>
-    <nav class="abc-main-nav-links">
-      <a class="active" href="./index.html">Inventory</a>
-      <a href="./marketing.html">Marketing</a>
-    </nav>
+    <div class="abc-main-nav-in">
+      <div class="wordmark">ABC IS FOR XYZ<small>Shoe inventory</small></div>
+      <nav class="abc-main-nav-links" aria-label="Main">
+        <a class="active" href="./index.html">Inventory</a>
+        <a href="./marketing.html">Marketing</a>
+      </nav>
+    </div>
   </header>
 
-  <div class="app-shell">
-    <section class="hero">
-      <div>
-        <div class="eyebrow">Shoe Inventory System</div>
-        <h1>Shoe inventory built for phone-first intake.</h1>
-        <p>Capture up to four photos, answer whether the pair has a box, save brand, description, size, and price, and optionally run an AI-assisted lookup from your box or shoe photos before storing everything in Supabase.</p>
-      </div>
-      <div class="hero-grid">
-        <div class="status-banner warning" id="connection-banner">
-          <strong id="connection-banner-title">Waiting for setup</strong>
-          <p id="connection-banner-body">Add your Supabase URL and anon key near the top of this file, then the app can upload photos and save inventory from GitHub Pages.</p>
-          <p id="inventory-status-version" style="margin-top:10px;">Mobile Build 04.12.26-1</p>
-          <p id="inventory-status-updated" style="margin-top:4px;">Updated: Loading...</p>
-          <p id="inventory-status-sync" style="margin-top:4px;">Sync status: Waiting for first sync...</p>
-        </div>
-        <div class="stat-grid">
-          <article class="stat-chip">
-            <div class="stat-label" id="saved-label">Pairs saved</div>
-            <div class="stat-value" id="total-pairs">0</div>
-          </article>
-          <article class="stat-chip">
-            <div class="stat-label">Pairs sold</div>
-            <div class="stat-value" id="sold-count">0</div>
-          </article>
-          <article class="stat-chip">
-            <div class="stat-label">With box</div>
-            <div class="stat-value" id="boxed-count">0</div>
-          </article>
-        </div>
+  <!-- Pop-up message (saved, error, etc.). It hides itself after a few seconds. -->
+  <div class="status-banner warning" id="connection-banner" role="status" aria-live="polite">
+    <div class="toast-text">
+      <strong id="connection-banner-title">Waiting for setup</strong>
+      <p id="connection-banner-body">Add your Supabase URL and anon key near the top of this file, then the app can upload photos and save inventory from GitHub Pages.</p>
+    </div>
+    <button class="toast-close" type="button" id="toast-close" aria-label="Dismiss message">&times;</button>
+  </div>
+
+  <main class="app-shell">
+
+    <section class="page-head">
+      <h1>Inventory</h1>
+      <div class="stat-strip">
+        <div class="stat"><strong id="total-pairs">0</strong><span id="saved-label">Pairs saved</span></div>
+        <div class="stat"><strong id="sold-count">0</strong><span>Sold</span></div>
+        <div class="stat"><strong id="boxed-count">0</strong><span>With box</span></div>
       </div>
     </section>
 
-    <details class="panel collapsible">
-      <summary class="summary-pill"><span>Intake logic</span><span>+</span></summary>
-      <div style="padding-top:18px;">
-        <div class="pill-row" style="margin-bottom:18px;">
-          <span class="pill strong">Shoe Inventory System</span>
-          <span class="pill strong">Up to 6 phone photos</span>
-          <span class="pill">Price always required</span>
-          <span class="pill">Box or no box prompt</span>
-        </div>
-        <div class="flow-grid">
-          <article class="flow-card">
-            <h3>1. Capture photos</h3>
-            <p>Use the phone camera or gallery. The app previews up to six images and uploads them to Supabase Storage when you save the pair.</p>
-          </article>
-          <article class="flow-card">
-            <h3>2. Answer box or no box</h3>
-            <p>If the pair has a box, the AI action is geared toward reading the label. If there is no box, you can type the details manually or ask AI to infer them from the shoe photos.</p>
-          </article>
-          <article class="flow-card">
-            <h3>3. Confirm and save</h3>
-            <p>Brand, description, size, and price are stored in Supabase along with the box status and photo URLs.</p>
-          </article>
-        </div>
+    <section class="toolbar" aria-label="Find and export">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="search-input" id="search-input" type="search" placeholder="Search brand, size, platform" aria-label="Search shoes">
+        <button class="button ghost" type="button" id="search-clear-button">Clear</button>
       </div>
-    </details>
 
-    <details class="panel collapsible" id="add-panel">
-      <summary class="summary-pill"><span>Add a pair</span><span>+</span></summary>
-      <div style="padding-top:18px;">
-        <div class="section-head">
-          <div class="eyebrow">Item Details</div>
-          <div class="toggle-row" id="box-toggle">
-            <button class="toggle-pill active" type="button" data-box-value="yes">Box</button>
-            <button class="toggle-pill" type="button" data-box-value="no">No box</button>
-          </div>
+      <!-- The real filter is this hidden dropdown; the buttons below control it. -->
+      <select class="sr-only" id="sort-select" aria-hidden="true" tabindex="-1">
+        <option value="all">All</option>
+        <option value="created_at_desc">Newest first</option>
+        <option value="mens_only">Mens only</option>
+        <option value="womens_only">Womens only</option>
+        <option value="kids_only">Kids only</option>
+        <option value="for_sale_only">For sale only</option>
+        <option value="sold_only">Sold only</option>
+        <option value="depop_only">Depop listed only</option>
+      </select>
+      <div class="chips" id="filter-chips" role="group" aria-label="Filter inventory">
+        <button class="chip active" type="button" data-filter="all">All</button>
+        <button class="chip" type="button" data-filter="mens_only">Mens</button>
+        <button class="chip" type="button" data-filter="womens_only">Womens</button>
+        <button class="chip" type="button" data-filter="kids_only">Kids</button>
+        <button class="chip" type="button" data-filter="for_sale_only">For sale</button>
+        <button class="chip" type="button" data-filter="sold_only">Sold</button>
+        <button class="chip" type="button" data-filter="depop_only">On Depop</button>
+      </div>
+      <div class="chips" id="active-filters" hidden></div>
+
+      <div class="toolbar-row">
+        <div class="select-tools">
+          <button class="button secondary small" type="button" id="select-all-button">Select all</button>
+          <span class="pill" id="selection-summary">0 selected</span>
+          <button class="button ghost small" type="button" id="clear-selection-button">Clear</button>
         </div>
-        <div class="toggle-row" id="original-tags-toggle" style="margin-bottom:14px;">
-          <button class="toggle-pill" type="button" data-tags-value="yes">Original Tags</button>
-          <button class="toggle-pill active" type="button" data-tags-value="no">No Tags</button>
-        </div>
-        <select class="sr-only" id="original-tags-attached" name="original-tags-attached" tabindex="-1" aria-hidden="true">
-          <option value="">Select</option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
-        </select>
-
-        <div class="config-grid" style="margin-bottom:16px;">
-          <article class="config-box">
-            <strong>Photo prompt</strong>
-            <p>Take a clear shot of the box label if there is a box. Without a box, capture side view, top view, outsole, and any tag or insole details you can.</p>
-          </article>
-          <article class="config-box">
-            <strong>AI prompt behavior</strong>
-            <p id="ai-mode-copy">Box mode is active, so AI will try to read brand, size, and description from the box photos before you save.</p>
-          </article>
-        </div>
-
-        <form id="inventory-form">
-        <div class="form-grid">
-          <div class="field-stack">
-            <label for="photo-input">Photos</label>
-            <input class="sr-only" id="photo-input" name="photos" type="file" accept="image/*" multiple>
-            <input class="sr-only" id="camera-input" name="camera-photos" type="file" accept="image/*" capture="environment" multiple>
-            <input class="sr-only" id="file-browser-input" name="file-browser-photos" type="file" accept="image/*" multiple>
-            <div class="upload-actions">
-              <button class="button secondary" type="button" id="choose-photos-button">Choose from photos</button>
-              <button class="button ghost" type="button" id="use-camera-button">Use camera</button>
-              <button class="button secondary" type="button" id="browse-files-button">Choose files</button>
-            </div>
-            <div class="helper">Select up to 6 photos. You can open the photo library, launch the camera, or use a general file picker.</div>
-            <div class="photo-grid" id="photo-preview"></div>
-          </div>
-
-          <div class="field">
-            <label for="category-2">Category</label>
-            <select id="category-2" name="category-2" required>
-              <option value="">Select</option>
-              <option value="Boots">Boots</option>
-              <option value="Flats">Flats</option>
-              <option value="Heels">Heels</option>
-              <option value="Sandals">Sandals</option>
-              <option value="Sneakers">Sneakers</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="gender">Category 2</label>
-            <select id="gender" name="gender">
-              <option value="">Select</option>
-              <option value="mens">Mens</option>
-              <option value="womens">Womens</option>
-              <option value="kids">Kids</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="brand">Brand</label>
-            <input id="brand" name="brand" type="text" placeholder="Nike, Adidas, New Balance...">
-          </div>
-
-          <div class="field">
-            <label for="brand-style-name">Brand Style Name</label>
-            <input id="brand-style-name" name="brand-style-name" type="text" placeholder="Defaults from description if left blank">
-          </div>
-
-          <div class="field">
-            <label for="shoe-style">Street Slang</label>
-            <input id="shoe-style" name="shoe-style" type="text" placeholder="Platform, Low top, Running...">
-          </div>
-
-          <div class="field">
-            <label for="size">Size</label>
-            <input id="size" name="size" type="text" placeholder="10.5, 7Y, EU 42...">
-          </div>
-
-          <div class="field">
-            <label for="condition">Condition</label>
-            <select id="condition" name="condition">
-              <option value="">Select</option>
-              <option value="New">New</option>
-              <option value="Excellent">Excellent</option>
-              <option value="Very Good">Very Good</option>
-              <option value="Good">Good</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="colors">Colors</label>
-            <input id="colors" name="colors" type="text" placeholder="Pink, Black, White...">
-          </div>
-
-          <div class="field">
-            <label for="price">Listed Price</label>
-            <input id="price" name="price" type="number" min="0" step="0.01" placeholder="120.00">
-          </div>
-
-          <div class="field">
-            <label for="estimated-retail-price">Retail Price</label>
-            <input id="estimated-retail-price" name="estimated-retail-price" type="number" min="0" step="0.01" placeholder="120.00">
-          </div>
-
-          <div class="field">
-            <label for="sold-price">Sold Price</label>
-            <input id="sold-price" name="sold-price" type="number" min="0" step="0.01" placeholder="0.00">
-          </div>
-
-          <div class="field">
-            <label for="purchased-price">Purchased Price</label>
-            <input id="purchased-price" name="purchased-price" type="number" min="0" step="0.01" placeholder="0.00">
-          </div>
-
-          <div class="field">
-            <label for="pricing-condition">Pricing Condition</label>
-            <select id="pricing-condition" name="pricing-condition">
-              <option value="">Select</option>
-              <option value="new">New</option>
-              <option value="new_w_box">New w/Box</option>
-              <option value="used">Used</option>
-              <option value="refurbished">Refurbished</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="pricing-locked">Pricing Locked</label>
-            <select id="pricing-locked" name="pricing-locked">
-              <option value="false">No</option>
-              <option value="true">Yes</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="sold">Sold</label>
-            <select id="sold" name="sold">
-              <option value="false">For sale</option>
-              <option value="true">Sold</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="reviewed">Reviewed</label>
-            <select id="reviewed" name="reviewed">
-              <option value="false">No</option>
-              <option value="true">Yes</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="notes">Notes</label>
-            <input id="notes" name="notes" type="text" placeholder="Condition, flaws, release year, SKU...">
-          </div>
-        </div>
-
-        <details class="collapsible" style="margin-top:16px;">
-          <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
-          <div class="form-grid" style="padding-top:16px;">
-            <div class="field-stack" style="grid-column:1/-1;">
-              <label for="description">Description</label>
-              <textarea id="description" name="description" placeholder="Air Jordan 1 Retro High OG Chicago, red white black..."></textarea>
-            </div>
-            <div class="field">
-              <label for="materials">Materials</label>
-              <input id="materials" name="materials" type="text" placeholder="Leather, Mesh, Suede...">
-            </div>
-
-            <div class="field">
-              <label for="made-in">Made in</label>
-              <input id="made-in" name="made-in" type="text" placeholder="Vietnam, China, Italy...">
-            </div>
-
-            <div class="field">
-              <label for="serial-number">Serial number</label>
-              <input id="serial-number" name="serial-number" type="text" placeholder="SKU, serial, style code...">
-            </div>
-            <div class="field-stack" style="grid-column:1/-1;">
-              <label>Platforms listed</label>
-              <div class="checkbox-group">
-                <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="ThreadUp">ThreadUp</label>
-                <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="ebay">ebay</label>
-                <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="Depop">Depop</label>
-                <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="WhatNot">WhatNot</label>
-                <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="GOAT">GOAT</label>
-              </div>
-            </div>
+        <details class="menu" id="export-menu">
+          <summary class="button primary small">Export</summary>
+          <div class="menu-panel">
+            <button class="menu-item" type="button" id="review-html-button"><strong>Review tab</strong><span>Listing cards to scan or save as a PDF</span></button>
+            <button class="menu-item" type="button" id="platform-report-button"><strong>Platform report</strong><span>Listing cards grouped by platform</span></button>
+            <button class="menu-item" type="button" id="xls-button"><strong>CSV</strong><span>Spreadsheet of the shoes</span></button>
+            <button class="menu-item" type="button" id="whatnot-button"><strong>Whatnot</strong><span>Whatnot upload file</span></button>
+            <button class="menu-item" type="button" id="depop-button"><strong>Depop</strong><span>Depop bulk-listing file</span></button>
+            <button class="menu-item" type="button" id="profit-button"><strong>Net income</strong><span>Profit report with PDF and CSV</span></button>
+            <p class="menu-note">Exports use the shoes you have selected. If none are selected, they use everything in the current view.</p>
           </div>
         </details>
-
-        <div class="prompt-box" id="required-copy">
-          <strong>Current requirement</strong>
-          <p>If there is no box, brand and category should be entered manually or filled by AI lookup from the shoe photos. Description can also feed Brand Style Name. Blank listed price will save as $0.00.</p>
-        </div>
-
-        <div class="button-row">
-          <button class="button ghost" type="button" id="ai-fill-button">Read box details with AI</button>
-          <button class="button ghost hidden" type="button" id="cancel-edit-button">Cancel edit</button>
-          <button class="button secondary" type="button" id="reset-button">Clear form</button>
-          <button class="button primary" type="submit" id="save-button">Save to Supabase</button>
-        </div>
-        <div class="form-status" id="form-status">Ready to save. Add photos, confirm details, then save to Supabase.</div>
-        </form>
       </div>
-    </details>
+    </section>
 
-    <section class="panel">
-      <div class="eyebrow">Inventory</div>
-      <div class="inventory-toolbar" style="margin-bottom:12px;">
-        <div class="toolbar-compact">
-          <span class="toolbar-label">Sort</span>
-          <select class="sort-select" id="sort-select" aria-label="Sort inventory">
-              <option value="all">All</option>
-              <option value="created_at_desc">Newest first</option>
-              <option value="mens_only">Mens only</option>
-              <option value="womens_only">Womens only</option>
-              <option value="kids_only">Kids only</option>
-              <option value="for_sale_only">For sale only</option>
-              <option value="sold_only">Sold only</option>
-              <option value="depop_only">Depop listed only</option>
-            </select>
-          <input class="search-input" id="search-input" type="search" placeholder="Search + Enter (brand, size, platform)" aria-label="Search shoes">
-          <button class="button secondary" type="button" id="search-clear-button">Clear</button>
-        </div>
-        <div class="toolbar-compact">
-          <span class="toolbar-label">Export</span>
-          <button class="button ghost" type="button" id="review-html-button">Review Tab</button>
-          <button class="button ghost" type="button" id="platform-report-button">Platform Report</button>
-          <button class="button ghost" type="button" id="xls-button">CSV</button>
-          <button class="button ghost" type="button" id="whatnot-button">Whatnot</button>
-          <button class="button ghost" type="button" id="depop-button">Depop</button>
-          <button class="button ghost" type="button" id="profit-button">Net Income</button>
-        </div>
-      </div>
-      <div class="toolbar-compact" style="margin-bottom:12px;flex-wrap:wrap;">
-        <span class="toolbar-label">Select</span>
-        <button class="button secondary" type="button" id="select-all-button">Select View</button>
-        <button class="button ghost" type="button" id="clear-selection-button">Clear Selected</button>
-        <span class="pill" id="selection-summary">0 selected</span>
-      </div>
-      <details class="chart-panel collapsible">
-        <summary class="summary-pill chart-summary-pill"><span>Brand x Size Chart</span><span>+</span></summary>
+    <section class="tools" aria-label="Extra tools">
+      <details class="tool">
+        <summary>Tools: size chart and sold match</summary>
+        <div class="tool-stack">
+      <details class="fold">
+        <summary>Brand &times; size chart</summary>
         <div class="chart-panel-body">
           <div class="chart-scroll">
             <div id="brand-size-chart-wrap" class="report-note">Chart will update after inventory loads.</div>
           </div>
-          <div class="report-note" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            <span id="brand-size-chart-note">Uses the current filtered/search view.</span>
-            <button class="button ghost" type="button" id="clear-chart-filter-button" hidden>Clear chart filter</button>
+          <div class="toolbar-row">
+            <span class="report-note" id="brand-size-chart-note">Uses the current filtered/search view.</span>
+            <button class="button ghost small" type="button" id="clear-chart-filter-button" hidden>Clear chart filter</button>
           </div>
         </div>
       </details>
-      <details class="chart-panel collapsible">
-        <summary class="summary-pill"><span>ThredUp Sold Match</span><span>+</span></summary>
+      <details class="fold">
+        <summary>ThredUp sold match</summary>
         <div class="match-panel-body">
           <input class="sr-only" id="sold-match-file-input" type="file" accept=".json,application/json">
           <div class="match-toolbar">
-            <button class="button secondary" type="button" id="sold-match-upload-button">Upload sold JSON</button>
-            <button class="button ghost" type="button" id="sold-match-clear-button" hidden>Clear matches</button>
+            <button class="button secondary small" type="button" id="sold-match-upload-button">Upload sold JSON</button>
+            <button class="button ghost small" type="button" id="sold-match-clear-button" hidden>Clear matches</button>
             <span class="pill" id="sold-match-file-pill">No file loaded</span>
           </div>
           <div class="report-note" id="sold-match-status">Upload a ThredUp sold JSON file to compare sold entries against current inventory.</div>
@@ -1828,211 +1499,493 @@
           <div class="match-results" id="sold-match-results"></div>
         </div>
       </details>
-      <div class="section-head">
-        <div>
-          <h2>Saved pairs</h2>
         </div>
-      </div>
-      <div class="inventory-head">
-        <div>Status</div>
-        <div data-sort-key="brand">Brand</div>
-        <div data-sort-key="description">Title</div>
-        <div>Category</div>
-        <div data-sort-key="size">Size</div>
-        <div data-sort-key="price">Listed Price</div>
-        <div>Attachments</div>
-        <div>Actions</div>
+      </details>
+    </section>
+
+    <section aria-label="Saved pairs">
+      <div class="list-head" style="margin-bottom:10px;">
+        <h2>Saved pairs <span class="count" id="list-count"></span></h2>
+        <div class="inventory-head" role="group" aria-label="Sort saved pairs">
+          <span class="sort-label">Sort by</span>
+          <button class="sort-btn" type="button" data-sort-key="brand">Brand</button>
+          <button class="sort-btn" type="button" data-sort-key="description">Title</button>
+          <button class="sort-btn" type="button" data-sort-key="size">Size</button>
+          <button class="sort-btn" type="button" data-sort-key="price">Price</button>
+        </div>
       </div>
       <div id="inventory-list" class="inventory-list"></div>
     </section>
-  </div>
 
-<div class="bottom-sticky-card">
-    <div class="bottom-sticky-top">
-      <div id="inventory-summary" class="inventory-summary">0 pairs total · $0.00</div>
-      <div id="footer-sync-pill" class="bottom-sync-pill">Sync status: Waiting for first sync...</div>
-      <button class="button secondary" type="button" id="refresh-button">Sync Data</button>
-    </div>
-    <div class="report-note">Review Tab, Platform Report, CSV, Whatnot, Depop, and Net Income exports follow the current filter/search view by default. If shoes are selected, exports use the selected set instead. Review Tab opens listing cards for quick scanning and PDF creation. Platform Report opens grouped listing cards by platform. Net Income opens a report tab for the full current view with PDF and CSV options.</div>
-  </div>
+    <footer class="build-info">
+      <span id="inventory-status-version">Mobile Build 04.12.26-1</span>
+      <span id="inventory-status-updated">Updated: Loading...</span>
+      <span id="inventory-status-sync">Sync status: Waiting for first sync...</span>
+    </footer>
+  </main>
 
-  <div class="modal hidden" id="photo-modal" aria-hidden="true">
-    <div class="modal-card">
-      <div class="viewer-toolbar">
-        <span class="pill" id="viewer-status">Original</span>
-        <div class="viewer-toolbar-actions">
-          <button class="button ghost" type="button" id="add-image-button">Add Image</button>
-          <button class="button ghost" type="button" id="set-main-image-button">Set Main Image</button>
-          <button class="button ghost" type="button" id="delete-image-button">Delete Image</button>
-          <button class="button ghost" type="button" id="crop-button">Crop</button>
-          <button class="button ghost hidden" type="button" id="cancel-crop-button">Cancel Crop</button>
-          <button class="button ghost hidden" type="button" id="apply-crop-button">Apply Crop</button>
-          <button class="button ghost hidden" type="button" id="replace-original-button">Replace Original</button>
-          <button class="button secondary" type="button" id="white-bg-button">White BG</button>
-        </div>
+  <div class="bottom-sticky-card">
+    <div class="bottom-in">
+      <div class="bottom-info">
+        <div id="inventory-summary" class="inventory-summary">0 pairs &middot; $0.00</div>
+        <div id="footer-sync-pill" class="bottom-sync-pill">Waiting for first sync...</div>
       </div>
-      <button class="viewer-arrow prev" type="button" id="modal-prev" aria-label="Previous photo">&#8249;</button>
-      <div class="modal-image-stage" id="modal-image-stage">
-        <img class="modal-image" id="modal-image" alt="Shoe attachment preview">
-        <div class="crop-overlay" id="crop-overlay" aria-hidden="true">
-          <div class="crop-mask hidden" id="crop-mask"></div>
+      <button class="button secondary" type="button" id="refresh-button">Sync</button>
+      <button class="button primary" type="button" id="open-add-button">+ Add pair</button>
+    </div>
+  </div>
+
+  <!-- ============ ADD A PAIR ============ -->
+  <div class="modal hidden" id="add-panel" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-labelledby="add-title">
+      <form id="inventory-form" class="sheet-form">
+        <header class="sheet-head">
+          <div>
+            <h2 id="add-title">Add a pair</h2>
+            <p>Photos, details, then save.</p>
+          </div>
+          <button class="icon-btn" type="button" id="add-close" aria-label="Close add pair">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </header>
+
+        <div class="sheet-body">
+          <section class="group">
+            <div class="group-head">
+              <h3>Photos</h3>
+              <span class="count" id="add-photo-count">0 of 6</span>
+            </div>
+            <input class="sr-only" id="photo-input" name="photos" type="file" accept="image/*" multiple>
+            <input class="sr-only" id="camera-input" name="camera-photos" type="file" accept="image/*" capture="environment" multiple>
+            <input class="sr-only" id="file-browser-input" name="file-browser-photos" type="file" accept="image/*" multiple>
+            <div class="upload-actions">
+              <button class="button secondary" type="button" id="choose-photos-button">Library</button>
+              <button class="button secondary" type="button" id="use-camera-button">Camera</button>
+              <button class="button ghost" type="button" id="browse-files-button">Files</button>
+            </div>
+            <div class="helper">Add up to 6. The first photo is the main one. With a box, shoot the box label. Without a box, shoot the side, top, outsole, and any tag or insole.</div>
+            <div class="photo-grid" id="photo-preview"></div>
+            <button class="button secondary" type="button" id="ai-fill-button">Read box details with AI</button>
+            <details class="fold">
+              <summary>How AI lookup works</summary>
+              <div class="fold-body">
+                <div class="help-note" id="ai-mode-copy">Box mode is active, so AI will try to read brand, size, and description from the box photos before you save.</div>
+                <div class="help-note" id="required-copy"><strong>Current requirement</strong><p>Brand and Category are required. Blank listed price will save as $0.00.</p></div>
+              </div>
+            </details>
+          </section>
+
+          <section class="group">
+            <div class="toggle-line">
+              <div class="toggle-block">
+                <label id="box-label">Box</label>
+                <div class="segmented" id="box-toggle" role="group" aria-labelledby="box-label">
+                  <button class="toggle-pill active" type="button" data-box-value="yes">Has box</button>
+                  <button class="toggle-pill" type="button" data-box-value="no">No box</button>
+                </div>
+              </div>
+              <div class="toggle-block">
+                <label id="tags-label">Tags</label>
+                <div class="segmented" id="original-tags-toggle" role="group" aria-labelledby="tags-label">
+                  <button class="toggle-pill" type="button" data-tags-value="yes">Original tags</button>
+                  <button class="toggle-pill active" type="button" data-tags-value="no">No tags</button>
+                </div>
+              </div>
+            </div>
+            <select class="sr-only" id="original-tags-attached" name="original-tags-attached" tabindex="-1" aria-hidden="true">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </section>
+
+          <section class="group">
+            <div class="group-head"><h3>Shoe details</h3></div>
+            <div class="form-grid">
+              <div class="field span-2">
+                <label for="brand">Brand</label>
+                <input id="brand" name="brand" type="text" placeholder="Nike, Adidas, New Balance...">
+              </div>
+              <div class="field span-2">
+                <label for="brand-style-name">Brand style name</label>
+                <input id="brand-style-name" name="brand-style-name" type="text" placeholder="Defaults from description if left blank">
+              </div>
+              <div class="field">
+                <label for="category-2">Category</label>
+                <select id="category-2" name="category-2" required>
+                  <option value="">Select</option>
+                  <option value="Boots">Boots</option>
+                  <option value="Flats">Flats</option>
+                  <option value="Heels">Heels</option>
+                  <option value="Sandals">Sandals</option>
+                  <option value="Sneakers">Sneakers</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="gender">Department</label>
+                <select id="gender" name="gender">
+                  <option value="">Select</option>
+                  <option value="mens">Mens</option>
+                  <option value="womens">Womens</option>
+                  <option value="kids">Kids</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="size">Size</label>
+                <input id="size" name="size" type="text" placeholder="10.5, 7Y, EU 42...">
+              </div>
+              <div class="field">
+                <label for="condition">Condition</label>
+                <select id="condition" name="condition">
+                  <option value="">Select</option>
+                  <option value="New">New</option>
+                  <option value="Excellent">Excellent</option>
+                  <option value="Very Good">Very Good</option>
+                  <option value="Good">Good</option>
+                </select>
+              </div>
+              <div class="field span-2">
+                <label for="colors">Colors</label>
+                <input id="colors" name="colors" type="text" placeholder="Pink, Black, White...">
+              </div>
+              <div class="field span-2">
+                <label for="shoe-style">Street slang</label>
+                <input id="shoe-style" name="shoe-style" type="text" placeholder="Platform, Low top, Running...">
+              </div>
+            </div>
+          </section>
+
+          <section class="group">
+            <div class="group-head"><h3>Pricing</h3></div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="price">Listed price</label>
+                <input id="price" name="price" type="number" inputmode="decimal" min="0" step="0.01" placeholder="120.00">
+              </div>
+              <div class="field">
+                <label for="estimated-retail-price">Retail price</label>
+                <input id="estimated-retail-price" name="estimated-retail-price" type="number" inputmode="decimal" min="0" step="0.01" placeholder="120.00">
+              </div>
+              <div class="field">
+                <label for="purchased-price">Purchased price</label>
+                <input id="purchased-price" name="purchased-price" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+              </div>
+              <div class="field">
+                <label for="sold-price">Sold price</label>
+                <input id="sold-price" name="sold-price" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+              </div>
+              <div class="field">
+                <label for="pricing-condition">Pricing condition</label>
+                <select id="pricing-condition" name="pricing-condition">
+                  <option value="">Select</option>
+                  <option value="new">New</option>
+                  <option value="new_w_box">New w/Box</option>
+                  <option value="used">Used</option>
+                  <option value="refurbished">Refurbished</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="pricing-locked">Price locked</label>
+                <select id="pricing-locked" name="pricing-locked">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="group">
+            <div class="group-head"><h3>Status</h3></div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="sold">Listing status</label>
+                <select id="sold" name="sold">
+                  <option value="false">For sale</option>
+                  <option value="true">Sold</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="reviewed">Reviewed</label>
+                <select id="reviewed" name="reviewed">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </div>
+              <div class="field-stack">
+                <label>Listed on</label>
+                <div class="checkbox-group">
+                  <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="ThreadUp">ThreadUp</label>
+                  <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="ebay">ebay</label>
+                  <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="Depop">Depop</label>
+                  <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="WhatNot">WhatNot</label>
+                  <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="GOAT">GOAT</label>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="group">
+            <div class="field">
+              <label for="notes">Notes</label>
+              <textarea id="notes" name="notes" rows="2" placeholder="Condition, flaws, release year, SKU..."></textarea>
+            </div>
+          </section>
+
+          <details class="fold">
+            <summary>More listing details</summary>
+            <div class="fold-body">
+              <div class="field">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" placeholder="Air Jordan 1 Retro High OG Chicago, red white black..."></textarea>
+              </div>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="materials">Materials</label>
+                  <input id="materials" name="materials" type="text" placeholder="Leather, Mesh, Suede...">
+                </div>
+                <div class="field">
+                  <label for="made-in">Made in</label>
+                  <input id="made-in" name="made-in" type="text" placeholder="Vietnam, China, Italy...">
+                </div>
+                <div class="field span-2">
+                  <label for="serial-number">Serial number</label>
+                  <input id="serial-number" name="serial-number" type="text" placeholder="SKU, serial, style code...">
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <footer class="sheet-foot">
+          <div class="form-status" id="form-status"></div>
+          <div class="foot-buttons">
+            <button class="button ghost hidden" type="button" id="cancel-edit-button">Cancel edit</button>
+            <button class="button ghost" type="button" id="reset-button">Clear form</button>
+            <button class="button primary" type="submit" id="save-button">Save pair</button>
+          </div>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ PHOTO VIEWER (crop, white background, main photo) ============ -->
+  <div class="modal hidden" id="photo-modal" aria-hidden="true">
+    <div class="viewer-card">
+      <div class="viewer-top">
+        <button class="icon-btn" type="button" id="photo-modal-close" aria-label="Close photo viewer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+        <span class="pill" id="viewer-status">Original</span>
+        <span class="viewer-counter" id="viewer-counter"></span>
+      </div>
+      <div class="viewer-body">
+        <button class="viewer-arrow prev" type="button" id="modal-prev" aria-label="Previous photo">&#8249;</button>
+        <div class="modal-image-stage" id="modal-image-stage">
+          <img class="modal-image" id="modal-image" alt="Shoe attachment preview">
+          <div class="crop-overlay" id="crop-overlay" aria-hidden="true">
+            <div class="crop-mask hidden" id="crop-mask"></div>
+          </div>
+        </div>
+        <button class="viewer-arrow next" type="button" id="modal-next" aria-label="Next photo">&#8250;</button>
+      </div>
+      <div class="viewer-toolbar">
+        <div class="viewer-toolbar-actions">
+          <button class="button ghost" type="button" id="crop-button">Crop</button>
+          <button class="button secondary" type="button" id="white-bg-button">White BG</button>
+          <button class="button ghost" type="button" id="set-main-image-button">Set as main</button>
+          <button class="button ghost" type="button" id="add-image-button">Add photo</button>
+          <button class="button ghost hidden" type="button" id="cancel-crop-button">Cancel crop</button>
+          <button class="button secondary hidden" type="button" id="apply-crop-button">Apply crop</button>
+          <button class="button secondary hidden" type="button" id="replace-original-button">Replace original</button>
+          <button class="button danger" type="button" id="delete-image-button">Delete photo</button>
         </div>
       </div>
       <input class="sr-only" id="modal-add-image-input" type="file" accept="image/*" multiple>
-      <button class="viewer-arrow next" type="button" id="modal-next" aria-label="Next photo">&#8250;</button>
     </div>
   </div>
 
+  <!-- ============ CARD VIEW ============ -->
   <div class="modal hidden" id="single-card-modal" aria-hidden="true">
-    <div class="single-card-modal-card">
-      <button class="modal-close" type="button" id="single-card-close" aria-label="Close card view">x</button>
-      <div class="eyebrow">Single Card View</div>
-      <div id="single-card-content"></div>
+    <div class="sheet narrow" role="dialog" aria-labelledby="card-title">
+      <header class="sheet-head">
+        <h2 id="card-title">Card view</h2>
+        <button class="icon-btn" type="button" id="single-card-close" aria-label="Close card view">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </header>
+      <div class="sheet-body" id="single-card-content"></div>
     </div>
   </div>
 
+  <!-- ============ EDIT A PAIR (includes photos) ============ -->
   <div class="modal hidden" id="edit-modal" aria-hidden="true">
-    <div class="edit-modal-card">
-      <button class="modal-close" type="button" id="edit-close" aria-label="Close edit">x</button>
-      <div class="eyebrow">Item Details</div>
-        <form id="edit-form">
-        <div class="toggle-row" id="edit-box-toggle" style="margin-bottom:14px;">
-          <button class="toggle-pill active" type="button" data-edit-box-value="yes">Box</button>
-          <button class="toggle-pill" type="button" data-edit-box-value="no">No box</button>
-        </div>
-        <div class="toggle-row" id="edit-original-tags-toggle" style="margin-bottom:14px;">
-          <button class="toggle-pill" type="button" data-edit-tags-value="yes">Original Tags</button>
-          <button class="toggle-pill active" type="button" data-edit-tags-value="no">No Tags</button>
-        </div>
-        <select class="sr-only" id="edit-original-tags-attached" tabindex="-1" aria-hidden="true">
-          <option value="">Select</option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
-        </select>
-        <div class="edit-grid">
-          <div class="field">
-            <label for="edit-category-2">Category</label>
-            <select id="edit-category-2">
+    <div class="sheet" role="dialog" aria-labelledby="edit-title">
+      <form id="edit-form" class="sheet-form">
+        <header class="sheet-head">
+          <div>
+            <h2 id="edit-title">Edit shoe</h2>
+            <p id="edit-subtitle"></p>
+          </div>
+          <button class="icon-btn" type="button" id="edit-close" aria-label="Close edit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </header>
+
+        <div class="sheet-body">
+          <section class="group" id="edit-photos-group">
+            <div class="group-head">
+              <h3>Photos</h3>
+              <span class="count" id="edit-photo-count">0 of 6</span>
+            </div>
+            <div class="hint">Tap a photo to crop it or make a white background. The star sets the main photo. Photo changes save right away.</div>
+            <div class="edit-photo-grid" id="edit-photo-grid"></div>
+            <input class="sr-only" id="edit-photo-add-input" type="file" accept="image/*" multiple>
+            <input class="sr-only" id="edit-photo-camera-input" type="file" accept="image/*" capture="environment">
+            <div class="upload-actions">
+              <button class="button secondary" type="button" id="edit-photo-add-button">Add photos</button>
+              <button class="button secondary" type="button" id="edit-photo-camera-button">Take photo</button>
+            </div>
+            <div class="form-status" id="edit-photo-status" hidden></div>
+          </section>
+
+          <section class="group">
+            <div class="toggle-line">
+              <div class="toggle-block">
+                <label id="edit-box-label">Box</label>
+                <div class="segmented" id="edit-box-toggle" role="group" aria-labelledby="edit-box-label">
+                  <button class="toggle-pill active" type="button" data-edit-box-value="yes">Has box</button>
+                  <button class="toggle-pill" type="button" data-edit-box-value="no">No box</button>
+                </div>
+              </div>
+              <div class="toggle-block">
+                <label id="edit-tags-label">Tags</label>
+                <div class="segmented" id="edit-original-tags-toggle" role="group" aria-labelledby="edit-tags-label">
+                  <button class="toggle-pill" type="button" data-edit-tags-value="yes">Original tags</button>
+                  <button class="toggle-pill active" type="button" data-edit-tags-value="no">No tags</button>
+                </div>
+              </div>
+            </div>
+            <select class="sr-only" id="edit-original-tags-attached" tabindex="-1" aria-hidden="true">
               <option value="">Select</option>
-              <option value="Boots">Boots</option>
-              <option value="Flats">Flats</option>
-              <option value="Heels">Heels</option>
-              <option value="Sandals">Sandals</option>
-              <option value="Sneakers">Sneakers</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
             </select>
-          </div>
-          <div class="field">
-            <label for="edit-gender">Category 2</label>
-            <select id="edit-gender">
-              <option value="">Select</option>
-              <option value="mens">Mens</option>
-              <option value="womens">Womens</option>
-              <option value="kids">Kids</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="edit-brand">Brand</label>
-            <input id="edit-brand" type="text">
-          </div>
-          <div class="field">
-            <label for="edit-brand-style-name">Brand Style Name</label>
-            <input id="edit-brand-style-name" type="text">
-          </div>
-          <div class="field">
-            <label for="edit-shoe-style">Street Slang</label>
-            <input id="edit-shoe-style" type="text">
-          </div>
-          <div class="field">
-            <label for="edit-size">Size</label>
-            <input id="edit-size" type="text">
-          </div>
-          <div class="field">
-            <label for="edit-condition">Condition</label>
-            <select id="edit-condition">
-              <option value="">Select</option>
-              <option value="New">New</option>
-              <option value="Excellent">Excellent</option>
-              <option value="Very Good">Very Good</option>
-              <option value="Good">Good</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="edit-colors">Colors</label>
-            <input id="edit-colors" type="text">
-          </div>
-          <div class="field">
-            <label for="edit-price">Listed Price</label>
-            <input id="edit-price" type="number" min="0" step="0.01">
-          </div>
-          <div class="field">
-            <label for="edit-estimated-retail-price">Retail Price</label>
-            <input id="edit-estimated-retail-price" type="number" min="0" step="0.01">
-          </div>
-          <div class="field">
-            <label for="edit-sold-price">Sold Price</label>
-            <input id="edit-sold-price" type="number" min="0" step="0.01">
-          </div>
-          <div class="field">
-            <label for="edit-purchased-price">Purchased Price</label>
-            <input id="edit-purchased-price" type="number" min="0" step="0.01">
-          </div>
-          <div class="field">
-            <label for="edit-pricing-condition">Pricing Condition</label>
-            <select id="edit-pricing-condition">
-              <option value="">Select</option>
-              <option value="new">New</option>
-              <option value="new_w_box">New w/Box</option>
-              <option value="used">Used</option>
-              <option value="refurbished">Refurbished</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="edit-pricing-locked">Pricing Locked</label>
-            <select id="edit-pricing-locked">
-              <option value="false">No</option>
-              <option value="true">Yes</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="edit-sold">Sold</label>
-            <select id="edit-sold">
-              <option value="false">For sale</option>
-              <option value="true">Sold</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="edit-reviewed">Reviewed</label>
-            <select id="edit-reviewed">
-              <option value="false">No</option>
-              <option value="true">Yes</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="edit-notes">Notes</label>
-            <input id="edit-notes" type="text">
-          </div>
-        </div>
-          <details class="collapsible" style="margin-top:16px;">
-            <summary class="summary-pill"><span>Optional listing fields</span><span>+</span></summary>
-            <div class="edit-grid" style="padding-top:16px;">
-              <div class="field" style="grid-column:1/-1;">
-                <label for="edit-description">Description</label>
-                <textarea id="edit-description"></textarea>
+          </section>
+
+          <section class="group">
+            <div class="group-head"><h3>Shoe details</h3></div>
+            <div class="edit-grid">
+              <div class="field span-2">
+                <label for="edit-brand">Brand</label>
+                <input id="edit-brand" type="text">
+              </div>
+              <div class="field span-2">
+                <label for="edit-brand-style-name">Brand style name</label>
+                <input id="edit-brand-style-name" type="text">
               </div>
               <div class="field">
-                <label for="edit-materials">Materials</label>
-                <input id="edit-materials" type="text">
+                <label for="edit-category-2">Category</label>
+                <select id="edit-category-2">
+                  <option value="">Select</option>
+                  <option value="Boots">Boots</option>
+                  <option value="Flats">Flats</option>
+                  <option value="Heels">Heels</option>
+                  <option value="Sandals">Sandals</option>
+                  <option value="Sneakers">Sneakers</option>
+                </select>
               </div>
               <div class="field">
-                <label for="edit-made-in">Made in</label>
-                <input id="edit-made-in" type="text">
+                <label for="edit-gender">Department</label>
+                <select id="edit-gender">
+                  <option value="">Select</option>
+                  <option value="mens">Mens</option>
+                  <option value="womens">Womens</option>
+                  <option value="kids">Kids</option>
+                </select>
               </div>
               <div class="field">
-                <label for="edit-serial-number">Serial number</label>
-                <input id="edit-serial-number" type="text">
+                <label for="edit-size">Size</label>
+                <input id="edit-size" type="text">
               </div>
-              <div class="field" style="grid-column:1/-1;">
-                <label>Platforms listed</label>
+              <div class="field">
+                <label for="edit-condition">Condition</label>
+                <select id="edit-condition">
+                  <option value="">Select</option>
+                  <option value="New">New</option>
+                  <option value="Excellent">Excellent</option>
+                  <option value="Very Good">Very Good</option>
+                  <option value="Good">Good</option>
+                </select>
+              </div>
+              <div class="field span-2">
+                <label for="edit-colors">Colors</label>
+                <input id="edit-colors" type="text">
+              </div>
+              <div class="field span-2">
+                <label for="edit-shoe-style">Street slang</label>
+                <input id="edit-shoe-style" type="text">
+              </div>
+            </div>
+          </section>
+
+          <section class="group">
+            <div class="group-head"><h3>Pricing</h3></div>
+            <div class="edit-grid">
+              <div class="field">
+                <label for="edit-price">Listed price</label>
+                <input id="edit-price" type="number" inputmode="decimal" min="0" step="0.01">
+              </div>
+              <div class="field">
+                <label for="edit-estimated-retail-price">Retail price</label>
+                <input id="edit-estimated-retail-price" type="number" inputmode="decimal" min="0" step="0.01">
+              </div>
+              <div class="field">
+                <label for="edit-purchased-price">Purchased price</label>
+                <input id="edit-purchased-price" type="number" inputmode="decimal" min="0" step="0.01">
+              </div>
+              <div class="field">
+                <label for="edit-sold-price">Sold price</label>
+                <input id="edit-sold-price" type="number" inputmode="decimal" min="0" step="0.01">
+              </div>
+              <div class="field">
+                <label for="edit-pricing-condition">Pricing condition</label>
+                <select id="edit-pricing-condition">
+                  <option value="">Select</option>
+                  <option value="new">New</option>
+                  <option value="new_w_box">New w/Box</option>
+                  <option value="used">Used</option>
+                  <option value="refurbished">Refurbished</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="edit-pricing-locked">Price locked</label>
+                <select id="edit-pricing-locked">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="group">
+            <div class="group-head"><h3>Status</h3></div>
+            <div class="edit-grid">
+              <div class="field">
+                <label for="edit-sold">Listing status</label>
+                <select id="edit-sold">
+                  <option value="false">For sale</option>
+                  <option value="true">Sold</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="edit-reviewed">Reviewed</label>
+                <select id="edit-reviewed">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </div>
+              <div class="field span-2">
+                <label>Listed on</label>
                 <div class="checkbox-group">
                   <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="ThreadUp">ThreadUp</label>
                   <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="ebay">ebay</label>
@@ -2042,56 +1995,103 @@
                 </div>
               </div>
             </div>
+          </section>
+
+          <section class="group">
+            <div class="field">
+              <label for="edit-notes">Notes</label>
+              <textarea id="edit-notes" rows="2"></textarea>
+            </div>
+          </section>
+
+          <details class="fold">
+            <summary>More listing details</summary>
+            <div class="fold-body">
+              <div class="field">
+                <label for="edit-description">Description</label>
+                <textarea id="edit-description"></textarea>
+              </div>
+              <div class="edit-grid">
+                <div class="field">
+                  <label for="edit-materials">Materials</label>
+                  <input id="edit-materials" type="text">
+                </div>
+                <div class="field">
+                  <label for="edit-made-in">Made in</label>
+                  <input id="edit-made-in" type="text">
+                </div>
+                <div class="field span-2">
+                  <label for="edit-serial-number">Serial number</label>
+                  <input id="edit-serial-number" type="text">
+                </div>
+              </div>
+            </div>
           </details>
-          <div class="form-status" id="edit-status">Update the fields and save changes.</div>
-          <div class="button-row">
-            <button class="button secondary" type="button" id="delete-button">Delete shoe</button>
-            <button class="button secondary" type="button" id="duplicate-button">Copy shoe</button>
+
+          <details class="fold">
+            <summary>More actions</summary>
+            <div class="fold-body">
+              <div class="danger-zone">
+                <button class="button secondary" type="button" id="duplicate-button">Copy shoe</button>
+                <button class="button danger" type="button" id="delete-button">Delete shoe</button>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <footer class="sheet-foot">
+          <div class="form-status" id="edit-status"></div>
+          <div class="foot-buttons">
             <button class="button ghost" type="button" id="edit-cancel-button">Cancel</button>
             <button class="button primary" type="submit" id="edit-save-button">Save changes</button>
           </div>
-        </form>
-      </div>
+        </footer>
+      </form>
+    </div>
   </div>
 
+  <!-- ============ PRICE AI ============ -->
   <div class="modal hidden" id="price-ai-modal" aria-hidden="true">
-    <div class="price-ai-modal-card">
-      <button class="modal-close" type="button" id="price-ai-close" aria-label="Close price AI">x</button>
-      <div class="eyebrow">Price AI</div>
-      <h3 id="price-ai-title">Market recommendation</h3>
-      <div class="form-status" id="price-ai-status">Select a shoe and run Price AI to see a market recommendation.</div>
-      <div class="price-ai-grid">
-        <div class="price-ai-card">
-          <div class="mini-label">Quick sale</div>
-          <strong id="price-ai-quick">--</strong>
+    <div class="sheet narrow" role="dialog" aria-labelledby="price-ai-title">
+      <header class="sheet-head">
+        <h2 id="price-ai-title">Market recommendation</h2>
+        <button class="icon-btn" type="button" id="price-ai-close" aria-label="Close price AI">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </header>
+      <div class="sheet-body">
+        <div class="form-status" id="price-ai-status">Select a shoe and run Price AI to see a market recommendation.</div>
+        <div class="price-ai-grid">
+          <div class="price-ai-card">
+            <div class="mini-label">Quick sale</div>
+            <strong id="price-ai-quick">--</strong>
+          </div>
+          <div class="price-ai-card">
+            <div class="mini-label">Recommended</div>
+            <strong id="price-ai-recommended">--</strong>
+          </div>
+          <div class="price-ai-card">
+            <div class="mini-label">High ask</div>
+            <strong id="price-ai-high">--</strong>
+          </div>
+          <div class="price-ai-card">
+            <div class="mini-label">Retail</div>
+            <strong id="price-ai-retail">--</strong>
+          </div>
         </div>
-        <div class="price-ai-card">
-          <div class="mini-label">Recommended</div>
-          <strong id="price-ai-recommended">--</strong>
+        <div class="price-ai-meta">
+          <span id="price-ai-range">Comp range: --</span>
+          <span id="price-ai-sources">Sources: --</span>
+          <span id="price-ai-summary">Summary: --</span>
         </div>
-        <div class="price-ai-card">
-          <div class="mini-label">High ask</div>
-          <strong id="price-ai-high">--</strong>
+        <div class="hint">AI pricing uses brand, Brand Style Name, style/description, size, category, box status, pricing condition, and photos. Results can change when comps, photos, or item details change.</div>
+        <div class="price-ai-actions">
+          <button class="button primary" type="button" id="price-ai-apply-button">Use recommended price</button>
+          <button class="button secondary" type="button" id="price-ai-retail-apply-button">Use retail pricing</button>
+          <button class="button secondary" type="button" id="price-ai-apply-both-button">Use both prices</button>
+          <button class="button ghost" type="button" id="price-ai-refresh-button">Refresh pricing</button>
+          <button class="button ghost" type="button" id="price-ai-cancel-button">Close</button>
         </div>
-        <div class="price-ai-card">
-          <div class="mini-label">Retail</div>
-          <strong id="price-ai-retail">--</strong>
-        </div>
-      </div>
-      <div class="price-ai-meta">
-        <span id="price-ai-range">Comp range: --</span>
-        <span id="price-ai-sources">Sources: --</span>
-        <span id="price-ai-summary">Summary: --</span>
-      </div>
-      <div class="form-status" style="margin-top:12px;">
-        AI pricing uses brand, Brand Style Name, style/description, size, category, box status, pricing condition, and photos. Results can change when comps, photos, or item details change.
-      </div>
-      <div class="button-row">
-        <button class="button secondary" type="button" id="price-ai-apply-button">Use recommended price</button>
-        <button class="button secondary" type="button" id="price-ai-retail-apply-button">Use retail pricing</button>
-        <button class="button secondary" type="button" id="price-ai-apply-both-button">Use both prices</button>
-        <button class="button ghost" type="button" id="price-ai-refresh-button">Refresh pricing</button>
-        <button class="button ghost" type="button" id="price-ai-cancel-button">Close</button>
       </div>
     </div>
   </div>
@@ -2629,10 +2629,19 @@
       });
     }
 
+    let bannerTimer = null;
+
+    function hideBanner() {
+      elements.connectionBanner.classList.remove('visible');
+    }
+
+    // Shows a pop-up message at the top of the screen, then hides it again.
     function showBanner(type, title, body) {
-      elements.connectionBanner.className = `status-banner ${type}`;
+      elements.connectionBanner.className = `status-banner visible ${type}`;
       elements.connectionBannerTitle.textContent = title;
       elements.connectionBannerBody.textContent = body;
+      window.clearTimeout(bannerTimer);
+      bannerTimer = window.setTimeout(hideBanner, type === 'error' ? 9000 : 4500);
     }
 
     function syncResponsiveLabels() {
@@ -2656,9 +2665,10 @@
       elements.inventoryStatusVersion.textContent = `Mobile Build ${APP_CONFIG.appVersion}`;
       elements.inventoryStatusUpdated.textContent = `Updated: ${formatStatusTimestamp(state.lastInventorySyncAt)}`;
       elements.inventoryStatusSync.textContent = `Sync status: ${syncMessage}`;
-      elements.footerSyncPill.textContent = `Sync status: ${syncMessage}`;
+      elements.footerSyncPill.textContent = syncMessage;
       const syncOk = /^Synced\b/i.test(String(syncMessage || ''));
       elements.refreshButton.classList.toggle('sync-ok', syncOk);
+      elements.footerSyncPill.classList.toggle('ok', syncOk);
     }
 
     function showFormStatus(type, message) {
@@ -2669,8 +2679,9 @@
     function renderGalleryImage() {
       if (!state.galleryUrls.length) return;
       elements.modalImage.src = state.galleryUrls[state.galleryIndex];
+      document.getElementById('viewer-counter').textContent = `${state.galleryIndex + 1} / ${state.galleryUrls.length}`;
       elements.setMainImageButton.disabled = state.galleryIndex === 0;
-      elements.setMainImageButton.textContent = state.galleryIndex === 0 ? 'Main Image' : 'Set Main Image';
+      elements.setMainImageButton.textContent = state.galleryIndex === 0 ? 'Main photo' : 'Set as main';
       const pending = state.pendingWhiteBgReplacement;
       const isPendingProcessed =
         pending &&
@@ -3151,7 +3162,7 @@
         showBanner('success', 'Image added', `${filesToUpload.length} image${filesToUpload.length === 1 ? '' : 's'} added to this shoe.`);
       } finally {
         elements.addImageButton.disabled = false;
-        elements.addImageButton.textContent = 'Add Image';
+        elements.addImageButton.textContent = 'Add photo';
         elements.modalAddImageInput.value = '';
       }
     }
@@ -3436,8 +3447,8 @@
       elements.fileBrowserInput.value = '';
       elements.photoPreview.innerHTML = '';
       elements.cancelEditButton.classList.add('hidden');
-      elements.saveButton.textContent = 'Save to Supabase';
-      showFormStatus('', 'Ready to save. Add photos, confirm details, then save to Supabase.');
+      elements.saveButton.textContent = 'Save pair';
+      showFormStatus('', '');
       setBoxMode(true);
       setOriginalTagsMode(false);
     }
@@ -3451,7 +3462,14 @@
       renderPhotoPreview();
     }
 
+    let photoPreviewUrls = [];
+
     function renderPhotoPreview() {
+      photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+      photoPreviewUrls = [];
+      const countLabel = document.getElementById('add-photo-count');
+      if (countLabel) countLabel.textContent = `${state.photoFiles.length} of 6`;
+
       if (!state.photoFiles.length) {
         elements.photoPreview.innerHTML = '';
         return;
@@ -3459,7 +3477,8 @@
 
       elements.photoPreview.innerHTML = state.photoFiles.map((file, index) => {
         const previewUrl = URL.createObjectURL(file);
-        return `<div class="photo-tile"><img src="${previewUrl}" alt="Photo ${index + 1}"><div class="photo-caption">${escapeHtml(file.name || `Photo ${index + 1}`)}</div></div>`;
+        photoPreviewUrls.push(previewUrl);
+        return `<div class="photo-tile"><img src="${previewUrl}" alt="Photo ${index + 1}">${index === 0 ? '<span class="tile-badge">Main</span>' : ''}<button class="tile-remove" type="button" data-remove-photo="${index}" aria-label="Remove photo ${index + 1}">&times;</button></div>`;
       }).join('');
     }
 
@@ -3665,7 +3684,7 @@
         showFormStatus('success', `${draft.brand} saved successfully. Scroll down to see it in inventory.`);
         resetDraft();
         await loadInventory();
-        elements.addPanel.open = false;
+        closeAddSheet();
         document.getElementById('inventory-list').scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (error) {
         showBanner('error', 'Save failed', error.message || String(error));
@@ -3673,7 +3692,7 @@
       } finally {
         state.isSaving = false;
         elements.saveButton.disabled = false;
-        elements.saveButton.textContent = 'Save to Supabase';
+        elements.saveButton.textContent = 'Save pair';
       }
     }
 
@@ -3909,8 +3928,10 @@
       const selectedCount = getSelectedInventory().length;
       elements.selectionSummary.textContent = `${selectedCount} selected`;
       elements.clearSelectionButton.disabled = selectedCount === 0;
+      elements.clearSelectionButton.hidden = selectedCount === 0;
+      elements.selectionSummary.hidden = selectedCount === 0;
       const allVisibleSelected = visibleItems.length > 0 && visibleItems.every((item) => state.selectedIds.has(item.id));
-      elements.selectAllButton.textContent = allVisibleSelected ? 'View Selected' : 'Select View';
+      elements.selectAllButton.textContent = allVisibleSelected ? 'Deselect all' : 'Select all';
     }
 
     function getChartSizeSortMeta(rawSize) {
@@ -4029,9 +4050,14 @@
     }
 
     function renderInventory() {
+      updateFilterChips();
+      updateSortUi();
+      updateActiveFilters();
+
       if (!state.inventory.length) {
-        elements.inventoryList.innerHTML = '<div class="empty-state">No pairs have been saved yet. Add your first pair above, upload the photos, and this list will fill in automatically.</div>';
-        elements.inventorySummary.textContent = '0 pairs total · $0.00';
+        elements.inventoryList.innerHTML = '<div class="empty-state"><strong>No pairs yet</strong>Tap + Add pair to save your first shoe.</div>';
+        elements.inventorySummary.textContent = '0 pairs \u00b7 $0.00';
+        ui.listCount.textContent = '';
         updateSelectionSummary([]);
         renderBrandSizeChart([]);
         return;
@@ -4042,80 +4068,77 @@
       updateSelectionSummary(visibleItems);
       renderBrandSizeChart(visibleItems);
       const selectedCount = getSelectedInventory().length;
-      elements.inventorySummary.textContent = `${visibleItems.length} ${visibleItems.length === 1 ? 'pair' : 'pairs'} total · ${currency(visibleTotal)}${selectedCount ? ` · ${selectedCount} selected` : ''}`;
+      elements.inventorySummary.textContent = `${visibleItems.length} ${visibleItems.length === 1 ? 'pair' : 'pairs'} \u00b7 ${currency(visibleTotal)}${selectedCount ? ` \u00b7 ${selectedCount} selected` : ''}`;
+      ui.listCount.textContent = visibleItems.length === state.inventory.length
+        ? String(visibleItems.length)
+        : `${visibleItems.length} of ${state.inventory.length}`;
 
-        elements.inventoryList.innerHTML = visibleItems.map((item) => {
-        const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
-        const isSelected = state.selectedIds.has(item.id);
-        const tags = [
-          item.has_box
-            ? `<span class="inventory-tag boxed ${item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : ''}">Box</span>`
-            : '<span class="inventory-tag empty">&nbsp;</span>'
-        ].join('');
-        const categoryDisplay = item.category_2 || '-';
-        const cardClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : item.gender === 'kids' ? 'gender-kids' : '';
-        const itemStatus = normalizeListingStatus(item.status, Boolean(item.sold));
-        const statusPill = itemStatus === 'sold'
-          ? `<span class="inventory-tag sold">Sold</span>`
-          : itemStatus === 'draft'
-            ? `<span class="inventory-tag draft">Draft</span>`
-            : '';
-        const priceAiClass = item.price_ai_used ? 'mini-button price-ai-used' : 'mini-button';
-        const reviewedDotClass = item.reviewed ? 'review-status-dot reviewed' : 'review-status-dot';
-        const pricedNote = item.price_ai_last_run_at ? `Priced ${escapeHtml(formatShortDate(item.price_ai_last_run_at))}` : 'Not priced';
-        const lockNote = item.pricing_locked ? '<div class="price-ai-meta-note locked">Locked</div>' : '';
+      if (!visibleItems.length) {
+        elements.inventoryList.innerHTML = '<div class="empty-state"><strong>Nothing matches</strong>Try a different search, or tap All to clear the filter.</div>';
+        return;
+      }
 
-          const photoStrip = photos.length
-            ? `<div class="photo-preview-wrap"><button class="photo-thumb primary" type="button" data-photo-item="${item.id}" data-photo-index="0"><img src="${photos[0]}" alt="Main saved photo"></button><div class="photo-count">${photos.length} ${photos.length === 1 ? 'photo' : 'photos'}</div></div>`
-            : '<div class="attachments-empty">No photos</div>';
+      elements.inventoryList.innerHTML = visibleItems.map(renderInventoryCard).join('');
+    }
 
-        return `
-            <article class="inventory-card ${cardClass}" data-inventory-item-id="${item.id}">
-              <span class="${reviewedDotClass}" aria-label="${item.reviewed ? 'Reviewed' : 'Not reviewed'}" title="${item.reviewed ? 'Reviewed' : 'Not reviewed'}"></span>
-              <div class="inventory-line">
-                <div class="inventory-cell">
-                  <div class="inventory-actions">
-                    <label class="checkbox-option" style="margin-bottom:6px;display:inline-flex;align-items:center;gap:6px;"><input type="checkbox" data-select-id="${item.id}" ${isSelected ? 'checked' : ''}>Select</label>
-                    <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div class="pill-row">${tags}</div></button>
-                    <button class="${priceAiClass}" type="button" data-price-ai-id="${item.id}"><span class="desktop-label">Price AI</span><span class="mobile-label">AI</span></button>
-                    ${lockNote}
-                    <div class="price-ai-meta-note">${pricedNote}</div>
-                  </div>
-                </div>
-              <div class="inventory-cell">
-                <h3>${escapeHtml(item.brand || 'Unknown brand')}</h3>
-              </div>
-              <div class="inventory-cell">
-                <div class="inventory-meta">${escapeHtml(getCardTitleText(item) || 'No title')}</div>
-              </div>
-              <div class="inventory-cell">
-                <div class="mini-label">Category</div>
-                <button class="inventory-pill-button" type="button" data-edit-id="${item.id}"><div>${escapeHtml(categoryDisplay)}</div></button>
-              </div>
-              <div class="inventory-cell">
-                <div class="mini-label">Size</div>
-                <p>${escapeHtml(item.size || '-')}</p>
-              </div>
-              <div class="inventory-cell">
-                <div class="mini-label">Listed Price</div>
-                ${statusPill ? `<div class="inventory-status-stack">${statusPill}<div class="price">${currency(item.price)}</div></div>` : `<div class="price">${currency(item.price)}</div>`}
-              </div>
-              <div class="inventory-cell">
-                <div class="mini-label">Attachments</div>
-                ${photoStrip}
-              </div>
-              <div class="inventory-cell">
-                <div class="inventory-actions end">
-                  <button class="mini-button" type="button" data-card-id="${item.id}">Card</button>
-                  <button class="mini-button" type="button" data-edit-id="${item.id}">Edit</button>
-                  <button class="mini-button" type="button" data-duplicate-id="${item.id}">Copy</button>
-                  <button class="mini-button" type="button" data-delete-id="${item.id}">Delete</button>
-                </div>
-              </div>
+    function renderInventoryCard(item) {
+      const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
+      const isSelected = state.selectedIds.has(item.id);
+      const itemStatus = normalizeListingStatus(item.status, Boolean(item.sold));
+      const brandText = item.brand || 'Unknown brand';
+      const genderClass = item.gender === 'womens' ? 'gender-womens' : item.gender === 'mens' ? 'gender-mens' : item.gender === 'kids' ? 'gender-kids' : '';
+      const genderLabel = item.gender === 'womens' ? 'Womens' : item.gender === 'mens' ? 'Mens' : item.gender === 'kids' ? 'Kids' : '';
+
+      const tags = [];
+      if (item.category_2) tags.push(`<span class="tag">${escapeHtml(item.category_2)}</span>`);
+      if (genderLabel) tags.push(`<span class="tag">${genderLabel}</span>`);
+      if (item.has_box) tags.push('<span class="tag box">Box</span>');
+      if (itemStatus === 'sold') tags.push('<span class="tag sold">Sold</span>');
+      else if (itemStatus === 'draft') tags.push('<span class="tag draft">Draft</span>');
+
+      const sizeText = String(item.size || '').trim();
+      const sizeClass = sizeText.length > 7 ? 'xlong' : sizeText.length > 4 ? 'long' : '';
+      const priceAiClass = item.price_ai_used ? 'mini-button price-ai-used' : 'mini-button';
+      const pricedNote = item.price_ai_last_run_at ? `Priced ${escapeHtml(formatShortDate(item.price_ai_last_run_at))}` : 'Not priced';
+      const lockNote = item.pricing_locked ? '<span class="locked">Price locked</span>' : '';
+
+      const photoBlock = photos.length
+        ? `<button class="photo-thumb" type="button" data-photo-item="${item.id}" data-photo-index="0" aria-label="Open ${photos.length} ${photos.length === 1 ? 'photo' : 'photos'}"><img src="${escapeHtml(photos[0])}" alt="Main photo" loading="lazy"></button><span class="photo-count">${photos.length}</span>`
+        : '<div class="photo-none">No photo</div>';
+
+      return `
+        <article class="inventory-card ${genderClass}${itemStatus === 'sold' ? ' is-sold' : ''}" data-inventory-item-id="${item.id}">
+          <div class="card-main">
+            <div class="card-photo">
+              ${photoBlock}
+              <label class="select-box" title="Select this shoe"><input type="checkbox" data-select-id="${item.id}" ${isSelected ? 'checked' : ''} aria-label="Select ${escapeHtml(brandText)}"></label>
             </div>
-          </article>
-        `;
-      }).join('');
+            <div class="card-info" data-edit-id="${item.id}" role="button" tabindex="0" aria-label="Edit ${escapeHtml(brandText)}">
+              <h3>${escapeHtml(brandText)}</h3>
+              <p class="card-title">${escapeHtml(getCardTitleText(item) || 'No title')}</p>
+              <div class="card-tags">${tags.join('')}</div>
+            </div>
+            <div class="card-side">
+              <div class="size-tile ${sizeClass}" title="Size ${escapeHtml(sizeText || 'not set')}"><span class="size-cap">size</span><span class="size-val">${escapeHtml(sizeText || '-')}</span></div>
+              <div class="price">${currency(item.price)}</div>
+            </div>
+          </div>
+          <div class="card-foot">
+            <div class="card-status">
+              <span class="review-state${item.reviewed ? ' reviewed' : ''}">${item.reviewed ? 'Reviewed' : 'Not reviewed'}</span>
+              <span>${pricedNote}</span>
+              ${lockNote}
+            </div>
+            <div class="card-actions">
+              <button class="mini-button edit" type="button" data-edit-id="${item.id}">Edit</button>
+              <button class="${priceAiClass}" type="button" data-price-ai-id="${item.id}">Price AI</button>
+              <button class="mini-button" type="button" data-card-id="${item.id}">Card</button>
+              <button class="mini-button" type="button" data-duplicate-id="${item.id}">Copy</button>
+              <button class="mini-button danger" type="button" data-delete-id="${item.id}">Delete</button>
+            </div>
+          </div>
+        </article>
+      `;
     }
 
     function getCardTitleText(item) {
@@ -4126,25 +4149,26 @@
       const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
       const titleText = getCardTitleText(item);
       const photoMarkup = photos.length
-        ? photos.map((url) => `<img src="${url}" style="width:100%;aspect-ratio:1 / 1;object-fit:cover;border-radius:8px;border:1px solid #e4d8cb;display:block;" />`).join('')
-        : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;min-height:120px;">No photos</div>';
+        ? photos.map((url) => `<img src="${escapeHtml(url)}" alt="Shoe photo">`).join('')
+        : '<div class="card-view-empty">No photos</div>';
+      const rows = [
+        ['Title', titleText],
+        ['Category', item.category_2 || '-'],
+        ['Brand', item.brand || '-'],
+        ["Brand's style name", item.brand_style_name || '-'],
+        ['Size', item.size || '-'],
+        ['Condition', item.condition || 'Not set'],
+        ['Colors', item.colors || '-'],
+        ['Retail price', item.estimated_retail_price ? currency(item.estimated_retail_price) : '-'],
+        ['Listed price', currency(item.price || 0)],
+        ['Pricing condition', item.pricing_condition || '-']
+      ];
       return `
-        <article class="detail-card" style="padding:14px;">
-          <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:6px;margin-bottom:10px;">
-            ${photoMarkup}
-          </div>
-          <div style="font:12px Arial,sans-serif;color:#6c5d52;line-height:1.65;">
-            <div><strong>Title:</strong> ${escapeHtml(titleText)}</div>
-            <div><strong>Category:</strong> ${escapeHtml(item.category_2 || '-')}</div>
-            <div><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</div>
-            <div><strong>Brand's Style Name:</strong> ${escapeHtml(item.brand_style_name || '-')}</div>
-            <div><strong>Size:</strong> ${escapeHtml(item.size || '-')}</div>
-            <div><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</div>
-            <div><strong>Colors:</strong> ${escapeHtml(item.colors || '-')}</div>
-            <div><strong>Retail Price:</strong> ${escapeHtml(item.estimated_retail_price ? currency(item.estimated_retail_price) : '-')}</div>
-            <div><strong>Listed Price:</strong> ${escapeHtml(currency(item.price || 0))}</div>
-            <div><strong>Pricing Condition:</strong> ${escapeHtml(item.pricing_condition || '-')}</div>
-          </div>
+        <article class="group">
+          <div class="card-view-photos">${photoMarkup}</div>
+          <dl class="card-view-list">
+            ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}
+          </dl>
         </article>
       `;
     }
@@ -4186,6 +4210,7 @@
         updateInventoryStatusCard(`Synced ${state.inventory.length} pairs`);
         renderStats();
         renderInventory();
+        if (state.editingId) renderEditPhotos();
 
         // Open a specific shoe when another page links to index.html?edit=<shoe-id>.
         const requestedEditId = new URLSearchParams(window.location.search).get('edit');
@@ -4480,8 +4505,10 @@
     });
     elements.photoModal.addEventListener('touchstart', (event) => {
       state.touchStartX = event.changedTouches[0]?.clientX || 0;
+      state.touchIgnore = Boolean(event.target.closest('.viewer-toolbar, .viewer-top'));
     }, { passive: true });
     elements.photoModal.addEventListener('touchend', (event) => {
+      if (state.touchIgnore || state.cropMode) return;
       const endX = event.changedTouches[0]?.clientX || 0;
       const delta = endX - state.touchStartX;
       if (Math.abs(delta) < 40) return;
@@ -4542,8 +4569,8 @@
     });
     window.addEventListener('resize', syncResponsiveLabels);
 
-    if (SUPABASE_READY) {
-      showBanner('success', 'Supabase connected', 'The app is ready to upload photos to Storage and save shoe records into your inventory table.');
+    if (!SUPABASE_READY) {
+      showBanner('warning', 'Waiting for setup', 'Add your Supabase URL and anon key near the top of this file, then the app can upload photos and save inventory.');
     }
 
     function startEdit(id) {
@@ -4578,9 +4605,15 @@
       elements.editSerialNumber.value = item.serial_number || '';
       setCheckedValues('edit-platforms-listed', item.platforms_listed || []);
       elements.editStatus.className = 'form-status';
-      elements.editStatus.textContent = 'Update the fields and save changes.';
+      elements.editStatus.textContent = '';
+      updateEditHeader(item);
+      setEditPhotoStatus('', '');
+      state.editPhotoBusy = false;
+      renderEditPhotos();
       elements.editModal.classList.remove('hidden');
       elements.editModal.setAttribute('aria-hidden', 'false');
+      const editBody = elements.editModal.querySelector('.sheet-body');
+      if (editBody) editBody.scrollTop = 0;
     }
 
     function closeEditModal() {
@@ -6581,6 +6614,327 @@
     elements.singleCardModal.addEventListener('click', (event) => {
       if (event.target === elements.singleCardModal) closeSingleCardModal();
     });
+    // =====================================================================
+    // REDESIGN ADDITIONS
+    // Everything below is new. It powers the new layout: the Add and Edit
+    // sheets, photo tools inside Edit, filter buttons, export menu, etc.
+    // =====================================================================
+
+    const ui = {
+      openAddButton: document.getElementById('open-add-button'),
+      addClose: document.getElementById('add-close'),
+      addPhotoCount: document.getElementById('add-photo-count'),
+      photoModalClose: document.getElementById('photo-modal-close'),
+      toastClose: document.getElementById('toast-close'),
+      listCount: document.getElementById('list-count'),
+      filterChips: document.getElementById('filter-chips'),
+      activeFilters: document.getElementById('active-filters'),
+      exportMenu: document.getElementById('export-menu'),
+      editTitle: document.getElementById('edit-title'),
+      editSubtitle: document.getElementById('edit-subtitle'),
+      editPhotoGrid: document.getElementById('edit-photo-grid'),
+      editPhotoCount: document.getElementById('edit-photo-count'),
+      editPhotoStatus: document.getElementById('edit-photo-status'),
+      editPhotoAddInput: document.getElementById('edit-photo-add-input'),
+      editPhotoCameraInput: document.getElementById('edit-photo-camera-input'),
+      editPhotoAddButton: document.getElementById('edit-photo-add-button'),
+      editPhotoCameraButton: document.getElementById('edit-photo-camera-button')
+    };
+
+    const ICON_STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>';
+    const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>';
+    const ICON_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+
+    state.editPhotoBusy = false;
+
+    // ---- Add sheet ------------------------------------------------------
+    function openAddSheet() {
+      elements.addPanel.classList.remove('hidden');
+      elements.addPanel.setAttribute('aria-hidden', 'false');
+      const body = elements.addPanel.querySelector('.sheet-body');
+      if (body) body.scrollTop = 0;
+    }
+
+    function closeAddSheet() {
+      elements.addPanel.classList.add('hidden');
+      elements.addPanel.setAttribute('aria-hidden', 'true');
+    }
+
+    ui.openAddButton.addEventListener('click', openAddSheet);
+    ui.addClose.addEventListener('click', closeAddSheet);
+
+    // Add sheet: let people remove a photo they picked by mistake.
+    elements.photoPreview.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-remove-photo]');
+      if (!button) return;
+      state.photoFiles.splice(Number(button.dataset.removePhoto), 1);
+      renderPhotoPreview();
+    });
+
+    // ---- Small helpers for the page ------------------------------------
+    function updateFilterChips() {
+      const current = state.sortValue === 'created_at_desc' ? 'all' : state.sortValue;
+      ui.filterChips.querySelectorAll('.chip').forEach((chip) => {
+        chip.classList.toggle('active', chip.dataset.filter === current);
+      });
+    }
+
+    function updateSortUi() {
+      document.querySelectorAll('.inventory-head [data-sort-key]').forEach((button) => {
+        const active = state.columnSort.key === button.dataset.sortKey;
+        button.classList.toggle('active', active);
+        button.dataset.dir = active ? state.columnSort.direction : '';
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    }
+
+    function updateActiveFilters() {
+      if (!state.chartFilter) {
+        ui.activeFilters.hidden = true;
+        ui.activeFilters.innerHTML = '';
+        return;
+      }
+      ui.activeFilters.hidden = false;
+      ui.activeFilters.innerHTML = `<span class="chip notice">Chart filter: ${escapeHtml(state.chartFilter.brand)} / ${escapeHtml(formatChartSizeLabel(state.chartFilter.size))}<button type="button" data-clear-chart-filter aria-label="Clear chart filter">&times;</button></span>`;
+    }
+
+    ui.filterChips.addEventListener('click', (event) => {
+      const chip = event.target.closest('[data-filter]');
+      if (!chip) return;
+      elements.sortSelect.value = chip.dataset.filter;
+      state.sortValue = chip.dataset.filter;
+      renderInventory();
+    });
+
+    ui.activeFilters.addEventListener('click', (event) => {
+      if (!event.target.closest('[data-clear-chart-filter]')) return;
+      state.chartFilter = null;
+      renderInventory();
+    });
+
+    // Search as you type (waits a moment so it does not re-draw on every letter).
+    let searchDebounce = null;
+    elements.searchInput.addEventListener('input', (event) => {
+      window.clearTimeout(searchDebounce);
+      const value = event.target.value;
+      searchDebounce = window.setTimeout(() => {
+        const trimmed = value.trim();
+        if (trimmed === state.searchTerm) return;
+        state.searchTerm = trimmed;
+        renderInventory();
+      }, 300);
+    });
+
+    // Export menu: close it after picking something or tapping elsewhere.
+    ui.exportMenu.addEventListener('click', (event) => {
+      if (event.target.closest('.menu-item')) ui.exportMenu.open = false;
+    });
+    document.addEventListener('click', (event) => {
+      if (ui.exportMenu.open && !ui.exportMenu.contains(event.target)) ui.exportMenu.open = false;
+    });
+
+    // Pop-up message close button
+    ui.toastClose.addEventListener('click', hideBanner);
+
+    // Tapping a card's title area opens Edit; make it work with the keyboard too.
+    elements.inventoryList.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const target = event.target.closest('.card-info[data-edit-id]');
+      if (!target || event.target !== target) return;
+      event.preventDefault();
+      startEdit(target.dataset.editId);
+    });
+
+    // Lock the page behind an open sheet so it does not scroll underneath.
+    const modalObserver = new MutationObserver(() => {
+      document.body.classList.toggle('modal-open', Boolean(document.querySelector('.modal:not(.hidden)')));
+    });
+    document.querySelectorAll('.modal').forEach((modal) => {
+      modalObserver.observe(modal, { attributes: true, attributeFilter: ['class'] });
+    });
+
+    // Escape closes whichever sheet is on top (the photo viewer already handles its own).
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (!elements.photoModal.classList.contains('hidden')) return;
+      if (!elements.priceAiModal.classList.contains('hidden')) return closePriceAiModal();
+      if (!elements.singleCardModal.classList.contains('hidden')) return closeSingleCardModal();
+      if (!elements.editModal.classList.contains('hidden')) return closeEditModal();
+      if (!elements.addPanel.classList.contains('hidden')) return closeAddSheet();
+    });
+
+    // Photo viewer: a clear close button (the old one had none on phones).
+    ui.photoModalClose.addEventListener('click', closePhotoModal);
+
+    // ---- Photos inside the Edit sheet ----------------------------------
+    function getEditingItem() {
+      return state.inventory.find((entry) => entry.id === state.editingId) || null;
+    }
+
+    function updateEditHeader(item) {
+      ui.editTitle.textContent = 'Edit shoe';
+      ui.editSubtitle.textContent = [item.brand, item.size ? `Size ${item.size}` : ''].filter(Boolean).join(' \u00b7 ');
+    }
+
+    function setEditPhotoStatus(type, message) {
+      ui.editPhotoStatus.hidden = !message;
+      ui.editPhotoStatus.className = type ? `form-status ${type}` : 'form-status';
+      ui.editPhotoStatus.textContent = message || '';
+    }
+
+    function setEditPhotoBusy(isBusy, message) {
+      state.editPhotoBusy = isBusy;
+      if (message) setEditPhotoStatus('', message);
+      renderEditPhotos();
+    }
+
+    function renderEditPhotos() {
+      if (!state.editingId) return;
+      const item = getEditingItem();
+      const photos = item && Array.isArray(item.photo_urls) ? item.photo_urls : [];
+      ui.editPhotoCount.textContent = `${photos.length} of 6`;
+
+      const tiles = photos.map((url, index) => `
+        <div class="ep-tile${index === 0 ? ' is-main' : ''}">
+          <button class="ep-img" type="button" data-ep-open="${index}" aria-label="Open photo ${index + 1}"><img src="${escapeHtml(url)}" alt="Photo ${index + 1}"></button>
+          ${index === 0 ? '<span class="tile-badge">Main</span>' : ''}
+          <div class="ep-actions">
+            ${index === 0 ? '' : `<button type="button" class="ep-main" data-ep-main="${index}" aria-label="Make photo ${index + 1} the main photo">${ICON_STAR}</button>`}
+            <button type="button" class="ep-delete" data-ep-delete="${index}" aria-label="Delete photo ${index + 1}">${ICON_TRASH}</button>
+          </div>
+        </div>`).join('');
+      const addTile = photos.length < 6
+        ? `<button class="ep-add" type="button" data-ep-add>${ICON_PLUS}<span>Add</span></button>`
+        : '';
+
+      ui.editPhotoGrid.innerHTML = tiles + addTile;
+      ui.editPhotoGrid.classList.toggle('is-busy', state.editPhotoBusy);
+      const full = photos.length >= 6;
+      ui.editPhotoAddButton.disabled = state.editPhotoBusy || full;
+      ui.editPhotoCameraButton.disabled = state.editPhotoBusy || full;
+    }
+
+    async function savePhotoLists(item, urls, paths) {
+      const { error } = await supabaseClient
+        .from(APP_CONFIG.inventoryTable)
+        .update({ photo_urls: urls, photo_paths: paths })
+        .eq('id', item.id);
+      if (error) throw error;
+    }
+
+    async function addPhotosToEditingItem(fileList) {
+      if (!SUPABASE_READY || !state.editingId || state.editPhotoBusy) return;
+      const item = getEditingItem();
+      const incoming = Array.from(fileList || []).filter(Boolean);
+      if (!item || !incoming.length) return;
+
+      const currentCount = Array.isArray(item.photo_urls) ? item.photo_urls.length : 0;
+      const slots = Math.max(0, 6 - currentCount);
+      if (!slots) {
+        setEditPhotoStatus('error', 'This shoe already has 6 photos. Delete one before adding another.');
+        return;
+      }
+      const toUpload = incoming.slice(0, slots);
+      const skipped = incoming.length - toUpload.length;
+
+      setEditPhotoBusy(true, `Uploading ${toUpload.length} photo${toUpload.length === 1 ? '' : 's'}...`);
+      try {
+        const uploads = await uploadPhotos(toUpload);
+        await savePhotoLists(
+          item,
+          [...(item.photo_urls || []), ...uploads.map((entry) => entry.url)],
+          [...(item.photo_paths || []), ...uploads.map((entry) => entry.path)]
+        );
+        await loadInventory();
+        setEditPhotoStatus('success', `${toUpload.length} photo${toUpload.length === 1 ? '' : 's'} added.${skipped ? ` ${skipped} skipped because the limit is 6.` : ''}`);
+      } catch (error) {
+        setEditPhotoStatus('error', error?.message || String(error));
+      } finally {
+        ui.editPhotoAddInput.value = '';
+        ui.editPhotoCameraInput.value = '';
+        setEditPhotoBusy(false);
+      }
+    }
+
+    async function makeEditingPhotoMain(index) {
+      const item = getEditingItem();
+      if (!SUPABASE_READY || !item || index <= 0 || state.editPhotoBusy) return;
+      const urls = [...(item.photo_urls || [])];
+      const paths = [...(item.photo_paths || [])];
+      if (index >= urls.length) return;
+
+      setEditPhotoBusy(true, 'Setting main photo...');
+      try {
+        const [url] = urls.splice(index, 1);
+        const [path] = paths.splice(index, 1);
+        urls.unshift(url);
+        paths.unshift(path);
+        await savePhotoLists(item, urls, paths);
+        await loadInventory();
+        setEditPhotoStatus('success', 'Main photo updated.');
+      } catch (error) {
+        setEditPhotoStatus('error', error?.message || String(error));
+      } finally {
+        setEditPhotoBusy(false);
+      }
+    }
+
+    async function deleteEditingPhoto(index) {
+      const item = getEditingItem();
+      if (!SUPABASE_READY || !item || state.editPhotoBusy) return;
+      const urls = [...(item.photo_urls || [])];
+      const paths = [...(item.photo_paths || [])];
+      if (index < 0 || index >= urls.length) return;
+      if (urls.length <= 1) {
+        setEditPhotoStatus('error', 'Each shoe needs at least one photo. Add another before deleting this one.');
+        return;
+      }
+      if (!window.confirm('Delete this photo from the shoe?')) return;
+
+      setEditPhotoBusy(true, 'Deleting photo...');
+      try {
+        urls.splice(index, 1);
+        const [removedPath] = paths.splice(index, 1);
+        await savePhotoLists(item, urls, paths);
+        if (removedPath) {
+          await supabaseClient.storage.from(APP_CONFIG.photoBucket).remove([removedPath]);
+        }
+        await loadInventory();
+        setEditPhotoStatus('success', 'Photo deleted.');
+      } catch (error) {
+        setEditPhotoStatus('error', error?.message || String(error));
+      } finally {
+        setEditPhotoBusy(false);
+      }
+    }
+
+    ui.editPhotoGrid.addEventListener('click', (event) => {
+      if (state.editPhotoBusy) return;
+      const item = getEditingItem();
+      if (!item) return;
+      const openButton = event.target.closest('[data-ep-open]');
+      if (openButton) {
+        openPhotoModal(item.photo_urls, Number(openButton.dataset.epOpen), item.id);
+        return;
+      }
+      const mainButton = event.target.closest('[data-ep-main]');
+      if (mainButton) {
+        makeEditingPhotoMain(Number(mainButton.dataset.epMain));
+        return;
+      }
+      const deleteButton = event.target.closest('[data-ep-delete]');
+      if (deleteButton) {
+        deleteEditingPhoto(Number(deleteButton.dataset.epDelete));
+        return;
+      }
+      if (event.target.closest('[data-ep-add]')) ui.editPhotoAddInput.click();
+    });
+
+    ui.editPhotoAddButton.addEventListener('click', () => ui.editPhotoAddInput.click());
+    ui.editPhotoCameraButton.addEventListener('click', () => ui.editPhotoCameraInput.click());
+    ui.editPhotoAddInput.addEventListener('change', (event) => addPhotosToEditingItem(event.target.files));
+    ui.editPhotoCameraInput.addEventListener('change', (event) => addPhotosToEditingItem(event.target.files));
+
     syncResponsiveLabels();
     updateModeCopy();
     setOriginalTagsMode(false);
