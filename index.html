@@ -2895,6 +2895,11 @@
             const marginX = Math.max(Math.round((right - left) * 0.18), Math.round(canvas.width * 0.03));
             const preserveMinX = Math.max(0, left - marginX);
             const preserveMaxX = Math.min(canvas.width - 1, right + marginX);
+            // A real shadow only falls a short distance below the shoe. Anything
+            // further down is background (pavement, a floor, grass), so cap how
+            // far this "keep it" zone reaches instead of going all the way to
+            // the bottom of the photo.
+            const preserveEndY = Math.min(canvas.height - 1, bottomEdge + Math.round(canvas.height * 0.05));
             const sourceCanvas = document.createElement('canvas');
             sourceCanvas.width = canvas.width;
             sourceCanvas.height = canvas.height;
@@ -2903,7 +2908,7 @@
             const sourceImageData = sourceContext.getImageData(0, 0, canvas.width, canvas.height);
             const finalImageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-            for (let y = preserveStartY; y < canvas.height; y += 1) {
+            for (let y = preserveStartY; y <= preserveEndY; y += 1) {
               for (let x = preserveMinX; x <= preserveMaxX; x += 1) {
                 const index = (y * canvas.width + x) * 4;
                 const r = sourceImageData.data[index];
@@ -2925,6 +2930,12 @@
         }
 
         context.drawImage(image, 0, 0);
+        const edgeTrim = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) * 0.006));
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, edgeTrim);
+        context.fillRect(0, canvas.height - edgeTrim, canvas.width, edgeTrim);
+        context.fillRect(0, 0, edgeTrim, canvas.height);
+        context.fillRect(canvas.width - edgeTrim, 0, edgeTrim, canvas.height);
         return await new Promise((resolve, reject) => {
           canvas.toBlob((outputBlob) => {
             if (outputBlob) resolve(outputBlob);
