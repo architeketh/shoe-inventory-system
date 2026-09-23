@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     /* ------------------------------------------------------------------
        DESIGN TOKENS
@@ -1425,16 +1425,25 @@
         <button class="button ghost" type="button" id="search-clear-button">Clear</button>
       </div>
 
-      <!-- Toggle chips: click any number on at once, they combine (AND). "All" clears the rest. -->
+      <!-- The real filter is this hidden dropdown; the buttons below control it. -->
+      <select class="sr-only" id="sort-select" aria-hidden="true" tabindex="-1">
+        <option value="all">All</option>
+        <option value="created_at_desc">Newest first</option>
+        <option value="mens_only">Mens only</option>
+        <option value="womens_only">Womens only</option>
+        <option value="kids_only">Kids only</option>
+        <option value="for_sale_only">For sale only</option>
+        <option value="sold_only">Sold only</option>
+        <option value="depop_only">Depop listed only</option>
+      </select>
       <div class="chips" id="filter-chips" role="group" aria-label="Filter inventory">
-        <button class="chip active" type="button" data-filter="all" aria-pressed="true">All</button>
-        <button class="chip" type="button" data-filter="mens_only" aria-pressed="false">Mens</button>
-        <button class="chip" type="button" data-filter="womens_only" aria-pressed="false">Womens</button>
-        <button class="chip" type="button" data-filter="kids_only" aria-pressed="false">Kids</button>
-        <button class="chip" type="button" data-filter="for_sale_only" aria-pressed="false">For sale</button>
-        <button class="chip" type="button" data-filter="sold_only" aria-pressed="false">Sold</button>
-        <button class="chip" type="button" data-filter="depop_only" aria-pressed="false">On Depop</button>
-        <button class="chip" type="button" data-filter="not_depop_only" aria-pressed="false">Not on Depop</button>
+        <button class="chip active" type="button" data-filter="all">All</button>
+        <button class="chip" type="button" data-filter="mens_only">Mens</button>
+        <button class="chip" type="button" data-filter="womens_only">Womens</button>
+        <button class="chip" type="button" data-filter="kids_only">Kids</button>
+        <button class="chip" type="button" data-filter="for_sale_only">For sale</button>
+        <button class="chip" type="button" data-filter="sold_only">Sold</button>
+        <button class="chip" type="button" data-filter="depop_only">On Depop</button>
       </div>
       <div class="chips" id="active-filters" hidden></div>
 
@@ -2103,7 +2112,7 @@
       inventory: [],
       editingId: null,
       editHasBox: true,
-      activeFilters: new Set(),
+      sortValue: 'created_at_desc',
       searchTerm: '',
       chartFilter: null,
       selectedIds: new Set(),
@@ -2186,6 +2195,7 @@
       inventoryStatusUpdated: document.getElementById('inventory-status-updated'),
       inventoryStatusSync: document.getElementById('inventory-status-sync'),
       footerSyncPill: document.getElementById('footer-sync-pill'),
+      sortSelect: document.getElementById('sort-select'),
       searchInput: document.getElementById('search-input'),
       searchClearButton: document.getElementById('search-clear-button'),
       reviewHtmlButton: document.getElementById('review-html-button'),
@@ -2865,18 +2875,26 @@
           maskContext.drawImage(image, 0, 0, canvas.width, canvas.height);
           const alphaData = maskContext.getImageData(0, 0, canvas.width, canvas.height).data;
 
-          let bottomEdge = -1;
+          let left = canvas.width, right = -1, top = canvas.height, bottomEdge = -1;
           for (let y = 0; y < canvas.height; y += 1) {
             for (let x = 0; x < canvas.width; x += 1) {
               if (alphaData[(y * canvas.width + x) * 4 + 3] > 24) {
+                if (x < left) left = x;
+                if (x > right) right = x;
+                if (y < top) top = y;
                 bottomEdge = y;
               }
             }
           }
 
-          if (bottomEdge >= 0) {
+          if (bottomEdge >= 0 && right >= left) {
             const preserveStartOffset = Math.round(canvas.height * 0.015);
             const preserveStartY = Math.max(0, Math.min(canvas.height - 1, bottomEdge - preserveStartOffset));
+            // Only keep "shadow" pixels roughly under the shoe itself, not dark
+            // background elsewhere in the photo (pavement, a blurred foreground, etc).
+            const marginX = Math.max(Math.round((right - left) * 0.18), Math.round(canvas.width * 0.03));
+            const preserveMinX = Math.max(0, left - marginX);
+            const preserveMaxX = Math.min(canvas.width - 1, right + marginX);
             const sourceCanvas = document.createElement('canvas');
             sourceCanvas.width = canvas.width;
             sourceCanvas.height = canvas.height;
@@ -2886,7 +2904,7 @@
             const finalImageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
             for (let y = preserveStartY; y < canvas.height; y += 1) {
-              for (let x = 0; x < canvas.width; x += 1) {
+              for (let x = preserveMinX; x <= preserveMaxX; x += 1) {
                 const index = (y * canvas.width + x) * 4;
                 const r = sourceImageData.data[index];
                 const g = sourceImageData.data[index + 1];
@@ -2947,7 +2965,7 @@
         const sourceBlob = await response.blob();
         const resizedBlob = await resizeImageBlob(sourceBlob);
         const { removeBackground } = await getBackgroundRemovalModule();
-        const transparentBlob = await removeBackground(resizedBlob);
+        const transparentBlob = await removeBackground(resizedBlob, { model: 'isnet' });
         const whiteBlob = await flattenTransparentBlobToWhite(transparentBlob, resizedBlob);
         const processed = await uploadProcessedViewerPhoto(whiteBlob, item, suffix);
         await loadInventory();
@@ -3866,33 +3884,31 @@
           return brand === filterBrand && size === filterSize;
         });
       }
-      state.activeFilters.forEach((filterKey) => {
-        switch (filterKey) {
-          case 'mens_only':
-            items = items.filter((item) => item.gender === 'mens');
-            break;
-          case 'womens_only':
-            items = items.filter((item) => item.gender === 'womens');
-            break;
-          case 'kids_only':
-            items = items.filter((item) => item.gender === 'kids');
-            break;
-          case 'for_sale_only':
-            items = items.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'active');
-            break;
-          case 'sold_only':
-            items = items.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold');
-            break;
-          case 'depop_only':
-            items = items.filter((item) => getItemPlatforms(item).some((platform) => String(platform || '').toLowerCase() === 'depop'));
-            break;
-          case 'not_depop_only':
-            items = items.filter((item) => !getItemPlatforms(item).some((platform) => String(platform || '').toLowerCase() === 'depop'));
-            break;
-          default:
-            break;
-        }
-      });
+        switch (state.sortValue) {
+        case 'all':
+          break;
+        case 'mens_only':
+          items = items.filter((item) => item.gender === 'mens');
+          break;
+        case 'womens_only':
+          items = items.filter((item) => item.gender === 'womens');
+          break;
+        case 'kids_only':
+          items = items.filter((item) => item.gender === 'kids');
+          break;
+        case 'for_sale_only':
+          items = items.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'active');
+          break;
+        case 'sold_only':
+          items = items.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold');
+          break;
+        case 'depop_only':
+          items = items.filter((item) => getItemPlatforms(item).some((platform) => String(platform || '').toLowerCase() === 'depop'));
+          break;
+        default:
+          items = items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          break;
+      }
 
       if (state.columnSort.key) {
         const factor = state.columnSort.direction === 'asc' ? 1 : -1;
@@ -4256,6 +4272,10 @@
       triggerMobileSafeEditSave();
     });
     elements.refreshButton.addEventListener('click', loadInventory);
+    elements.sortSelect.addEventListener('change', (event) => {
+      state.sortValue = event.target.value;
+      renderInventory();
+    });
     document.querySelector('.inventory-head').addEventListener('click', (event) => {
       const header = event.target.closest('[data-sort-key]');
       if (!header) return;
@@ -6663,12 +6683,9 @@
 
     // ---- Small helpers for the page ------------------------------------
     function updateFilterChips() {
+      const current = state.sortValue === 'created_at_desc' ? 'all' : state.sortValue;
       ui.filterChips.querySelectorAll('.chip').forEach((chip) => {
-        const isOn = chip.dataset.filter === 'all'
-          ? state.activeFilters.size === 0
-          : state.activeFilters.has(chip.dataset.filter);
-        chip.classList.toggle('active', isOn);
-        chip.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+        chip.classList.toggle('active', chip.dataset.filter === current);
       });
     }
 
@@ -6694,14 +6711,8 @@
     ui.filterChips.addEventListener('click', (event) => {
       const chip = event.target.closest('[data-filter]');
       if (!chip) return;
-      const key = chip.dataset.filter;
-      if (key === 'all') {
-        state.activeFilters.clear();
-      } else if (state.activeFilters.has(key)) {
-        state.activeFilters.delete(key);
-      } else {
-        state.activeFilters.add(key);
-      }
+      elements.sortSelect.value = chip.dataset.filter;
+      state.sortValue = chip.dataset.filter;
       renderInventory();
     });
 
