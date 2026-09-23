@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     /* ------------------------------------------------------------------
        DESIGN TOKENS
@@ -1301,7 +1301,7 @@
       max-height: calc(100dvh - 190px);
       object-fit: contain;
       border-radius: 8px;
-      background: #000;
+      background: #ffffff;
     }
 
     .crop-overlay { position: absolute; inset: 0; z-index: 1; display: none; cursor: crosshair; touch-action: none; }
@@ -1425,16 +1425,25 @@
         <button class="button ghost" type="button" id="search-clear-button">Clear</button>
       </div>
 
-      <!-- Toggle chips: click any number on at once, they combine (AND). "All" clears the rest. -->
+      <!-- The real filter is this hidden dropdown; the buttons below control it. -->
+      <select class="sr-only" id="sort-select" aria-hidden="true" tabindex="-1">
+        <option value="all">All</option>
+        <option value="created_at_desc">Newest first</option>
+        <option value="mens_only">Mens only</option>
+        <option value="womens_only">Womens only</option>
+        <option value="kids_only">Kids only</option>
+        <option value="for_sale_only">For sale only</option>
+        <option value="sold_only">Sold only</option>
+        <option value="depop_only">Depop listed only</option>
+      </select>
       <div class="chips" id="filter-chips" role="group" aria-label="Filter inventory">
-        <button class="chip active" type="button" data-filter="all" aria-pressed="true">All</button>
-        <button class="chip" type="button" data-filter="mens_only" aria-pressed="false">Mens</button>
-        <button class="chip" type="button" data-filter="womens_only" aria-pressed="false">Womens</button>
-        <button class="chip" type="button" data-filter="kids_only" aria-pressed="false">Kids</button>
-        <button class="chip" type="button" data-filter="for_sale_only" aria-pressed="false">For sale</button>
-        <button class="chip" type="button" data-filter="sold_only" aria-pressed="false">Sold</button>
-        <button class="chip" type="button" data-filter="depop_only" aria-pressed="false">On Depop</button>
-        <button class="chip" type="button" data-filter="not_depop_only" aria-pressed="false">Not on Depop</button>
+        <button class="chip active" type="button" data-filter="all">All</button>
+        <button class="chip" type="button" data-filter="mens_only">Mens</button>
+        <button class="chip" type="button" data-filter="womens_only">Womens</button>
+        <button class="chip" type="button" data-filter="kids_only">Kids</button>
+        <button class="chip" type="button" data-filter="for_sale_only">For sale</button>
+        <button class="chip" type="button" data-filter="sold_only">Sold</button>
+        <button class="chip" type="button" data-filter="depop_only">On Depop</button>
       </div>
       <div class="chips" id="active-filters" hidden></div>
 
@@ -2103,7 +2112,7 @@
       inventory: [],
       editingId: null,
       editHasBox: true,
-      activeFilters: new Set(),
+      sortValue: 'created_at_desc',
       searchTerm: '',
       chartFilter: null,
       selectedIds: new Set(),
@@ -2186,6 +2195,7 @@
       inventoryStatusUpdated: document.getElementById('inventory-status-updated'),
       inventoryStatusSync: document.getElementById('inventory-status-sync'),
       footerSyncPill: document.getElementById('footer-sync-pill'),
+      sortSelect: document.getElementById('sort-select'),
       searchInput: document.getElementById('search-input'),
       searchClearButton: document.getElementById('search-clear-button'),
       reviewHtmlButton: document.getElementById('review-html-button'),
@@ -2857,56 +2867,13 @@
         context.fillStyle = '#ffffff';
         context.fillRect(0, 0, canvas.width, canvas.height);
 
-        if (sourceImage) {
-          const maskCanvas = document.createElement('canvas');
-          maskCanvas.width = canvas.width;
-          maskCanvas.height = canvas.height;
-          const maskContext = maskCanvas.getContext('2d');
-          maskContext.drawImage(image, 0, 0, canvas.width, canvas.height);
-          const alphaData = maskContext.getImageData(0, 0, canvas.width, canvas.height).data;
-
-          let bottomEdge = -1;
-          for (let y = 0; y < canvas.height; y += 1) {
-            for (let x = 0; x < canvas.width; x += 1) {
-              if (alphaData[(y * canvas.width + x) * 4 + 3] > 24) {
-                bottomEdge = y;
-              }
-            }
-          }
-
-          if (bottomEdge >= 0) {
-            const preserveStartOffset = Math.round(canvas.height * 0.015);
-            const preserveStartY = Math.max(0, Math.min(canvas.height - 1, bottomEdge - preserveStartOffset));
-            const sourceCanvas = document.createElement('canvas');
-            sourceCanvas.width = canvas.width;
-            sourceCanvas.height = canvas.height;
-            const sourceContext = sourceCanvas.getContext('2d');
-            sourceContext.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
-            const sourceImageData = sourceContext.getImageData(0, 0, canvas.width, canvas.height);
-            const finalImageData = context.getImageData(0, 0, canvas.width, canvas.height);
-
-            for (let y = preserveStartY; y < canvas.height; y += 1) {
-              for (let x = 0; x < canvas.width; x += 1) {
-                const index = (y * canvas.width + x) * 4;
-                const r = sourceImageData.data[index];
-                const g = sourceImageData.data[index + 1];
-                const b = sourceImageData.data[index + 2];
-                const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-                const darkestChannel = Math.min(r, g, b);
-                const shouldPreserve = luminance < 242 || darkestChannel < 215;
-                if (!shouldPreserve) continue;
-                finalImageData.data[index] = r;
-                finalImageData.data[index + 1] = g;
-                finalImageData.data[index + 2] = b;
-                finalImageData.data[index + 3] = 255;
-              }
-            }
-
-            context.putImageData(finalImageData, 0, 0);
-          }
-        }
-
         context.drawImage(image, 0, 0);
+        const edgeTrim = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) * 0.006));
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, edgeTrim);
+        context.fillRect(0, canvas.height - edgeTrim, canvas.width, edgeTrim);
+        context.fillRect(0, 0, edgeTrim, canvas.height);
+        context.fillRect(canvas.width - edgeTrim, 0, edgeTrim, canvas.height);
         return await new Promise((resolve, reject) => {
           canvas.toBlob((outputBlob) => {
             if (outputBlob) resolve(outputBlob);
@@ -2947,7 +2914,7 @@
         const sourceBlob = await response.blob();
         const resizedBlob = await resizeImageBlob(sourceBlob);
         const { removeBackground } = await getBackgroundRemovalModule();
-        const transparentBlob = await removeBackground(resizedBlob);
+        const transparentBlob = await removeBackground(resizedBlob, { model: 'isnet' });
         const whiteBlob = await flattenTransparentBlobToWhite(transparentBlob, resizedBlob);
         const processed = await uploadProcessedViewerPhoto(whiteBlob, item, suffix);
         await loadInventory();
@@ -3866,33 +3833,31 @@
           return brand === filterBrand && size === filterSize;
         });
       }
-      state.activeFilters.forEach((filterKey) => {
-        switch (filterKey) {
-          case 'mens_only':
-            items = items.filter((item) => item.gender === 'mens');
-            break;
-          case 'womens_only':
-            items = items.filter((item) => item.gender === 'womens');
-            break;
-          case 'kids_only':
-            items = items.filter((item) => item.gender === 'kids');
-            break;
-          case 'for_sale_only':
-            items = items.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'active');
-            break;
-          case 'sold_only':
-            items = items.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold');
-            break;
-          case 'depop_only':
-            items = items.filter((item) => getItemPlatforms(item).some((platform) => String(platform || '').toLowerCase() === 'depop'));
-            break;
-          case 'not_depop_only':
-            items = items.filter((item) => !getItemPlatforms(item).some((platform) => String(platform || '').toLowerCase() === 'depop'));
-            break;
-          default:
-            break;
-        }
-      });
+        switch (state.sortValue) {
+        case 'all':
+          break;
+        case 'mens_only':
+          items = items.filter((item) => item.gender === 'mens');
+          break;
+        case 'womens_only':
+          items = items.filter((item) => item.gender === 'womens');
+          break;
+        case 'kids_only':
+          items = items.filter((item) => item.gender === 'kids');
+          break;
+        case 'for_sale_only':
+          items = items.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'active');
+          break;
+        case 'sold_only':
+          items = items.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold');
+          break;
+        case 'depop_only':
+          items = items.filter((item) => getItemPlatforms(item).some((platform) => String(platform || '').toLowerCase() === 'depop'));
+          break;
+        default:
+          items = items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          break;
+      }
 
       if (state.columnSort.key) {
         const factor = state.columnSort.direction === 'asc' ? 1 : -1;
@@ -4256,6 +4221,10 @@
       triggerMobileSafeEditSave();
     });
     elements.refreshButton.addEventListener('click', loadInventory);
+    elements.sortSelect.addEventListener('change', (event) => {
+      state.sortValue = event.target.value;
+      renderInventory();
+    });
     document.querySelector('.inventory-head').addEventListener('click', (event) => {
       const header = event.target.closest('[data-sort-key]');
       if (!header) return;
@@ -6203,7 +6172,7 @@
       }
 
       if (rawCondition.includes('excellent') || rawCondition.includes('like new') || notes.includes('excellent') || notes.includes('like new')) return 'Excellent';
-      if (rawCondition.includes('very good')) return platform === 'depop' ? 'Good' : 'Excellent';
+      if (rawCondition.includes('very good')) return platform === 'depop' ? 'Very Good' : 'Excellent';
       if (rawCondition.includes('good') || pricingCondition === 'used' || notes.includes('good')) return 'Good';
       if (rawCondition.includes('fair') || rawCondition.includes('poor') || pricingCondition === 'refurbished' || notes.includes('flaw') || notes.includes('worn')) return 'Fair';
       return 'Good';
@@ -6298,10 +6267,29 @@
     // Category codes, keyed by gender. Only "Sneakers" is confirmed right now - if you carry
     // Boots/Flats/Heels/Sandals too, get their exact codes the same way (type each into Depop's
     // Category field, copy the "Name (code)" text) and they can be added here later.
-    const DEPOP_CATEGORY_BY_GENDER = {
-      mens: 'Men >> Footwear >> Sneakers (menswear, footwear, trainers)',
-      womens: 'Women >> Footwear >> Sneakers (womenswear, footwear, trainers)',
-      kids: 'Kids >> Footwear >> Sneakers (kidswear, footwear, trainers)'
+    const DEPOP_CATEGORY_CODES = {
+      sneakers: {
+        mens: 'Men >> Footwear >> Sneakers (menswear, footwear, trainers)',
+        womens: 'Women >> Footwear >> Sneakers (womenswear, footwear, trainers)',
+        kids: 'Kids >> Footwear >> Sneakers (kidswear, footwear, trainers)'
+      },
+      boots: {
+        mens: 'Men >> Footwear >> Boots (menswear, footwear, boots)',
+        womens: 'Women >> Footwear >> Boots (womenswear, footwear, boots)',
+        kids: 'Kids >> Footwear >> Boots (kidswear, footwear, boots)'
+      },
+      sandals: {
+        womens: 'Women >> Footwear >> Sandals (womenswear, footwear, sandals)',
+        // mens/kids follow the exact same pattern as every other confirmed row above,
+        // but weren't directly seen in your sample - flag for a quick check the first
+        // time one of these is used, same as the kids "7-7.5" size guess further down.
+        mens: 'Men >> Footwear >> Sandals (menswear, footwear, sandals)', // inferred - please verify once in Depop
+        kids: 'Kids >> Footwear >> Sandals (kidswear, footwear, sandals)' // inferred - please verify once in Depop
+      }
+      // Flats and Heels aren't in this table on purpose - Depop doesn't have generic
+      // "Flats" or "Heels" categories at all. It uses specific shoe-type names instead
+      // (Ballet shoes, Loafers, Oxfords, Pumps, Mules, etc). Tell Claude which of those
+      // you want "Flats" and "Heels" items to map to and this can be added the same way.
     };
 
     // Brand codes. Key = brand name with spaces/punctuation removed, lowercased.
@@ -6310,7 +6298,16 @@
       adidas: 'Adidas (adidas)',
       newbalance: 'New Balance (new-balance)',
       converse: 'Converse (converse)',
-      conversekids: 'Converse Kids (converse-kids)'
+      conversekids: 'Converse Kids (converse-kids)',
+      ugg: 'UGG (ugg)',
+      uggkids: 'UGG Kids (ugg-kids)',
+      koolaburrabyugg: 'Koolaburra By UGG (koolaburra-by-ugg)',
+      timberland: 'Timberland (timberland)',
+      sorel: 'Sorel (sorel)',
+      easyspirit: 'Easy Spirit (easy-spirit)',
+      bogs: 'Bogs (bogs)',
+      bogskids: 'Bogs Kids (bogs-kids)',
+      tretorn: 'Tretorn (tretorn)'
     };
 
     // Condition codes. "Used - Good (used_good)" wasn't in your sample export, so it's marked
@@ -6318,7 +6315,8 @@
     const DEPOP_CONDITION_CODES = {
       'Brand new': 'Brand new (brand_new)',
       'Excellent': 'Like new (used_like_new)',
-      'Good': 'Used - Good (used_good)', // best guess - please verify in Depop
+      'Very Good': 'Used - Excellent (used_excellent)',
+      'Good': 'Used - Good (used_good)',
       'Fair': 'Used - Fair (used_fair)'
     };
 
@@ -6403,10 +6401,19 @@
     // plus the size appended at the end (e.g. "...Size 6.5Y"). Falls back to building a simple
     // Brand + gender + color + type + size title only if the saved Description field is empty.
     function buildDepopTitle(item) {
-      const savedDescription = sanitizeDepopText(cleanExportText(item.description));
       const sizeLabel = buildDepopSizeLabel(item);
+      const savedDescription = sanitizeDepopText(cleanExportText(item.description));
       if (savedDescription) {
         return cleanExportText(sizeLabel ? `${savedDescription} ${sizeLabel}` : savedDescription).slice(0, 1000);
+      }
+      // No freeform Description saved - use the more specific Brand's Style Name
+      // (e.g. "Kids Canoe Waterproof 1105181K") if there is one, before falling
+      // back to a generic Brand + gender + color + type title.
+      const styleName = sanitizeDepopText(cleanExportText(item.brand_style_name));
+      if (styleName) {
+        const brandAlreadyIncluded = item.brand && styleName.toLowerCase().includes(String(item.brand).toLowerCase());
+        const withBrand = item.brand && !brandAlreadyIncluded ? `${item.brand} ${styleName}` : styleName;
+        return cleanExportText(sizeLabel ? `${withBrand} ${sizeLabel}` : withBrand).slice(0, 1000);
       }
       const genderPossessive = item.gender === 'womens' ? "Women's" : item.gender === 'kids' ? "Kids'" : item.gender === 'mens' ? "Men's" : '';
       const categoryNoun = DEPOP_CATEGORY_NOUN[normalizeLookupKey(item.category_2)] || 'Shoes';
@@ -6418,7 +6425,13 @@
       return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
     }
 
-    function lookupDepopBrand(brand) {
+    function lookupDepopBrand(brand, gender) {
+      // Prefer a "<Brand> Kids" code (e.g. "UGG Kids", "Bogs Kids") when one exists and
+      // this item is a kids' item, since Depop tracks those as separate brand entries.
+      if (gender === 'kids') {
+        const kidsCode = DEPOP_BRAND_CODES[normalizeLookupKey(`${brand} kids`)];
+        if (kidsCode) return kidsCode;
+      }
       return DEPOP_BRAND_CODES[normalizeLookupKey(brand)] || '';
     }
 
@@ -6470,14 +6483,15 @@
 
           // Category: only confirmed for "Sneakers" per gender right now.
           let categoryCode = '';
-          if (String(item.category_2 || '').toLowerCase() === 'sneakers' && DEPOP_CATEGORY_BY_GENDER[item.gender]) {
-            categoryCode = DEPOP_CATEGORY_BY_GENDER[item.gender];
+          const categoryTable = DEPOP_CATEGORY_CODES[normalizeLookupKey(item.category_2)];
+          if (categoryTable && categoryTable[item.gender]) {
+            categoryCode = categoryTable[item.gender];
           } else {
             missing.push('Category');
           }
 
           // Brand: looked up by normalized name; left blank if not in the table yet.
-          const brandCode = lookupDepopBrand(item.brand);
+          const brandCode = lookupDepopBrand(item.brand, item.gender);
           if (!brandCode) missing.push('Brand');
 
           // Condition: reuses the app's existing New/Excellent/Good/Fair logic, then converts
@@ -6663,12 +6677,9 @@
 
     // ---- Small helpers for the page ------------------------------------
     function updateFilterChips() {
+      const current = state.sortValue === 'created_at_desc' ? 'all' : state.sortValue;
       ui.filterChips.querySelectorAll('.chip').forEach((chip) => {
-        const isOn = chip.dataset.filter === 'all'
-          ? state.activeFilters.size === 0
-          : state.activeFilters.has(chip.dataset.filter);
-        chip.classList.toggle('active', isOn);
-        chip.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+        chip.classList.toggle('active', chip.dataset.filter === current);
       });
     }
 
@@ -6694,14 +6705,8 @@
     ui.filterChips.addEventListener('click', (event) => {
       const chip = event.target.closest('[data-filter]');
       if (!chip) return;
-      const key = chip.dataset.filter;
-      if (key === 'all') {
-        state.activeFilters.clear();
-      } else if (state.activeFilters.has(key)) {
-        state.activeFilters.delete(key);
-      } else {
-        state.activeFilters.add(key);
-      }
+      elements.sortSelect.value = chip.dataset.filter;
+      state.sortValue = chip.dataset.filter;
       renderInventory();
     });
 
