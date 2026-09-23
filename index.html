@@ -1301,7 +1301,7 @@
       max-height: calc(100dvh - 190px);
       object-fit: contain;
       border-radius: 8px;
-      background: #000;
+      background: #ffffff;
     }
 
     .crop-overlay { position: absolute; inset: 0; z-index: 1; display: none; cursor: crosshair; touch-action: none; }
@@ -2866,97 +2866,6 @@
         const context = canvas.getContext('2d');
         context.fillStyle = '#ffffff';
         context.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (sourceImage) {
-          const maskCanvas = document.createElement('canvas');
-          maskCanvas.width = canvas.width;
-          maskCanvas.height = canvas.height;
-          const maskContext = maskCanvas.getContext('2d');
-          maskContext.drawImage(image, 0, 0, canvas.width, canvas.height);
-          const alphaData = maskContext.getImageData(0, 0, canvas.width, canvas.height).data;
-
-          let left = canvas.width, right = -1, top = canvas.height, bottomEdge = -1;
-          for (let y = 0; y < canvas.height; y += 1) {
-            for (let x = 0; x < canvas.width; x += 1) {
-              if (alphaData[(y * canvas.width + x) * 4 + 3] > 24) {
-                if (x < left) left = x;
-                if (x > right) right = x;
-                if (y < top) top = y;
-                bottomEdge = y;
-              }
-            }
-          }
-
-          if (bottomEdge >= 0 && right >= left) {
-            const preserveStartOffset = Math.round(canvas.height * 0.015);
-            const preserveStartY = Math.max(0, Math.min(canvas.height - 1, bottomEdge - preserveStartOffset));
-            // Only keep "shadow" pixels roughly under the shoe itself, not dark
-            // background elsewhere in the photo (pavement, a blurred foreground, etc).
-            const marginX = Math.max(Math.round((right - left) * 0.18), Math.round(canvas.width * 0.03));
-            const preserveMinX = Math.max(0, left - marginX);
-            const preserveMaxX = Math.min(canvas.width - 1, right + marginX);
-            const sourceCanvas = document.createElement('canvas');
-            sourceCanvas.width = canvas.width;
-            sourceCanvas.height = canvas.height;
-            const sourceContext = sourceCanvas.getContext('2d');
-            sourceContext.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
-            const sourceImageData = sourceContext.getImageData(0, 0, canvas.width, canvas.height);
-            const srcData = sourceImageData.data;
-
-            // How far below the shoe to treat as "part of the shot" rather than
-            // unrelated background. A short distance is always allowed (a soft
-            // shadow blurs right at the shoe's edge). Beyond that, keep going
-            // only while the surface still looks smooth and uniform, like a
-            // shoebox or a plain surface - not speckled/textured like pavement,
-            // grass, or gravel - and always stop by a generous outer limit.
-            const minBand = Math.round(canvas.height * 0.05);
-            const maxBand = Math.round(canvas.height * 0.35);
-            function rowRoughness(y) {
-              const step = Math.max(1, Math.round((preserveMaxX - preserveMinX) / 120));
-              let diffs = 0, samples = 0, lastLum = null;
-              for (let x = preserveMinX; x <= preserveMaxX; x += step) {
-                const i = (y * canvas.width + x) * 4;
-                const lum = 0.2126 * srcData[i] + 0.7152 * srcData[i + 1] + 0.0722 * srcData[i + 2];
-                if (lastLum !== null) { diffs += Math.abs(lum - lastLum); samples += 1; }
-                lastLum = lum;
-              }
-              return samples ? diffs / samples : 0;
-            }
-            const roughnessThreshold = 18;
-            let preserveEndY = Math.min(canvas.height - 1, bottomEdge + minBand);
-            const hardLimit = Math.min(canvas.height - 1, bottomEdge + maxBand);
-            let consecutiveRough = 0;
-            for (let y = preserveEndY + 1; y <= hardLimit; y += 1) {
-              if (rowRoughness(y) > roughnessThreshold) {
-                consecutiveRough += 1;
-                if (consecutiveRough >= 3) break;
-              } else {
-                consecutiveRough = 0;
-                preserveEndY = y;
-              }
-            }
-            const finalImageData = context.getImageData(0, 0, canvas.width, canvas.height);
-
-            for (let y = preserveStartY; y <= preserveEndY; y += 1) {
-              for (let x = preserveMinX; x <= preserveMaxX; x += 1) {
-                const index = (y * canvas.width + x) * 4;
-                const r = sourceImageData.data[index];
-                const g = sourceImageData.data[index + 1];
-                const b = sourceImageData.data[index + 2];
-                const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-                const darkestChannel = Math.min(r, g, b);
-                const shouldPreserve = luminance < 242 || darkestChannel < 215;
-                if (!shouldPreserve) continue;
-                finalImageData.data[index] = r;
-                finalImageData.data[index + 1] = g;
-                finalImageData.data[index + 2] = b;
-                finalImageData.data[index + 3] = 255;
-              }
-            }
-
-            context.putImageData(finalImageData, 0, 0);
-          }
-        }
 
         context.drawImage(image, 0, 0);
         const edgeTrim = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) * 0.006));
