@@ -1435,6 +1435,8 @@
         <button class="chip" type="button" data-filter="sold_only" aria-pressed="false">Sold</button>
         <button class="chip" type="button" data-filter="depop_only" aria-pressed="false">On Depop</button>
         <button class="chip" type="button" data-filter="not_depop_only" aria-pressed="false">Not on Depop</button>
+        <button class="chip" type="button" data-filter="new_this_week" aria-pressed="false">Added this week</button>
+        <button class="chip" type="button" data-filter="not_exported_only" aria-pressed="false">Not exported to Depop</button>
       </div>
       <div class="chips" id="active-filters" hidden></div>
 
@@ -3846,6 +3848,21 @@
           case 'not_depop_only':
             items = items.filter((item) => !getItemPlatforms(item).some((platform) => String(platform || '').toLowerCase() === 'depop'));
             break;
+          case 'new_this_week':
+            items = items.filter((item) => {
+              const created = new Date(item.created_at).getTime();
+              return Number.isFinite(created) && Date.now() - created <= 7 * 24 * 60 * 60 * 1000;
+            });
+            break;
+          case 'not_exported_only':
+            items = items.filter((item) => !item.depop_exported_at);
+            break;
+          case 'new_this_week':
+            items = items.filter((item) => {
+              const created = new Date(item.created_at).getTime();
+              return Number.isFinite(created) && Date.now() - created <= 7 * 24 * 60 * 60 * 1000;
+            });
+            break;
           default:
             break;
         }
@@ -4048,6 +4065,7 @@
       const sizeClass = sizeText.length > 7 ? 'xlong' : sizeText.length > 4 ? 'long' : '';
       const priceAiClass = item.price_ai_used ? 'mini-button price-ai-used' : 'mini-button';
       const pricedNote = item.price_ai_last_run_at ? `Priced ${escapeHtml(formatShortDate(item.price_ai_last_run_at))}` : 'Not priced';
+      const depopExportNote = item.depop_exported_at ? `Exported to Depop ${escapeHtml(formatShortDate(item.depop_exported_at))}` : 'Not exported to Depop';
       const lockNote = item.pricing_locked ? '<span class="locked">Price locked</span>' : '';
 
       const photoBlock = photos.length
@@ -4075,6 +4093,7 @@
             <div class="card-status">
               <span class="review-state${item.reviewed ? ' reviewed' : ''}">${item.reviewed ? 'Reviewed' : 'Not reviewed'}</span>
               <span>${pricedNote}</span>
+              <span>${depopExportNote}</span>
               ${lockNote}
             </div>
             <div class="card-actions">
@@ -4149,7 +4168,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,category_2,gender,price,notes,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,pricing_condition,pricing_locked,price_ai_last_run_at,colors,shoe_style,brand_style_name,materials,made_in,serial_number,platforms_listed,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at')
+          .select('id,brand,description,size,category_2,gender,price,notes,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,pricing_condition,pricing_locked,price_ai_last_run_at,colors,shoe_style,brand_style_name,materials,made_in,serial_number,platforms_listed,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at,depop_exported_at')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -6561,6 +6580,21 @@
         })
       ];
       downloadCsv(`depop-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
+
+      // Records that these items went out in a Depop export just now. This tracks
+      // "we sent it" only - it can't know whether Depop actually accepted each one,
+      // so it's not the same thing as "confirmed live on Depop" (see the "On Depop"
+      // checkbox on each shoe for that, which you set yourself).
+      const exportedAt = new Date().toISOString();
+      const exportedIds = exportItems.map((item) => item.id).filter(Boolean);
+      if (exportedIds.length) {
+        supabaseClient.from(APP_CONFIG.inventoryTable).update({ depop_exported_at: exportedAt }).in('id', exportedIds)
+          .then(({ error }) => {
+            if (error) { console.error('Could not record the Depop export timestamp:', error); return; }
+            exportItems.forEach((item) => { item.depop_exported_at = exportedAt; });
+            renderInventory();
+          });
+      }
 
       if (reviewNotes.length) {
         const preview = reviewNotes.slice(0, 15).join('\n');
