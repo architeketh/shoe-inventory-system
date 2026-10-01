@@ -1592,7 +1592,7 @@
           </section>
 
           <section class="group">
-            <div class="group-head"><h3>Shoe details</h3></div>
+            <div class="group-head"><h3>Item details</h3></div>
             <div class="form-grid">
               <div class="field span-2">
                 <label for="brand">Brand</label>
@@ -1611,6 +1611,12 @@
                   <option value="Heels">Heels</option>
                   <option value="Sandals">Sandals</option>
                   <option value="Sneakers">Sneakers</option>
+                  <option value="Bag">Bag</option>
+                  <option value="Hat">Hat</option>
+                  <option value="Belt">Belt</option>
+                  <option value="Sunglasses">Sunglasses</option>
+                  <option value="Scarf">Scarf</option>
+                  <option value="Wallet">Wallet</option>
                 </select>
               </div>
               <div class="field">
@@ -1624,7 +1630,7 @@
               </div>
               <div class="field">
                 <label for="size">Size</label>
-                <input id="size" name="size" type="text" placeholder="10.5, 7Y, EU 42...">
+                <input id="size" name="size" type="text" placeholder="10.5, 7Y, One size, M...">
               </div>
               <div class="field">
                 <label for="condition">Condition</label>
@@ -1865,7 +1871,7 @@
           </section>
 
           <section class="group">
-            <div class="group-head"><h3>Shoe details</h3></div>
+            <div class="group-head"><h3>Item details</h3></div>
             <div class="edit-grid">
               <div class="field span-2">
                 <label for="edit-brand">Brand</label>
@@ -1884,6 +1890,12 @@
                   <option value="Heels">Heels</option>
                   <option value="Sandals">Sandals</option>
                   <option value="Sneakers">Sneakers</option>
+                  <option value="Bag">Bag</option>
+                  <option value="Hat">Hat</option>
+                  <option value="Belt">Belt</option>
+                  <option value="Sunglasses">Sunglasses</option>
+                  <option value="Scarf">Scarf</option>
+                  <option value="Wallet">Wallet</option>
                 </select>
               </div>
               <div class="field">
@@ -2027,6 +2039,10 @@
                 <button class="button secondary" type="button" id="duplicate-button">Copy shoe</button>
                 <button class="button danger" type="button" id="delete-button">Delete shoe</button>
               </div>
+              <div class="danger-zone" style="margin-top: 10px;">
+                <button class="button secondary" type="button" id="regenerate-sku-button">Didn't import to Depop? Try a new SKU</button>
+              </div>
+              <div class="form-status" id="regenerate-sku-status" hidden></div>
             </div>
           </details>
         </div>
@@ -2276,7 +2292,9 @@
       editCancelButton: document.getElementById('edit-cancel-button'),
       editSaveButton: document.getElementById('edit-save-button'),
       deleteButton: document.getElementById('delete-button'),
-      duplicateButton: document.getElementById('duplicate-button')
+      duplicateButton: document.getElementById('duplicate-button'),
+      regenerateSkuButton: document.getElementById('regenerate-sku-button'),
+      regenerateSkuStatus: document.getElementById('regenerate-sku-status')
     };
 
     const SUPABASE_READY = !APP_CONFIG.supabaseUrl.includes('YOUR_PROJECT') && !APP_CONFIG.supabaseAnonKey.includes('YOUR_SUPABASE');
@@ -4168,7 +4186,7 @@
       try {
         const { data, error } = await supabaseClient
           .from(APP_CONFIG.inventoryTable)
-          .select('id,brand,description,size,category_2,gender,price,notes,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,pricing_condition,pricing_locked,price_ai_last_run_at,colors,shoe_style,brand_style_name,materials,made_in,serial_number,platforms_listed,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at,depop_exported_at')
+          .select('id,brand,description,size,category_2,gender,price,notes,sold,reviewed,condition,original_tags_attached,estimated_retail_price,sold_price,purchased_price,pricing_condition,pricing_locked,price_ai_last_run_at,colors,shoe_style,brand_style_name,materials,made_in,serial_number,platforms_listed,price_ai_used,has_box,ai_assisted,photo_urls,photo_paths,created_at,depop_exported_at,sku_override')
           .order('created_at', { ascending: false });
         if (error) throw error;
         state.inventory = Array.isArray(data) ? data : [];
@@ -6271,8 +6289,9 @@
     // If a shoe's info doesn't match anything in a table, we leave that cell blank and flag
     // the SKU so you can fill it in manually in Depop (safer than guessing a wrong code).
 
-    // Category codes, keyed by gender. Only "Sneakers" is confirmed right now - if you carry
-    // Boots/Flats/Heels/Sandals too, get their exact codes the same way (type each into Depop's
+    // Category codes, keyed by gender. Sneakers, Boots, and Sandals are all confirmed
+    // against Depop's own taxonomy reference (checked 9/27/2026) - if you carry
+    // Flats/Heels too, get their exact codes the same way (type each into Depop's
     // Category field, copy the "Name (code)" text) and they can be added here later.
     const DEPOP_CATEGORY_CODES = {
       sneakers: {
@@ -6286,12 +6305,12 @@
         kids: 'Kids >> Footwear >> Boots (kidswear, footwear, boots)'
       },
       sandals: {
+        // All three confirmed 9/27/2026 against Depop's official taxonomy reference sheet
+        // (Department >> Group >> Product type tab) - Sandals exists under Men's, Women's,
+        // and Kids' footwear exactly like this, so these are no longer guesses.
         womens: 'Women >> Footwear >> Sandals (womenswear, footwear, sandals)',
-        // mens/kids follow the exact same pattern as every other confirmed row above,
-        // but weren't directly seen in your sample - flag for a quick check the first
-        // time one of these is used, same as the kids "7-7.5" size guess further down.
-        mens: 'Men >> Footwear >> Sandals (menswear, footwear, sandals)', // inferred - please verify once in Depop
-        kids: 'Kids >> Footwear >> Sandals (kidswear, footwear, sandals)' // inferred - please verify once in Depop
+        mens: 'Men >> Footwear >> Sandals (menswear, footwear, sandals)',
+        kids: 'Kids >> Footwear >> Sandals (kidswear, footwear, sandals)'
       }
       // Flats and Heels aren't in this table on purpose - Depop doesn't have generic
       // "Flats" or "Heels" categories at all. It uses specific shoe-type names instead
@@ -6354,19 +6373,35 @@
       { keyword: 'casual', code: 'Casual (casual)' }
     ];
 
-    // Turns a shoe type into the word Depop shoppers search for, e.g. "Sneakers" -> "Trainers".
+    // Turns an item type into the word Depop shoppers search for, e.g. "Sneakers" -> "Trainers".
+    // This only feeds the fallback Description text (a plain sentence), not a Depop dropdown
+    // code, so these words are safe to use as-is - no verification needed like the category
+    // codes below.
     const DEPOP_CATEGORY_NOUN = {
       sneakers: 'Trainers',
       boots: 'Boots',
       flats: 'Flats',
       heels: 'Heels',
-      sandals: 'Sandals'
+      sandals: 'Sandals',
+      bag: 'Bag',
+      hat: 'Hat',
+      belt: 'Belt',
+      sunglasses: 'Sunglasses',
+      scarf: 'Scarf',
+      wallet: 'Wallet'
     };
+
+    // Categories that aren't footwear. Depop's Category dropdown codes for these haven't
+    // been confirmed yet (see the note above DEPOP_CATEGORY_CODES), so exports for these
+    // items leave Category blank and flag it for you to fill in by hand in Depop - same
+    // safety net already used for anything else this app can't confidently match. Sizing
+    // for these is also handled differently below, since "One size"/S/M/L isn't a shoe size.
+    const DEPOP_NON_SHOE_CATEGORIES = new Set(['bag', 'hat', 'belt', 'sunglasses', 'scarf', 'wallet']);
 
     // Kids' Size dropdown codes, straight from Depop's own template (0 through 13.5).
     // Sizes 0-6.5 and 9-13.5 are grouped in pairs (e.g. "4-4.5"); 8, 8.5, 11, and 11.5 stand alone.
-    // "7-7.5" continues that same pairing pattern but wasn't directly visible in the screenshots,
-    // so it's a reasonable inference - flag it for a quick manual check the first time it's used.
+    // Every value here, including "7-7.5", was checked 9/27/2026 against Depop's official
+    // taxonomy reference sheet (kids' footwear size set) and confirmed correct.
     const DEPOP_KIDS_SIZE_CODES = {
       0: '0-0.5 (newborn)', 0.5: '0-0.5 (newborn)',
       1: '1-1.5 (baby)', 1.5: '1-1.5 (baby)',
@@ -6375,7 +6410,7 @@
       4: '4-4.5', 4.5: '4-4.5',
       5: '5-5.5', 5.5: '5-5.5',
       6: '6-6.5', 6.5: '6-6.5',
-      7: '7-7.5', 7.5: '7-7.5', // inferred - please verify once in Depop
+      7: '7-7.5', 7.5: '7-7.5',
       8: '8',
       8.5: '8.5',
       9: '9-9.5', 9.5: '9-9.5',
@@ -6485,7 +6520,7 @@
           // filter(Boolean) drops any empty/null slots so a gap in the photo list doesn't
           // push a real photo out past the 8-picture limit.
           const photos = (Array.isArray(item.photo_urls) ? item.photo_urls : []).filter(Boolean).slice(0, 8);
-          const sku = `${(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase()}-${String(item.id || '').slice(0, 6).toUpperCase()}`;
+          const sku = buildDepopSku(item);
           const missing = []; // fields this specific item couldn't be auto-matched for
 
           // Category: only confirmed for "Sneakers" per gender right now.
@@ -6509,10 +6544,15 @@
 
           // Size: adult sizing on Depop is "US <number>" from US 3 up to US 16, including half
           // sizes (3, 3.5, 4, 4.5 ... 16). Kids' sizing uses Depop's own grouped-range codes
-          // (e.g. "4-4.5") pulled from DEPOP_KIDS_SIZE_CODES above.
+          // (e.g. "4-4.5") pulled from DEPOP_KIDS_SIZE_CODES above. Bags/hats/accessories don't
+          // use shoe sizing at all, so those just pass through whatever you typed (defaulting
+          // to "One size" if left blank) instead of being checked against the shoe-size ranges.
           let sizeValue = '';
           const numericSize = extractNumericSize(item.size);
-          if (item.gender === 'kids') {
+          const isNonShoeItem = DEPOP_NON_SHOE_CATEGORIES.has(normalizeLookupKey(item.category_2));
+          if (isNonShoeItem) {
+            sizeValue = cleanExportText(item.size) || 'One size';
+          } else if (item.gender === 'kids') {
             const kidsCode = Number.isFinite(numericSize) ? DEPOP_KIDS_SIZE_CODES[numericSize] : undefined;
             if (kidsCode) {
               sizeValue = kidsCode;
@@ -6630,6 +6670,7 @@
     elements.duplicateButton.addEventListener('click', () => {
       if (state.editingId) duplicateItem(state.editingId);
     });
+    elements.regenerateSkuButton.addEventListener('click', regenerateDepopSku);
     elements.editModal.addEventListener('click', (event) => {
       if (event.target === elements.editModal) closeEditModal();
     });
@@ -6804,6 +6845,51 @@
     // ---- Photos inside the Edit sheet ----------------------------------
     function getEditingItem() {
       return state.inventory.find((entry) => entry.id === state.editingId) || null;
+    }
+
+    // Builds the SKU that goes in the Depop export. Normally this is based on the
+    // shoe's brand, size, and the first 6 characters of its database id - which never
+    // changes, so re-exporting the same shoe always produces the same SKU. If Depop's
+    // bulk importer ever gets "stuck" on a SKU (the listing never shows up in Drafts no
+    // matter how many times it's re-exported), `sku_override` lets a shoe get a fresh,
+    // different SKU without having to delete and fully recreate the inventory entry.
+    function buildDepopSku(item) {
+      if (item && item.sku_override) return item.sku_override;
+      const brandPart = String(item?.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase();
+      const sizePart = String(item?.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase();
+      const idPart = String(item?.id || '').slice(0, 6).toUpperCase();
+      return `${brandPart}-${sizePart}-${idPart}`;
+    }
+
+    // "Didn't import to Depop? Try a new SKU" button handler. Generates a brand-new random
+    // suffix (instead of reusing the id-based one) and saves it as this shoe's sku_override,
+    // so the very next export uses a SKU Depop has never seen before for this item.
+    async function regenerateDepopSku() {
+      const item = getEditingItem();
+      if (!item || !SUPABASE_READY) return;
+      elements.regenerateSkuButton.disabled = true;
+      elements.regenerateSkuStatus.hidden = false;
+      elements.regenerateSkuStatus.className = 'form-status';
+      elements.regenerateSkuStatus.textContent = 'Generating a new SKU...';
+      try {
+        const brandPart = String(item.brand || 'shoe').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase();
+        const sizePart = String(item.size || 'NA').replace(/[^a-z0-9]+/gi, '').toUpperCase();
+        const randomPart = Math.random().toString(16).slice(2, 8).toUpperCase();
+        const newSku = `${brandPart}-${sizePart}-${randomPart}`;
+        const { error } = await supabaseClient
+          .from(APP_CONFIG.inventoryTable)
+          .update({ sku_override: newSku })
+          .eq('id', item.id);
+        if (error) throw error;
+        item.sku_override = newSku;
+        elements.regenerateSkuStatus.className = 'form-status success';
+        elements.regenerateSkuStatus.textContent = `New SKU saved: ${newSku}. Export this shoe to Depop again to try with the new SKU.`;
+      } catch (error) {
+        elements.regenerateSkuStatus.className = 'form-status error';
+        elements.regenerateSkuStatus.textContent = `Couldn't save a new SKU: ${error.message || error}`;
+      } finally {
+        elements.regenerateSkuButton.disabled = false;
+      }
     }
 
     function updateEditHeader(item) {
