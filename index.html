@@ -2043,6 +2043,10 @@
                 <button class="button secondary" type="button" id="regenerate-sku-button">Didn't import to Depop? Try a new SKU</button>
               </div>
               <div class="form-status" id="regenerate-sku-status" hidden></div>
+              <div class="danger-zone" style="margin-top: 10px;">
+                <button class="button secondary" type="button" id="download-photos-button">Download photos for Depop</button>
+              </div>
+              <div class="form-status" id="download-photos-status" hidden></div>
             </div>
           </details>
         </div>
@@ -2294,6 +2298,8 @@
       deleteButton: document.getElementById('delete-button'),
       duplicateButton: document.getElementById('duplicate-button'),
       regenerateSkuButton: document.getElementById('regenerate-sku-button'),
+      downloadPhotosButton: document.getElementById('download-photos-button'),
+      downloadPhotosStatus: document.getElementById('download-photos-status'),
       regenerateSkuStatus: document.getElementById('regenerate-sku-status')
     };
 
@@ -6671,6 +6677,7 @@
       if (state.editingId) duplicateItem(state.editingId);
     });
     elements.regenerateSkuButton.addEventListener('click', regenerateDepopSku);
+    elements.downloadPhotosButton.addEventListener('click', downloadPhotosForDepop);
     elements.editModal.addEventListener('click', (event) => {
       if (event.target === elements.editModal) closeEditModal();
     });
@@ -6889,6 +6896,71 @@
         elements.regenerateSkuStatus.textContent = `Couldn't save a new SKU: ${error.message || error}`;
       } finally {
         elements.regenerateSkuButton.disabled = false;
+      }
+    }
+
+    let jsZipLoadPromise = null;
+    function loadJsZip() {
+      if (window.JSZip) return Promise.resolve();
+      if (jsZipLoadPromise) return jsZipLoadPromise;
+      jsZipLoadPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Could not load the zip tool - check your internet connection.'));
+        document.head.appendChild(script);
+      });
+      return jsZipLoadPromise;
+    }
+
+    // "Download photos for Depop" button handler. Grabs every saved photo for this shoe and
+    // bundles them into one .zip file your browser downloads, numbered 1, 2, 3... in the same
+    // order they're saved in the app. Use this when a shoe imported to Depop without its photos:
+    // unzip the file on your computer, then drag the numbered photos into that Depop listing.
+    async function downloadPhotosForDepop() {
+      const item = getEditingItem();
+      if (!item) return;
+      const photos = Array.isArray(item.photo_urls) ? item.photo_urls.filter(Boolean) : [];
+      if (!photos.length) {
+        elements.downloadPhotosStatus.hidden = false;
+        elements.downloadPhotosStatus.className = 'form-status error';
+        elements.downloadPhotosStatus.textContent = 'This shoe has no saved photos to download.';
+        return;
+      }
+      elements.downloadPhotosButton.disabled = true;
+      elements.downloadPhotosStatus.hidden = false;
+      elements.downloadPhotosStatus.className = 'form-status';
+      elements.downloadPhotosStatus.textContent = 'Preparing photos...';
+      try {
+        await loadJsZip();
+        const zip = new JSZip();
+        const namePart = [item.brand, item.size].filter(Boolean).join('-').replace(/[^a-z0-9-]+/gi, '') || 'shoe';
+        for (let i = 0; i < photos.length; i++) {
+          elements.downloadPhotosStatus.textContent = `Downloading photo ${i + 1} of ${photos.length}...`;
+          const response = await fetch(photos[i]);
+          if (!response.ok) throw new Error(`Photo ${i + 1} didn't download (status ${response.status})`);
+          const blob = await response.blob();
+          const extMatch = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.exec(photos[i]);
+          const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
+          zip.file(`${namePart}-${i + 1}.${ext}`, blob);
+        }
+        elements.downloadPhotosStatus.textContent = 'Zipping photos...';
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const zipUrl = URL.createObjectURL(zipBlob);
+        const link = document.createElement('a');
+        link.href = zipUrl;
+        link.download = `${namePart}-depop-photos.zip`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(zipUrl), 10000);
+        elements.downloadPhotosStatus.className = 'form-status success';
+        elements.downloadPhotosStatus.textContent = `Downloaded ${photos.length} photo${photos.length === 1 ? '' : 's'} as a zip file. Unzip it, then drag the photos into the Depop listing.`;
+      } catch (error) {
+        elements.downloadPhotosStatus.className = 'form-status error';
+        elements.downloadPhotosStatus.textContent = `Couldn't download photos: ${error.message || error}`;
+      } finally {
+        elements.downloadPhotosButton.disabled = false;
       }
     }
 
