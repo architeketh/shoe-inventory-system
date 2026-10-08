@@ -1454,6 +1454,7 @@
             <button class="menu-item" type="button" id="xls-button"><strong>CSV</strong><span>Spreadsheet of the shoes</span></button>
             <button class="menu-item" type="button" id="whatnot-button"><strong>Whatnot</strong><span>Whatnot upload file</span></button>
             <button class="menu-item" type="button" id="depop-button"><strong>Depop</strong><span>Depop bulk-listing file</span></button>
+            <button class="menu-item" type="button" id="ebay-button"><strong>eBay</strong><span>eBay bulk-listing file (shoes)</span></button>
             <button class="menu-item" type="button" id="profit-button"><strong>Net income</strong><span>Profit report with PDF and CSV</span></button>
             <p class="menu-note">Exports use the shoes you have selected. If none are selected, they use everything in the current view.</p>
           </div>
@@ -2215,6 +2216,7 @@
       xlsButton: document.getElementById('xls-button'),
       whatnotButton: document.getElementById('whatnot-button'),
       depopButton: document.getElementById('depop-button'),
+      ebayButton: document.getElementById('ebay-button'),
       profitButton: document.getElementById('profit-button'),
       selectAllButton: document.getElementById('select-all-button'),
       clearSelectionButton: document.getElementById('clear-selection-button'),
@@ -6203,7 +6205,7 @@
       }
 
       if (rawCondition.includes('excellent') || rawCondition.includes('like new') || notes.includes('excellent') || notes.includes('like new')) return 'Excellent';
-      if (rawCondition.includes('very good')) return platform === 'depop' ? 'Very Good' : 'Excellent';
+      if (rawCondition.includes('very good')) return (platform === 'depop' || platform === 'ebay') ? 'Very Good' : 'Excellent';
       if (rawCondition.includes('good') || pricingCondition === 'used' || notes.includes('good')) return 'Good';
       if (rawCondition.includes('fair') || rawCondition.includes('poor') || pricingCondition === 'refurbished' || notes.includes('flaw') || notes.includes('worn')) return 'Fair';
       return 'Good';
@@ -6651,11 +6653,253 @@
       }
     }
 
+    // ---- eBay dropdown/aspect lookup tables -------------------------------------------
+    // Built from your own eBay "bulk listing" category template download (the one that
+    // covers Men's Sneakers, Men's Boots, Women's Sneakers, Women's Boots, and Kids' shoes).
+    // eBay calls its category-specific fields "item specifics" (aspects) - each category only
+    // accepts an exact value from its own list, so these tables were copied straight from
+    // that template's own "recommended value(s)" rows for each category, checked 10/8/2026.
+    //
+    // Sandals/Flats/Heels for Men's and Women's aren't in your downloaded template (Kids'
+    // covers every type already, so Kids' sandals/flats/heels work fine). To add adult
+    // Sandals/Flats/Heels: in eBay Seller Hub, create a blank listing in that exact category,
+    // download its bulk listing template the same way you did this one, and send it over -
+    // the category ID and aspect lists can be added here the same way.
+
+    // eBay category ID, keyed by gender then shoe type. A blank/missing entry means that
+    // combination isn't set up yet (see note above) - those items export with Category left
+    // blank and get flagged so you can fill the category in by hand before uploading.
+    const EBAY_CATEGORY_IDS = {
+      mens: { sneakers: '15709', boots: '11498' },
+      womens: { sneakers: '95672', boots: '53557' },
+      kids: { sneakers: '155202', boots: '155202', flats: '155202', heels: '155202', sandals: '155202' }
+    };
+
+    // Which of each category's fields eBay actually requires (vs. just recommends). Blank
+    // required fields are what triggers the "fill in by hand" note after export.
+    const EBAY_REQUIRED_FIELDS = {
+      mens: { sneakers: ['brand', 'size', 'color', 'department'], boots: ['brand', 'size', 'style', 'department', 'color', 'upperMaterial'] },
+      womens: { sneakers: ['brand', 'size', 'color', 'department'], boots: ['brand', 'size', 'style', 'color', 'department', 'upperMaterial'] },
+      kids: { sneakers: ['brand', 'color', 'style', 'type', 'size'], boots: ['brand', 'color', 'style', 'type', 'size'], flats: ['brand', 'color', 'style', 'type', 'size'], heels: ['brand', 'color', 'style', 'type', 'size'], sandals: ['brand', 'color', 'style', 'type', 'size'] }
+    };
+
+    // eBay's Condition field is a numeric code, not a word. Matches the generic condition
+    // word mapExportCondition() already produces (shared with the Whatnot export).
+    const EBAY_CONDITION_CODES = {
+      'New': '1000',
+      'Excellent': '2750',
+      'Very Good': '4000',
+      'Good': '5000',
+      'Fair': '6000'
+    };
+
+    // Color aspect values are almost identical across every category in your template -
+    // one shared table keyed by normalized color name, same pattern as DEPOP_COLOR_CODES.
+    const EBAY_COLOR_CODES = {
+      beige: 'Beige', tan: 'Beige', black: 'Black', blue: 'Blue', navy: 'Blue',
+      brown: 'Brown', clear: 'Clear', transparent: 'Clear', copper: 'Copper',
+      gold: 'Gold', gray: 'Gray', grey: 'Gray', green: 'Green', ivory: 'Ivory',
+      cream: 'Ivory', multi: 'Multicolor', multicolor: 'Multicolor', orange: 'Orange',
+      pink: 'Pink', purple: 'Purple', red: 'Red', silver: 'Silver', white: 'White',
+      yellow: 'Yellow', khaki: 'Green', burgundy: 'Red'
+    };
+
+    // Type aspect: for Boots categories eBay only offers one value, so it's just hardcoded.
+    // For Kids, Type is required and lines up 1-to-1 with this app's own category_2 field.
+    const EBAY_KIDS_TYPE_BY_CATEGORY2 = {
+      sneakers: 'Sneakers', boots: 'Boot', flats: 'Flat', heels: 'Heel', sandals: 'Sandal'
+    };
+
+    // Style aspect, matched by keyword against the "Street Slang"/Shoe Style field - same
+    // keyword-matching idea as DEPOP_STYLE_KEYWORDS, but against each category's own list.
+    const EBAY_STYLE_KEYWORDS = {
+      mensSneakers: [
+        { keyword: 'street', code: 'Streetwear' }, { keyword: 'sport', code: 'Sport' },
+        { keyword: 'casual', code: 'Casual' }, { keyword: 'retro', code: 'Retro' },
+        { keyword: 'vintage', code: 'Vintage' }, { keyword: 'classic', code: 'Classic' }
+      ],
+      mensBoots: [
+        { keyword: 'chelsea', code: 'Chelsea' }, { keyword: 'chukka', code: 'Chukka' },
+        { keyword: 'combat', code: 'Combat' }, { keyword: 'cowboy', code: 'Cowboy' },
+        { keyword: 'western', code: 'Western' }, { keyword: 'work', code: 'Workwear' },
+        { keyword: 'snow', code: 'Snow Boot' }, { keyword: 'rain', code: 'Rain Boot' },
+        { keyword: 'military', code: 'Military' }, { keyword: 'casual', code: 'Casual' },
+        { keyword: 'classic', code: 'Classic' }
+      ],
+      womensSneakers: [
+        { keyword: 'street', code: 'Sport' }, { keyword: 'sport', code: 'Sport' },
+        { keyword: 'casual', code: 'Casual' }, { keyword: 'retro', code: 'Retro' },
+        { keyword: 'vintage', code: 'Vintage' }, { keyword: 'classic', code: 'Classic' }
+      ],
+      womensBoots: [
+        { keyword: 'chelsea', code: 'Chelsea' }, { keyword: 'chukka', code: 'Chukka' },
+        { keyword: 'combat', code: 'Combat' }, { keyword: 'cowboy', code: 'Cowboy' },
+        { keyword: 'western', code: 'Western' }, { keyword: 'snow', code: 'Snow Boot' },
+        { keyword: 'rain', code: 'Rain Boot' }, { keyword: 'platform', code: 'Platform' },
+        { keyword: 'casual', code: 'Casual' }, { keyword: 'classic', code: 'Classic' }
+      ],
+      kids: [
+        { keyword: 'sandal', code: 'Casual' }, { keyword: 'mary jane', code: 'Mary Jane' },
+        { keyword: 'loafer', code: 'Loafer' }, { keyword: 'boot', code: 'Classic' },
+        { keyword: 'sport', code: 'Sport' }, { keyword: 'casual', code: 'Casual' },
+        { keyword: 'classic', code: 'Classic' }, { keyword: 'sneaker', code: 'Sneaker' }
+      ]
+    };
+
+    // Upper Material aspect, matched by keyword against the Materials field. Required only
+    // for Boots categories; left blank elsewhere if nothing matches (safe default, same
+    // approach as the rest of these tables).
+    const EBAY_MATERIAL_KEYWORDS = [
+      { keyword: 'leather', code: 'Leather' }, { keyword: 'suede', code: 'Suede' },
+      { keyword: 'canvas', code: 'Canvas' }, { keyword: 'mesh', code: 'Mesh' },
+      { keyword: 'knit', code: 'Knit' }, { keyword: 'synthetic', code: 'Synthetic' },
+      { keyword: 'nylon', code: 'Nylon' }, { keyword: 'rubber', code: 'Rubber' },
+      { keyword: 'cotton', code: 'Cotton' }, { keyword: 'wool', code: 'Wool' },
+      { keyword: 'fur', code: 'Faux Fur' }, { keyword: 'nubuck', code: 'Nubuck' }
+    ];
+
+    function lookupEbayGenderGroup(item) {
+      if (item.gender === 'mens') return 'mens';
+      if (item.gender === 'womens') return 'womens';
+      return 'kids';
+    }
+
+    function lookupEbayShoeType(item) {
+      const key = normalizeLookupKey(item.category_2);
+      if (key === 'sneakers' || key === 'boots' || key === 'flats' || key === 'heels' || key === 'sandals') return key;
+      return 'sneakers';
+    }
+
+    function lookupEbayColor(colorsText) {
+      const first = cleanExportText(colorsText).split(/[,/&]+/)[0]?.trim() || '';
+      return EBAY_COLOR_CODES[normalizeLookupKey(first)] || '';
+    }
+
+    function lookupEbayKeyword(text, table) {
+      const lower = String(text || '').toLowerCase();
+      const match = table.find((entry) => lower.includes(entry.keyword));
+      return match ? match.code : '';
+    }
+
+    function lookupEbayStyle(item, genderGroup, shoeType) {
+      if (genderGroup === 'kids') return lookupEbayKeyword(item.shoe_style, EBAY_STYLE_KEYWORDS.kids);
+      const tableKey = genderGroup === 'mens'
+        ? (shoeType === 'boots' ? 'mensBoots' : 'mensSneakers')
+        : (shoeType === 'boots' ? 'womensBoots' : 'womensSneakers');
+      return lookupEbayKeyword(item.shoe_style, EBAY_STYLE_KEYWORDS[tableKey]);
+    }
+
+    function lookupEbayMaterial(materialsText) {
+      return lookupEbayKeyword(materialsText, EBAY_MATERIAL_KEYWORDS);
+    }
+
+    // "eBay" export button handler. Builds eBay's own "File Exchange" bulk listing CSV
+    // (same column layout as the template you download from Seller Hub > Reports), covering
+    // Men's, Women's, and Kids' shoes. Every photo in PicURL is pipe-separated, same as eBay's
+    // own format, so Depop-style missing-photo problems don't apply here - eBay reads photos
+    // straight from the URLs the same moment it reads everything else in the row.
+    function exportEbayCsv() {
+      const exportItems = getExportItems();
+      const reviewNotes = [];
+
+      const location = promptForExportSetting(
+        'shoeInventoryEbayLocation',
+        "Enter the Location (City, State/Province, Country) exactly as you want it to show on eBay listings, e.g. Chicago, IL."
+      );
+      if (!location) return;
+      const shippingProfile = promptForExportSetting(
+        'shoeInventoryEbayShippingProfile',
+        'Enter the exact name of your eBay Shipping business policy (Account > Business Policies).'
+      );
+      if (!shippingProfile) return;
+      const returnProfile = promptForExportSetting(
+        'shoeInventoryEbayReturnProfile',
+        'Enter the exact name of your eBay Return business policy.'
+      );
+      if (!returnProfile) return;
+      const paymentProfile = promptForExportSetting(
+        'shoeInventoryEbayPaymentProfile',
+        'Enter the exact name of your eBay Payment business policy.'
+      );
+      if (!paymentProfile) return;
+
+      const headerRow = [
+        '*Action(SiteID=US|Country=US|Currency=USD|Version=1193|CC=UTF-8)', 'CustomLabel', '*Category', 'StoreCategory',
+        '*Title', 'Subtitle', 'Relationship', 'RelationshipDetails', 'ScheduleTime', '*ConditionID',
+        '*C:Brand', '*C:US Shoe Size', '*C:Color', '*C:Department', 'C:Customized', 'C:Style Code',
+        'C:UK Shoe Size', 'C:Product Line', 'C:Model', 'C:Country of Origin', '*C:Style', 'C:Shoe Width',
+        'C:Shoe Shaft Style', 'C:Release Year', '*C:Upper Material', 'C:EU Shoe Size', '*C:Type', 'C:Vintage',
+        'PicURL', 'GalleryType', 'VideoID', '*Description', '*Format', '*Duration', '*StartPrice',
+        'BuyItNowPrice', 'BestOfferEnabled', 'BestOfferAutoAcceptPrice', 'MinimumBestOfferPrice', '*Quantity',
+        'ImmediatePayRequired', '*Location', 'ShippingType', '*DispatchTimeMax', '*ReturnsAcceptedOption',
+        'ShippingProfileName', 'ReturnProfileName', 'PaymentProfileName'
+      ];
+
+      const lines = [
+        ['Info', 'Version=1.0.0', 'Template=fx_category_template_EBAY_US'],
+        headerRow,
+        ...exportItems.map((item) => {
+          const genderGroup = lookupEbayGenderGroup(item);
+          const shoeType = lookupEbayShoeType(item);
+          const categoryId = (EBAY_CATEGORY_IDS[genderGroup] || {})[shoeType] || '';
+          const requiredFields = (EBAY_REQUIRED_FIELDS[genderGroup] || {})[shoeType] || [];
+          const isBoots = shoeType === 'boots';
+
+          const brand = cleanExportText(item.brand) || 'Unbranded';
+          const numericSize = extractNumericSize(item.size);
+          const sizeValue = Number.isFinite(numericSize) ? (numericSize % 1 === 0 ? numericSize.toFixed(0) : numericSize.toFixed(1)) : '';
+          const colorCode = lookupEbayColor(item.colors);
+          const department = genderGroup === 'mens' ? 'Men' : genderGroup === 'womens' ? 'Women' : 'Unisex Kids';
+          const styleCode = lookupEbayStyle(item, genderGroup, shoeType);
+          const materialCode = lookupEbayMaterial(item.materials);
+          const typeCode = genderGroup === 'kids'
+            ? (EBAY_KIDS_TYPE_BY_CATEGORY2[shoeType] || '')
+            : isBoots ? 'Boot' : shoeType === 'sneakers' ? 'Sneakers' : '';
+
+          const conditionWord = mapExportCondition(item, 'ebay');
+          const conditionCode = EBAY_CONDITION_CODES[conditionWord] || EBAY_CONDITION_CODES['Good'];
+
+          const fieldValues = { brand, size: sizeValue, color: colorCode, department, style: styleCode, upperMaterial: materialCode, type: typeCode };
+          const sku = buildDepopSku(item); // same per-item SKU generator used for Depop - fine to reuse as CustomLabel here too
+          requiredFields.forEach((field) => {
+            if (!fieldValues[field]) reviewNotes.push(`${brand} ${item.size || ''} (SKU ${sku}): eBay ${field} couldn't be auto-matched - fill in by hand.`);
+          });
+          if (!categoryId) reviewNotes.push(`${brand} ${item.size || ''} (SKU ${sku}): eBay Category not set up yet for ${genderGroup} ${shoeType} - fill in by hand.`);
+
+          const photos = (Array.isArray(item.photo_urls) ? item.photo_urls : []).filter(Boolean).slice(0, 12).join('|');
+          const title = buildDepopTitle(item).slice(0, 80); // eBay titles max out at 80 characters
+
+          return [
+            '', sku, categoryId, '',
+            title, '', '', '', '', conditionCode,
+            brand, sizeValue, colorCode, department, '', '',
+            '', '', '', '', styleCode, '',
+            '', '', materialCode, '', typeCode, '',
+            photos, '', '', buildExportDescription(item), 'FixedPrice', 'GTC', Number(item.price || 0).toFixed(2),
+            '', '', '', '', 1,
+            '', location, 'Flat', 2, 'ReturnsAccepted',
+            shippingProfile, returnProfile, paymentProfile
+          ];
+        })
+      ];
+
+      downloadCsv(`ebay-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
+
+      if (reviewNotes.length) {
+        const preview = reviewNotes.slice(0, 15).join('\n');
+        const more = reviewNotes.length > 15 ? `\n...and ${reviewNotes.length - 15} more.` : '';
+        alert(`eBay CSV exported. ${reviewNotes.length} item(s) have fields that couldn't be auto-matched and were left blank - fill these in manually before uploading to eBay:\n\n${preview}${more}`);
+      } else {
+        alert('eBay CSV exported using eBay\'s File Exchange bulk listing column layout. All fields were matched - do a quick spot check before uploading in Seller Hub.');
+      }
+    }
+
     elements.reviewHtmlButton.addEventListener('click', exportReviewListingHtml);
     elements.platformReportButton.addEventListener('click', exportPlatformReport);
     elements.xlsButton.addEventListener('click', exportXlsReport);
     elements.whatnotButton.addEventListener('click', exportWhatnotCsv);
     elements.depopButton.addEventListener('click', exportDepopCsv);
+    elements.ebayButton.addEventListener('click', exportEbayCsv);
     elements.profitButton.addEventListener('click', exportProfitReport);
     document.getElementById('edit-box-toggle').addEventListener('click', (event) => {
       const button = event.target.closest('[data-edit-box-value]');
