@@ -6716,12 +6716,17 @@
 
     // eBay's Condition field is a numeric code, not a word. Matches the generic condition
     // word mapExportCondition() already produces (shared with the Whatnot export).
+    // Tested 10/8/2026: eBay rejected 2750/4000/5000 outright ("invalid condition id for the
+    // selected category") on every one of these shoe categories - only 1000 (New) came back
+    // clean. So every non-new condition collapses to 3000 (Used/Pre-owned), which is the
+    // standard eBay clothing/shoes condition set. The finer grade (Excellent/Very Good/Good)
+    // still appears in the listing's Description text, just not as a separate eBay field.
     const EBAY_CONDITION_CODES = {
       'New': '1000',
-      'Excellent': '2750',
-      'Very Good': '4000',
-      'Good': '5000',
-      'Fair': '6000'
+      'Excellent': '3000',
+      'Very Good': '3000',
+      'Good': '3000',
+      'Fair': '3000'
     };
 
     // Color aspect values are almost identical across every category in your template -
@@ -6824,6 +6829,26 @@
       return lookupEbayKeyword(materialsText, EBAY_MATERIAL_KEYWORDS);
     }
 
+    // Style and Upper Material are REQUIRED for the Boots categories (and Style/Type for
+    // Kids). Leaving either blank doesn't get it "flagged for later" like most of this app's
+    // safety nets - eBay rejects the entire listing outright for a blank required field. So
+    // when nothing matches the keyword list, these fall back to a generic value that's valid
+    // in every category's own list (checked 10/8/2026) rather than leaving the row to fail.
+    // The item still gets a (softer) review note so you know to double-check it.
+    const EBAY_STYLE_FALLBACK = 'Casual';
+    const EBAY_MATERIAL_FALLBACK = 'Synthetic';
+
+    // eBay validates shipping weight/package details even when a Business Policy is set,
+    // whenever that policy uses calculated (weight-based) rates - your "Buyer Shipping
+    // Options" policy is one of these. There's no per-shoe weight tracked in this app, so
+    // these are reasonable shoebox-in-a-mailer estimates - close enough for eBay's shipping
+    // calculator to work; you can correct any individual listing's weight in eBay afterward.
+    function estimateShoeShipWeight(genderGroup, shoeType) {
+      const isBoots = shoeType === 'boots';
+      if (genderGroup === 'kids') return isBoots ? [2, 0] : [1, 4];
+      return isBoots ? [3, 8] : [2, 4];
+    }
+
     // "eBay" export button handler. Builds eBay's own "File Exchange" bulk listing CSV
     // (same column layout as the template you download from Seller Hub > Reports), covering
     // Men's, Women's, and Kids' shoes. Every photo in PicURL is pipe-separated, same as eBay's
@@ -6838,6 +6863,11 @@
         "Enter the Location (City, State/Province, Country) exactly as you want it to show on eBay listings, e.g. Chicago, IL."
       );
       if (!location) return;
+      const zip = promptForExportSetting(
+        'shoeInventoryEbayZip',
+        'Enter the ZIP/postal code you ship from (needed for eBay to calculate shipping cost).'
+      );
+      if (!zip) return;
       const shippingProfile = promptForExportSetting(
         'shoeInventoryEbayShippingProfile',
         'Enter the exact name of your eBay Shipping business policy (Account > Business Policies).'
@@ -6862,8 +6892,9 @@
         'C:Shoe Shaft Style', 'C:Release Year', '*C:Upper Material', 'C:EU Shoe Size', '*C:Type', 'C:Vintage',
         'PicURL', 'GalleryType', 'VideoID', '*Description', '*Format', '*Duration', '*StartPrice',
         'BuyItNowPrice', 'BestOfferEnabled', 'BestOfferAutoAcceptPrice', 'MinimumBestOfferPrice', '*Quantity',
-        'ImmediatePayRequired', '*Location', 'ShippingType', '*DispatchTimeMax', '*ReturnsAcceptedOption',
-        'ShippingProfileName', 'ReturnProfileName', 'PaymentProfileName'
+        'ImmediatePayRequired', '*Location', 'PostalCode', 'ShippingPackage', 'WeightMajor', 'WeightMinor',
+        'MeasurementUnit', 'PackageLength', 'PackageWidth', 'PackageDepth', 'ShippingType', '*DispatchTimeMax',
+        '*ReturnsAcceptedOption', 'ShippingProfileName', 'ReturnProfileName', 'PaymentProfileName'
       ];
 
       const lines = [
@@ -6880,24 +6911,38 @@
           const sizeValue = Number.isFinite(numericSize) ? (numericSize % 1 === 0 ? numericSize.toFixed(0) : numericSize.toFixed(1)) : '';
           const colorCode = lookupEbayColor(item.colors);
           const department = genderGroup === 'mens' ? 'Men' : genderGroup === 'womens' ? 'Women' : 'Unisex Kids';
-          const styleCode = lookupEbayStyle(item, genderGroup, shoeType);
-          const materialCode = lookupEbayMaterial(item.materials);
+          const matchedStyle = lookupEbayStyle(item, genderGroup, shoeType);
+          const matchedMaterial = lookupEbayMaterial(item.materials);
+          const styleRequired = requiredFields.includes('style');
+          const materialRequired = requiredFields.includes('upperMaterial');
+          const styleCode = matchedStyle || (styleRequired ? EBAY_STYLE_FALLBACK : '');
+          const materialCode = matchedMaterial || (materialRequired ? EBAY_MATERIAL_FALLBACK : '');
           const typeCode = genderGroup === 'kids'
             ? (EBAY_KIDS_TYPE_BY_CATEGORY2[shoeType] || '')
             : isBoots ? 'Boot' : shoeType === 'sneakers' ? 'Sneakers' : '';
 
           const conditionWord = mapExportCondition(item, 'ebay');
           const conditionCode = EBAY_CONDITION_CODES[conditionWord] || EBAY_CONDITION_CODES['Good'];
+          const [weightMajor, weightMinor] = estimateShoeShipWeight(genderGroup, shoeType);
 
           const fieldValues = { brand, size: sizeValue, color: colorCode, department, style: styleCode, upperMaterial: materialCode, type: typeCode };
           const sku = buildDepopSku(item); // same per-item SKU generator used for Depop - fine to reuse as CustomLabel here too
           requiredFields.forEach((field) => {
+            if (field === 'style' && styleRequired && !matchedStyle) {
+              reviewNotes.push(`${brand} ${item.size || ''} (SKU ${sku}): eBay Style set to "${EBAY_STYLE_FALLBACK}" as a default - check it's accurate.`);
+              return;
+            }
+            if (field === 'upperMaterial' && materialRequired && !matchedMaterial) {
+              reviewNotes.push(`${brand} ${item.size || ''} (SKU ${sku}): eBay Upper Material set to "${EBAY_MATERIAL_FALLBACK}" as a default - check it's accurate.`);
+              return;
+            }
             if (!fieldValues[field]) reviewNotes.push(`${brand} ${item.size || ''} (SKU ${sku}): eBay ${field} couldn't be auto-matched - fill in by hand.`);
           });
           if (!categoryId) reviewNotes.push(`${brand} ${item.size || ''} (SKU ${sku}): eBay Category not set up yet for ${genderGroup} ${shoeType} - fill in by hand.`);
 
           const photos = (Array.isArray(item.photo_urls) ? item.photo_urls : []).filter(Boolean).slice(0, 12).join('|');
           const title = buildDepopTitle(item).slice(0, 80); // eBay titles max out at 80 characters
+          const description = cleanExportText(`${buildExportDescription(item)} Condition grade: ${conditionWord}.`);
 
           return [
             'Add', sku, categoryId, '',
@@ -6905,10 +6950,11 @@
             brand, sizeValue, colorCode, department, '', '',
             '', '', '', '', styleCode, '',
             '', '', materialCode, '', typeCode, '',
-            photos, '', '', buildExportDescription(item), 'FixedPrice', 'GTC', Number(item.price || 0).toFixed(2),
+            photos, '', '', description, 'FixedPrice', 'GTC', Number(item.price || 0).toFixed(2),
             '', '', '', '', 1,
-            '', location, 'Flat', 2, 'ReturnsAccepted',
-            shippingProfile, returnProfile, paymentProfile
+            '', location, zip, 'MailingBoxes', weightMajor, weightMinor,
+            'English', 13, 9, 5.5, '', 2,
+            'ReturnsAccepted', shippingProfile, returnProfile, paymentProfile
           ];
         })
       ];
@@ -6918,7 +6964,7 @@
       if (reviewNotes.length) {
         const preview = reviewNotes.slice(0, 15).join('\n');
         const more = reviewNotes.length > 15 ? `\n...and ${reviewNotes.length - 15} more.` : '';
-        alert(`eBay CSV exported. ${reviewNotes.length} item(s) have fields that couldn't be auto-matched and were left blank - fill these in manually before uploading to eBay:\n\n${preview}${more}`);
+        alert(`eBay CSV exported. ${reviewNotes.length} item(s) have fields that were auto-filled with a default or couldn't be matched - double check these before/after uploading to eBay:\n\n${preview}${more}`);
       } else {
         alert('eBay CSV exported using eBay\'s File Exchange bulk listing column layout. All fields were matched - do a quick spot check before uploading in Seller Hub.');
       }
