@@ -5764,6 +5764,27 @@
       URL.revokeObjectURL(url);
     }
 
+    // eBay's bulk-listing upload checks the file's very first line against an exact,
+    // unquoted signature ("Info,Version=1.0.0,Template=fx_category_template_EBAY_US") to
+    // recognize the template - if that line gets wrapped in quotes (like every other line
+    // in this app's CSVs), eBay rejects the whole file with "we couldn't identify your
+    // template." So this writes that one line raw/unquoted, then the header + data rows
+    // normally quoted underneath, same as every other export.
+    function downloadEbayCsv(filename, lines) {
+      const signatureLine = 'Info,Version=1.0.0,Template=fx_category_template_EBAY_US';
+      const rest = lines.map((row) => row.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const bom = '﻿';
+      const blob = new Blob([bom + signatureLine + '\n' + rest], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
     function buildProfitReportLines(items) {
       return [
         ['Status', 'Brand', 'Description', 'Size', 'Category', 'Purchased Price', 'Listed Price', 'Sold Price', 'Net Income'],
@@ -6836,7 +6857,6 @@
       ];
 
       const lines = [
-        ['Info', 'Version=1.0.0', 'Template=fx_category_template_EBAY_US'],
         headerRow,
         ...exportItems.map((item) => {
           const genderGroup = lookupEbayGenderGroup(item);
@@ -6883,7 +6903,7 @@
         })
       ];
 
-      downloadCsv(`ebay-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
+      downloadEbayCsv(`ebay-export-${new Date().toISOString().slice(0, 10)}.csv`, lines);
 
       if (reviewNotes.length) {
         const preview = reviewNotes.slice(0, 15).join('\n');
