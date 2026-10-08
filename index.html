@@ -5768,11 +5768,21 @@
     // unquoted signature ("Info,Version=1.0.0,Template=fx_category_template_EBAY_US") to
     // recognize the template - if that line gets wrapped in quotes (like every other line
     // in this app's CSVs), eBay rejects the whole file with "we couldn't identify your
-    // template." So this writes that one line raw/unquoted, then the header + data rows
-    // normally quoted underneath, same as every other export.
+    // template." Beyond that first line, eBay's own template file (the one you download
+    // from Seller Hub) doesn't quote its fields at all - its parser reads plain commas, not
+    // proper quoted CSV. Wrapping every field in quotes (like this app's other exports do)
+    // makes eBay read the quote marks as literal text, which shifts every column over and
+    // is why "Add" ended up missing - eBay reported the column header itself as the value.
+    // So each field here is only quoted if it actually needs it (contains a comma, quote,
+    // or line break) - everything else goes out plain, matching eBay's own file.
+    function ebayCsvField(value) {
+      const str = String(value ?? '');
+      return /[",\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+    }
+
     function downloadEbayCsv(filename, lines) {
       const signatureLine = 'Info,Version=1.0.0,Template=fx_category_template_EBAY_US';
-      const rest = lines.map((row) => row.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const rest = lines.map((row) => row.map(ebayCsvField).join(',')).join('\n');
       const bom = '﻿';
       const blob = new Blob([bom + signatureLine + '\n' + rest], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -6890,7 +6900,7 @@
           const title = buildDepopTitle(item).slice(0, 80); // eBay titles max out at 80 characters
 
           return [
-            '', sku, categoryId, '',
+            'Add', sku, categoryId, '',
             title, '', '', '', '', conditionCode,
             brand, sizeValue, colorCode, department, '', '',
             '', '', '', '', styleCode, '',
