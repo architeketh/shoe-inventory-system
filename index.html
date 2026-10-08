@@ -6843,8 +6843,9 @@
     // Options" policy is one of these. There's no per-shoe weight tracked in this app, so
     // these are reasonable shoebox estimates - close enough for eBay's shipping calculator
     // to work; you can correct any individual listing's weight in eBay afterward. ShippingPackage
-    // is set to "None" (tested 10/8/2026 - "MailingBoxes" was rejected as invalid for these
-    // shoe categories even though it's a real eBay package type in general).
+    // is set to "PackageThickEnvelope" (tested 10/8/2026 - both "MailingBoxes" and "None" were
+    // rejected as invalid for these shoe categories; PackageThickEnvelope is eBay's documented
+    // catch-all that's accepted for most items/locations).
     function estimateShoeShipWeight(genderGroup, shoeType) {
       const isBoots = shoeType === 'boots';
       if (genderGroup === 'kids') return isBoots ? [2, 0] : [1, 4];
@@ -6954,7 +6955,7 @@
             '', '', materialCode, '', typeCode, '',
             photos, '', '', description, 'FixedPrice', 'GTC', Number(item.price || 0).toFixed(2),
             '', '', '', '', 1,
-            '', location, zip, 'None', weightMajor, weightMinor,
+            '', location, zip, 'PackageThickEnvelope', weightMajor, weightMinor,
             'English', 13, 9, 5.5, '', 2,
             'ReturnsAccepted', shippingProfile, returnProfile, paymentProfile
           ];
