@@ -838,6 +838,12 @@
       background: #fff;
       line-height: 1;
     }
+    .size-tile.gender-mens { border-color: var(--mens); background: color-mix(in srgb, var(--mens) 12%, #fff); }
+    .size-tile.gender-womens { border-color: var(--womens); background: color-mix(in srgb, var(--womens) 12%, #fff); }
+    .size-tile.gender-kids { border-color: var(--kids); background: color-mix(in srgb, var(--kids) 12%, #fff); }
+    .size-tile.gender-mens .size-cap { color: var(--mens); }
+    .size-tile.gender-womens .size-cap { color: var(--womens); }
+    .size-tile.gender-kids .size-cap { color: var(--kids); }
     .size-tile .size-cap { font-size: 0.66rem; font-weight: 600; color: var(--muted); }
     .size-tile .size-val {
       font-stretch: 112%;
@@ -4132,7 +4138,7 @@
               <div class="card-tags">${tags.join('')}</div>
             </div>
             <div class="card-side">
-              <div class="size-tile ${sizeClass}" title="Size ${escapeHtml(sizeText || 'not set')}"><span class="size-cap">size</span><span class="size-val">${escapeHtml(sizeText || '-')}</span></div>
+              <div class="size-tile ${sizeClass} ${genderClass}" title="Size ${escapeHtml(sizeText || 'not set')}"><span class="size-cap">size</span><span class="size-val">${escapeHtml(sizeText || '-')}</span></div>
               <div class="price">${currency(item.price)}</div>
             </div>
           </div>
@@ -5317,16 +5323,23 @@
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
+    function inventoryViewGenderKey(item) {
+      const genderValue = String(item.gender || '').toLowerCase();
+      if (genderValue === 'mens' || genderValue === 'womens' || genderValue === 'kids') return genderValue;
+      return 'other';
+    }
+
     function buildInventoryViewRowMarkup(item) {
       const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
       const firstPhoto = photos.find(Boolean);
       const titleText = getCardTitleText(item);
+      const genderKey = inventoryViewGenderKey(item);
       const photoMarkup = firstPhoto
         ? `<img class="inv-view-photo" src="${firstPhoto}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />`
         : '<div class="inv-view-photo inv-view-photo-empty">No photo</div>';
       return `
         <article class="inv-view-row">
-          <div class="inv-view-size-box">
+          <div class="inv-view-size-box inv-view-size-box--${genderKey}">
             <span class="inv-view-size-label">Size</span>
             <span class="inv-view-size-value">${escapeHtml(item.size || '-')}</span>
           </div>
@@ -5352,7 +5365,8 @@
         size: item.size || '-',
         price: '$' + Number(item.price || 0).toFixed(2),
         condition: item.condition || 'Not set',
-        description: buildExportDescription(item)
+        description: buildExportDescription(item),
+        genderKey: inventoryViewGenderKey(item)
       }))).replace(/</g, '\\u003c');
       const rows = exportItems.map((item) => buildInventoryViewRowMarkup(item)).join('');
       return `
@@ -5398,16 +5412,20 @@
                 align-items: center;
                 justify-content: center;
                 gap: 2px;
-                border: 2px solid #8f2f16;
+                border: 2px solid var(--size-accent, #8f2f16);
                 border-radius: 8px;
-                background: #fdf4ef;
+                background: var(--size-bg, #fdf4ef);
               }
+              .inv-view-size-box--mens { --size-accent: #4d7ac2; --size-bg: #eef2fa; }
+              .inv-view-size-box--womens { --size-accent: #c4507f; --size-bg: #faeef3; }
+              .inv-view-size-box--kids { --size-accent: #d69a1c; --size-bg: #fbf3e3; }
+              .inv-view-size-box--other { --size-accent: #8f2f16; --size-bg: #fdf4ef; }
               .inv-view-size-label {
                 font-size: 9px;
                 font-weight: 700;
                 letter-spacing: 0.04em;
                 text-transform: uppercase;
-                color: #8f2f16;
+                color: var(--size-accent, #8f2f16);
               }
               .inv-view-size-value {
                 font-size: 20px;
@@ -5548,10 +5566,14 @@
                   const sizeBoxHeight = imageSize;
                   const textColor = rgb(0.26, 0.22, 0.18);
                   const mutedColor = rgb(0.42, 0.37, 0.32);
-                  const accentColor = rgb(0.56, 0.18, 0.09);
                   const borderColor = rgb(0.86, 0.82, 0.76);
                   const bgColor = rgb(1, 1, 1);
-                  const sizeBoxBg = rgb(0.99, 0.96, 0.94);
+                  const sizeBoxColors = {
+                    mens: { accent: rgb(0.302, 0.478, 0.761), bg: rgb(0.933, 0.949, 0.980) },
+                    womens: { accent: rgb(0.769, 0.314, 0.498), bg: rgb(0.980, 0.933, 0.953) },
+                    kids: { accent: rgb(0.839, 0.604, 0.110), bg: rgb(0.984, 0.953, 0.890) },
+                    other: { accent: rgb(0.56, 0.18, 0.09), bg: rgb(0.99, 0.96, 0.94) }
+                  };
                   const pagesNeeded = Math.max(1, Math.ceil(invViewRows.length / rowsPerPage));
                   const imageCache = new Map();
 
@@ -5563,6 +5585,14 @@
                       size: 18,
                       font: fontBold,
                       color: rgb(0.12, 0.08, 0.05)
+                    });
+
+                    const legendY = pageHeight - 34;
+                    let legendX = margin;
+                    [['Men\\'s', sizeBoxColors.mens], ['Women\\'s', sizeBoxColors.womens], ['Kids\\'', sizeBoxColors.kids], ['Other', sizeBoxColors.other]].forEach(([label, colors]) => {
+                      page.drawRectangle({ x: legendX, y: legendY, width: 8, height: 8, borderColor: colors.accent, borderWidth: 1, color: colors.bg });
+                      page.drawText(label, { x: legendX + 12, y: legendY + 1, size: 8, font: fontRegular, color: mutedColor });
+                      legendX += 12 + fontRegular.widthOfTextAtSize(label, 8) + 14;
                     });
 
                     for (let slot = 0; slot < rowsPerPage; slot += 1) {
@@ -5583,14 +5613,15 @@
 
                       const sizeBoxX = margin + 8;
                       const sizeBoxY = yTop - 8 - sizeBoxHeight;
+                      const boxColors = sizeBoxColors[row.genderKey] || sizeBoxColors.other;
                       page.drawRectangle({
                         x: sizeBoxX, y: sizeBoxY, width: sizeBoxWidth, height: sizeBoxHeight,
-                        borderColor: accentColor, borderWidth: 1.5, color: sizeBoxBg
+                        borderColor: boxColors.accent, borderWidth: 1.5, color: boxColors.bg
                       });
                       page.drawText('SIZE', {
                         x: sizeBoxX + sizeBoxWidth / 2 - fontBold.widthOfTextAtSize('SIZE', 6.5) / 2,
                         y: sizeBoxY + sizeBoxHeight - 16,
-                        size: 6.5, font: fontBold, color: accentColor
+                        size: 6.5, font: fontBold, color: boxColors.accent
                       });
                       const sizeText = String(row.size || '-');
                       page.drawText(sizeText, {
@@ -5660,7 +5691,13 @@
               <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
             </div>
             <h1 style="margin:0 0 8px;">Inventory View</h1>
-            <div style="margin-bottom:16px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} | ${exportItems.length} pair(s)</div>
+            <div style="margin-bottom:10px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} | ${exportItems.length} pair(s)</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;font-size:12px;color:#444;">
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#eef2fa;border:2px solid #4d7ac2;margin-right:5px;vertical-align:middle;"></span>Men's</span>
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#faeef3;border:2px solid #c4507f;margin-right:5px;vertical-align:middle;"></span>Women's</span>
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#fbf3e3;border:2px solid #d69a1c;margin-right:5px;vertical-align:middle;"></span>Kids'</span>
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#fdf4ef;border:2px solid #8f2f16;margin-right:5px;vertical-align:middle;"></span>Other</span>
+            </div>
             <section class="inv-view-list">
               ${rows || '<p>No inventory available.</p>'}
             </section>
