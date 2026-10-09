@@ -667,8 +667,10 @@
     .list-head h2 .count { font-stretch: 100%; font-weight: 500; font-size: 0.9rem; color: var(--muted); }
     @media (max-width: 480px) { .list-head h2 { font-size: 1.05rem; } }
 
-    .inventory-head { display: flex; align-items: center; gap: 4px; }
+    .inventory-head { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
     .inventory-head .sort-label { font-size: 0.85rem; color: var(--muted); margin-right: 4px; }
+    .inventory-head-secondary { margin-top: 2px; opacity: 0.85; }
+    .inventory-head-secondary .sort-btn { font-size: 0.82rem; min-height: 30px; }
 
     .sort-btn {
       appearance: none;
@@ -1506,6 +1508,14 @@
           <button class="sort-btn" type="button" data-sort-key="size">Size</button>
           <button class="sort-btn" type="button" data-sort-key="price">Price</button>
         </div>
+        <div class="inventory-head inventory-head-secondary" role="group" aria-label="Then sort by">
+          <span class="sort-label">Then by</span>
+          <button class="sort-btn" type="button" data-sort-key2="brand">Brand</button>
+          <button class="sort-btn" type="button" data-sort-key2="description">Title</button>
+          <button class="sort-btn" type="button" data-sort-key2="size">Size</button>
+          <button class="sort-btn" type="button" data-sort-key2="price">Price</button>
+          <button class="sort-btn" type="button" data-sort-key2="">None</button>
+        </div>
       </div>
       <div id="inventory-list" class="inventory-list"></div>
     </section>
@@ -2131,6 +2141,7 @@
       chartFilter: null,
       selectedIds: new Set(),
       columnSort: { key: null, direction: 'asc' },
+      columnSort2: { key: null, direction: 'asc' },
       galleryUrls: [],
       galleryIndex: 0,
       galleryItemId: null,
@@ -3776,6 +3787,12 @@
       return normalizedSizeTerms(base);
     }
 
+    function compareInventoryByKey(a, b, key) {
+      if (key === 'price') return Number(a.price || 0) - Number(b.price || 0);
+      if (key === 'size') return String(a.size || '').localeCompare(String(b.size || ''), undefined, { numeric: true, sensitivity: 'base' });
+      return String(a[key] || '').localeCompare(String(b[key] || ''), undefined, { sensitivity: 'base' });
+    }
+
     function sortedInventory() {
       let items = [...state.inventory];
       if (state.searchTerm) {
@@ -3896,10 +3913,12 @@
 
       if (state.columnSort.key) {
         const factor = state.columnSort.direction === 'asc' ? 1 : -1;
+        const factor2 = state.columnSort2.direction === 'asc' ? 1 : -1;
         items = [...items].sort((a, b) => {
-          if (state.columnSort.key === 'price') return (Number(a.price || 0) - Number(b.price || 0)) * factor;
-          if (state.columnSort.key === 'size') return String(a.size || '').localeCompare(String(b.size || ''), undefined, { numeric: true, sensitivity: 'base' }) * factor;
-          return String(a[state.columnSort.key] || '').localeCompare(String(b[state.columnSort.key] || ''), undefined, { sensitivity: 'base' }) * factor;
+          const primaryResult = compareInventoryByKey(a, b, state.columnSort.key) * factor;
+          if (primaryResult !== 0) return primaryResult;
+          if (state.columnSort2.key) return compareInventoryByKey(a, b, state.columnSort2.key) * factor2;
+          return 0;
         });
       }
 
@@ -4258,17 +4277,34 @@
       triggerMobileSafeEditSave();
     });
     elements.refreshButton.addEventListener('click', loadInventory);
-    document.querySelector('.inventory-head').addEventListener('click', (event) => {
-      const header = event.target.closest('[data-sort-key]');
-      if (!header) return;
-      const key = header.dataset.sortKey;
-      if (state.columnSort.key === key) {
-        state.columnSort.direction = state.columnSort.direction === 'asc' ? 'desc' : 'asc';
-      } else {
-        state.columnSort.key = key;
-        state.columnSort.direction = 'asc';
-      }
-      renderInventory();
+    document.querySelectorAll('.inventory-head').forEach((head) => {
+      head.addEventListener('click', (event) => {
+        const primaryButton = event.target.closest('[data-sort-key]');
+        if (primaryButton) {
+          const key = primaryButton.dataset.sortKey;
+          if (state.columnSort.key === key) {
+            state.columnSort.direction = state.columnSort.direction === 'asc' ? 'desc' : 'asc';
+          } else {
+            state.columnSort.key = key;
+            state.columnSort.direction = 'asc';
+          }
+          renderInventory();
+          return;
+        }
+        const secondaryButton = event.target.closest('[data-sort-key2]');
+        if (secondaryButton) {
+          const key2 = secondaryButton.dataset.sortKey2;
+          if (!key2) {
+            state.columnSort2.key = null;
+          } else if (state.columnSort2.key === key2) {
+            state.columnSort2.direction = state.columnSort2.direction === 'asc' ? 'desc' : 'asc';
+          } else {
+            state.columnSort2.key = key2;
+            state.columnSort2.direction = 'asc';
+          }
+          renderInventory();
+        }
+      });
     });
     elements.searchInput.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
@@ -7084,6 +7120,13 @@
         const active = state.columnSort.key === button.dataset.sortKey;
         button.classList.toggle('active', active);
         button.dataset.dir = active ? state.columnSort.direction : '';
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+      document.querySelectorAll('.inventory-head [data-sort-key2]').forEach((button) => {
+        const key2 = button.dataset.sortKey2;
+        const active = key2 ? state.columnSort2.key === key2 : !state.columnSort2.key;
+        button.classList.toggle('active', active);
+        button.dataset.dir = active && key2 ? state.columnSort2.direction : '';
         button.setAttribute('aria-pressed', active ? 'true' : 'false');
       });
     }
