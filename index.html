@@ -5326,12 +5326,15 @@
         : '<div class="inv-view-photo inv-view-photo-empty">No photo</div>';
       return `
         <article class="inv-view-row">
+          <div class="inv-view-size-box">
+            <span class="inv-view-size-label">Size</span>
+            <span class="inv-view-size-value">${escapeHtml(item.size || '-')}</span>
+          </div>
           ${photoMarkup}
           <div class="inv-view-info">
             <div class="inv-view-title">${escapeHtml(titleText)}</div>
             <div class="inv-view-meta">
               <span><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</span>
-              <span><strong>Size:</strong> ${escapeHtml(item.size || '-')}</span>
               <span><strong>Price:</strong> ${escapeHtml(currency(item.price || 0))}</span>
               <span><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</span>
             </div>
@@ -5385,6 +5388,31 @@
                 background: #fff;
                 break-inside: avoid;
                 page-break-inside: avoid;
+              }
+              .inv-view-size-box {
+                width: 56px;
+                height: 90px;
+                flex: 0 0 auto;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                border: 2px solid #8f2f16;
+                border-radius: 8px;
+                background: #fdf4ef;
+              }
+              .inv-view-size-label {
+                font-size: 9px;
+                font-weight: 700;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+                color: #8f2f16;
+              }
+              .inv-view-size-value {
+                font-size: 20px;
+                font-weight: 800;
+                color: #21170f;
               }
               .inv-view-photo {
                 width: 90px;
@@ -5516,10 +5544,14 @@
                   const rowGap = 8;
                   const rowsPerPage = 8;
                   const imageSize = 62;
+                  const sizeBoxWidth = 40;
+                  const sizeBoxHeight = imageSize;
                   const textColor = rgb(0.26, 0.22, 0.18);
                   const mutedColor = rgb(0.42, 0.37, 0.32);
+                  const accentColor = rgb(0.56, 0.18, 0.09);
                   const borderColor = rgb(0.86, 0.82, 0.76);
                   const bgColor = rgb(1, 1, 1);
+                  const sizeBoxBg = rgb(0.99, 0.96, 0.94);
                   const pagesNeeded = Math.max(1, Math.ceil(invViewRows.length / rowsPerPage));
                   const imageCache = new Map();
 
@@ -5549,12 +5581,30 @@
                         borderWidth: 1
                       });
 
+                      const sizeBoxX = margin + 8;
+                      const sizeBoxY = yTop - 8 - sizeBoxHeight;
+                      page.drawRectangle({
+                        x: sizeBoxX, y: sizeBoxY, width: sizeBoxWidth, height: sizeBoxHeight,
+                        borderColor: accentColor, borderWidth: 1.5, color: sizeBoxBg
+                      });
+                      page.drawText('SIZE', {
+                        x: sizeBoxX + sizeBoxWidth / 2 - fontBold.widthOfTextAtSize('SIZE', 6.5) / 2,
+                        y: sizeBoxY + sizeBoxHeight - 16,
+                        size: 6.5, font: fontBold, color: accentColor
+                      });
+                      const sizeText = String(row.size || '-');
+                      page.drawText(sizeText, {
+                        x: sizeBoxX + sizeBoxWidth / 2 - fontBold.widthOfTextAtSize(sizeText, 15) / 2,
+                        y: sizeBoxY + sizeBoxHeight / 2 - 10,
+                        size: 15, font: fontBold, color: textColor
+                      });
+
                       let embedded = row.photo ? imageCache.get(row.photo) : null;
                       if (row.photo && !embedded) {
                         embedded = await embedInvViewImage(pdfDoc, row.photo);
                         if (embedded) imageCache.set(row.photo, embedded);
                       }
-                      const imageX = margin + 8;
+                      const imageX = sizeBoxX + sizeBoxWidth + 10;
                       const imageY = yTop - 8 - imageSize;
                       if (embedded) {
                         drawInvViewImageContained(page, embedded, { x: imageX, y: imageY, width: imageSize, height: imageSize });
@@ -5571,7 +5621,7 @@
                       let textY = yTop - 14;
                       page.drawText(row.title, { x: textX, y: textY, size: 11, font: fontBold, color: textColor });
                       textY -= 14;
-                      const metaLine = 'Brand: ' + row.brand + '   Size: ' + row.size + '   Price: ' + row.price + '   Condition: ' + row.condition;
+                      const metaLine = 'Brand: ' + row.brand + '   Price: ' + row.price + '   Condition: ' + row.condition;
                       textY = drawWrappedInvViewText(page, metaLine, {
                         font: fontRegular, size: 8.5, color: mutedColor,
                         x: textX, y: textY, maxWidth: textWidth, lineHeight: 10, maxLines: 1
