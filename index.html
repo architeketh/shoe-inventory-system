@@ -1452,6 +1452,7 @@
           <summary class="button primary small">Export</summary>
           <div class="menu-panel">
             <button class="menu-item" type="button" id="review-html-button"><strong>Review tab</strong><span>Listing cards to scan or save as a PDF</span></button>
+            <button class="menu-item" type="button" id="inventory-view-button"><strong>Inventory view</strong><span>One photo + description per shoe, to scan or save as a PDF</span></button>
             <button class="menu-item" type="button" id="platform-report-button"><strong>Platform report</strong><span>Listing cards grouped by platform</span></button>
             <button class="menu-item" type="button" id="xls-button"><strong>CSV</strong><span>Spreadsheet of the shoes</span></button>
             <button class="menu-item" type="button" id="whatnot-button"><strong>Whatnot</strong><span>Whatnot upload file</span></button>
@@ -2223,6 +2224,7 @@
             searchInput: document.getElementById('search-input'),
       searchClearButton: document.getElementById('search-clear-button'),
       reviewHtmlButton: document.getElementById('review-html-button'),
+      inventoryViewButton: document.getElementById('inventory-view-button'),
       platformReportButton: document.getElementById('platform-report-button'),
       xlsButton: document.getElementById('xls-button'),
       whatnotButton: document.getElementById('whatnot-button'),
@@ -5315,6 +5317,322 @@
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
+    function buildInventoryViewRowMarkup(item) {
+      const photos = Array.isArray(item.photo_urls) ? item.photo_urls : [];
+      const firstPhoto = photos.find(Boolean);
+      const titleText = getCardTitleText(item);
+      const photoMarkup = firstPhoto
+        ? `<img class="inv-view-photo" src="${firstPhoto}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />`
+        : '<div class="inv-view-photo inv-view-photo-empty">No photo</div>';
+      return `
+        <article class="inv-view-row">
+          ${photoMarkup}
+          <div class="inv-view-info">
+            <div class="inv-view-title">${escapeHtml(titleText)}</div>
+            <div class="inv-view-meta">
+              <span><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</span>
+              <span><strong>Size:</strong> ${escapeHtml(item.size || '-')}</span>
+              <span><strong>Price:</strong> ${escapeHtml(currency(item.price || 0))}</span>
+              <span><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</span>
+            </div>
+            <div class="inv-view-description">${escapeHtml(buildExportDescription(item))}</div>
+          </div>
+        </article>
+      `;
+    }
+
+    function buildInventoryViewHtml(exportItems) {
+      const rowDataJson = JSON.stringify(exportItems.map((item) => ({
+        photo: (Array.isArray(item.photo_urls) ? item.photo_urls : []).find(Boolean) || '',
+        title: getCardTitleText(item),
+        brand: item.brand || '-',
+        size: item.size || '-',
+        price: '$' + Number(item.price || 0).toFixed(2),
+        condition: item.condition || 'Not set',
+        description: buildExportDescription(item)
+      }))).replace(/</g, '\\u003c');
+      const rows = exportItems.map((item) => buildInventoryViewRowMarkup(item)).join('');
+      return `
+        <html>
+          <head>
+            <title>Inventory View</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"><\/script>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+                color: #222;
+                background: #faf8f5;
+              }
+              .print-toolbar {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+                margin-bottom: 16px;
+              }
+              .inv-view-list {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+              }
+              .inv-view-row {
+                display: flex;
+                gap: 14px;
+                border: 1px solid #dbcfc2;
+                border-radius: 12px;
+                padding: 10px;
+                background: #fff;
+                break-inside: avoid;
+                page-break-inside: avoid;
+              }
+              .inv-view-photo {
+                width: 90px;
+                height: 90px;
+                object-fit: cover;
+                border-radius: 8px;
+                border: 1px solid #e4d8cb;
+                flex: 0 0 auto;
+                display: block;
+              }
+              .inv-view-photo-empty {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                color: #8a7766;
+                font-size: 11px;
+                border: 1px dashed #d8cbbd;
+              }
+              .inv-view-info {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                min-width: 0;
+                font-size: 12.5px;
+                color: #3a2f26;
+                line-height: 1.5;
+              }
+              .inv-view-title { font-weight: 700; font-size: 14px; color: #21170f; }
+              .inv-view-meta { display: flex; flex-wrap: wrap; gap: 12px; color: #6c5d52; }
+              .inv-view-description { color: #4a3f35; }
+              @media print {
+                body { padding: 12px; background: #fff; }
+                .print-toolbar { display: none; }
+              }
+            </style>
+            <script>
+              const invViewRows = ${rowDataJson};
+
+              async function embedInvViewImage(pdfDoc, url) {
+                try {
+                  const response = await fetch(url, { mode: 'cors' });
+                  if (!response.ok) return null;
+                  const blob = await response.blob();
+                  const objectUrl = URL.createObjectURL(blob);
+                  try {
+                    const image = await new Promise((resolve, reject) => {
+                      const img = new Image();
+                      img.crossOrigin = 'anonymous';
+                      img.onload = () => resolve(img);
+                      img.onerror = () => reject(new Error('Could not load image for PDF.'));
+                      img.src = objectUrl;
+                    });
+                    const maxDimension = 600;
+                    const width = image.naturalWidth || image.width;
+                    const height = image.naturalHeight || image.height;
+                    const scale = Math.min(1, maxDimension / Math.max(width, height));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(width * scale));
+                    canvas.height = Math.max(1, Math.round(height * scale));
+                    const context = canvas.getContext('2d');
+                    context.fillStyle = '#ffffff';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                    const normalizedBlob = await new Promise((resolve, reject) => {
+                      canvas.toBlob((outputBlob) => {
+                        if (outputBlob) resolve(outputBlob);
+                        else reject(new Error('Could not normalize image for PDF.'));
+                      }, 'image/jpeg', 0.9);
+                    });
+                    const bytes = await normalizedBlob.arrayBuffer();
+                    return await pdfDoc.embedJpg(bytes);
+                  } finally {
+                    URL.revokeObjectURL(objectUrl);
+                  }
+                } catch (error) {
+                  return null;
+                }
+              }
+
+              function drawWrappedInvViewText(page, text, options) {
+                const { font, size, color, x, y, maxWidth, lineHeight, maxLines } = options;
+                const words = String(text || '').split(/\\s+/).filter(Boolean);
+                if (!words.length) return y;
+                const lines = [];
+                let current = '';
+                for (const word of words) {
+                  const candidate = current ? current + ' ' + word : word;
+                  if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+                    current = candidate;
+                  } else {
+                    if (current) lines.push(current);
+                    current = word;
+                  }
+                }
+                if (current) lines.push(current);
+                const finalLines = typeof maxLines === 'number' ? lines.slice(0, maxLines) : lines;
+                finalLines.forEach((line, index) => {
+                  page.drawText(line, { x, y: y - index * lineHeight, size, font, color });
+                });
+                return y - finalLines.length * lineHeight;
+              }
+
+              function drawInvViewImageContained(page, image, box) {
+                const imageWidth = image.width || 1;
+                const imageHeight = image.height || 1;
+                const scale = Math.min(box.width / imageWidth, box.height / imageHeight);
+                const drawWidth = imageWidth * scale;
+                const drawHeight = imageHeight * scale;
+                const drawX = box.x + (box.width - drawWidth) / 2;
+                const drawY = box.y + (box.height - drawHeight) / 2;
+                page.drawImage(image, { x: drawX, y: drawY, width: drawWidth, height: drawHeight });
+              }
+
+              async function createPdf() {
+                const button = document.getElementById('create-pdf-button');
+                const originalLabel = button.textContent;
+                button.disabled = true;
+                button.textContent = 'Building PDF...';
+                try {
+                  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+                  const pdfDoc = await PDFDocument.create();
+                  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+                  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                  const pageWidth = 612;
+                  const pageHeight = 792;
+                  const margin = 30;
+                  const rowHeight = 78;
+                  const rowGap = 8;
+                  const rowsPerPage = 8;
+                  const imageSize = 62;
+                  const textColor = rgb(0.26, 0.22, 0.18);
+                  const mutedColor = rgb(0.42, 0.37, 0.32);
+                  const borderColor = rgb(0.86, 0.82, 0.76);
+                  const bgColor = rgb(1, 1, 1);
+                  const pagesNeeded = Math.max(1, Math.ceil(invViewRows.length / rowsPerPage));
+                  const imageCache = new Map();
+
+                  for (let pageIndex = 0; pageIndex < pagesNeeded; pageIndex += 1) {
+                    const page = pdfDoc.addPage([pageWidth, pageHeight]);
+                    page.drawText('Inventory View', {
+                      x: margin,
+                      y: pageHeight - 18,
+                      size: 18,
+                      font: fontBold,
+                      color: rgb(0.12, 0.08, 0.05)
+                    });
+
+                    for (let slot = 0; slot < rowsPerPage; slot += 1) {
+                      const row = invViewRows[pageIndex * rowsPerPage + slot];
+                      if (!row) continue;
+                      const yTop = pageHeight - margin - 30 - slot * (rowHeight + rowGap);
+                      const yBottom = yTop - rowHeight;
+
+                      page.drawRectangle({
+                        x: margin,
+                        y: yBottom,
+                        width: pageWidth - margin * 2,
+                        height: rowHeight,
+                        color: bgColor,
+                        borderColor,
+                        borderWidth: 1
+                      });
+
+                      let embedded = row.photo ? imageCache.get(row.photo) : null;
+                      if (row.photo && !embedded) {
+                        embedded = await embedInvViewImage(pdfDoc, row.photo);
+                        if (embedded) imageCache.set(row.photo, embedded);
+                      }
+                      const imageX = margin + 8;
+                      const imageY = yTop - 8 - imageSize;
+                      if (embedded) {
+                        drawInvViewImageContained(page, embedded, { x: imageX, y: imageY, width: imageSize, height: imageSize });
+                      } else {
+                        page.drawRectangle({
+                          x: imageX, y: imageY, width: imageSize, height: imageSize,
+                          borderColor, borderWidth: 1, color: rgb(0.97, 0.95, 0.92)
+                        });
+                        page.drawText('No photo', { x: imageX + 8, y: imageY + imageSize / 2 - 4, size: 8, font: fontRegular, color: mutedColor });
+                      }
+
+                      const textX = imageX + imageSize + 12;
+                      const textWidth = pageWidth - margin - 8 - textX;
+                      let textY = yTop - 14;
+                      page.drawText(row.title, { x: textX, y: textY, size: 11, font: fontBold, color: textColor });
+                      textY -= 14;
+                      const metaLine = 'Brand: ' + row.brand + '   Size: ' + row.size + '   Price: ' + row.price + '   Condition: ' + row.condition;
+                      textY = drawWrappedInvViewText(page, metaLine, {
+                        font: fontRegular, size: 8.5, color: mutedColor,
+                        x: textX, y: textY, maxWidth: textWidth, lineHeight: 10, maxLines: 1
+                      }) - 4;
+                      drawWrappedInvViewText(page, row.description, {
+                        font: fontRegular, size: 8, color: textColor,
+                        x: textX, y: textY, maxWidth: textWidth, lineHeight: 9.5, maxLines: 3
+                      });
+                    }
+                  }
+
+                  const bytes = await pdfDoc.save();
+                  const blob = new Blob([bytes], { type: 'application/pdf' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = 'inventory-view-' + new Date().toISOString().slice(0, 10) + '.pdf';
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                  URL.revokeObjectURL(url);
+                  button.textContent = 'PDF Ready';
+                  setTimeout(() => { button.textContent = originalLabel; button.disabled = false; }, 1200);
+                  return;
+                } catch (error) {
+                  alert('PDF generation failed: ' + (error?.message || String(error)));
+                }
+                button.textContent = originalLabel;
+                button.disabled = false;
+              }
+            <\/script>
+          </head>
+          <body>
+            <div class="print-toolbar">
+              <button id="create-pdf-button" onclick="createPdf()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">Create PDF</button>
+              <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
+            </div>
+            <h1 style="margin:0 0 8px;">Inventory View</h1>
+            <div style="margin-bottom:16px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} | ${exportItems.length} pair(s)</div>
+            <section class="inv-view-list">
+              ${rows || '<p>No inventory available.</p>'}
+            </section>
+          </body>
+        </html>
+      `;
+    }
+
+    function exportInventoryView() {
+      const exportItems = getExportItems();
+      const html = buildInventoryViewHtml(exportItems);
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const viewTab = window.open(url, '_blank');
+      if (!viewTab) {
+        alert('Allow pop-ups to open the inventory view tab.');
+        URL.revokeObjectURL(url);
+        return;
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+
     function buildPlatformReportHtml(exportItems) {
       const groups = PLATFORM_REPORT_ORDER.map((platform) => {
         const items = exportItems.filter((item) => getItemPlatforms(item).includes(platform));
@@ -7010,6 +7328,7 @@
     }
 
     elements.reviewHtmlButton.addEventListener('click', exportReviewListingHtml);
+    elements.inventoryViewButton.addEventListener('click', exportInventoryView);
     elements.platformReportButton.addEventListener('click', exportPlatformReport);
     elements.xlsButton.addEventListener('click', exportXlsReport);
     elements.whatnotButton.addEventListener('click', exportWhatnotCsv);
