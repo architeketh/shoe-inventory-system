@@ -3938,8 +3938,8 @@
     }
 
     function getExportItems() {
-      const selectedItems = getSelectedInventory();
-      return selectedItems.length ? selectedItems : sortedInventory();
+      const sorted = sortedInventory();
+      return state.selectedIds.size ? sorted.filter((item) => state.selectedIds.has(item.id)) : sorted;
     }
 
     function updateSelectionSummary(visibleItems = sortedInventory()) {
