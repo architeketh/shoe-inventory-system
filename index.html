@@ -2062,8 +2062,10 @@
               </div>
               <div class="form-status" id="regenerate-sku-status" hidden></div>
               <div class="danger-zone" style="margin-top: 10px;">
+                <button class="button secondary" type="button" id="download-main-photo-button">Download main photo</button>
                 <button class="button secondary" type="button" id="download-photos-button">Download photos for Depop</button>
               </div>
+              <div class="form-status" id="download-main-photo-status" hidden></div>
               <div class="form-status" id="download-photos-status" hidden></div>
             </div>
           </details>
@@ -2319,6 +2321,8 @@
       deleteButton: document.getElementById('delete-button'),
       duplicateButton: document.getElementById('duplicate-button'),
       regenerateSkuButton: document.getElementById('regenerate-sku-button'),
+      downloadMainPhotoButton: document.getElementById('download-main-photo-button'),
+      downloadMainPhotoStatus: document.getElementById('download-main-photo-status'),
       downloadPhotosButton: document.getElementById('download-photos-button'),
       downloadPhotosStatus: document.getElementById('download-photos-status'),
       regenerateSkuStatus: document.getElementById('regenerate-sku-status')
@@ -2889,6 +2893,62 @@
       });
     }
 
+    // Samples the original photo's own backdrop to find its whitest/lightest tone, so the
+    // White BG tool can flatten onto a color that matches that photo's actual background
+    // (an off-white studio sweep, cream wall, etc.) instead of forcing pure #ffffff on every
+    // photo. Looks only at a border strip around the edges (where the backdrop usually is,
+    // not the shoe itself), and only at pixels that are already light/whitish - this picks
+    // the lightest real tone in that backdrop rather than averaging in darker shoe pixels
+    // that happen to reach the edge. Falls back to null (pure white) if nothing qualifies.
+    function sampleLightestBackgroundColor(image) {
+      try {
+        const sampleCanvas = document.createElement('canvas');
+        const maxSampleSize = 160;
+        const sourceWidth = image.naturalWidth || image.width;
+        const sourceHeight = image.naturalHeight || image.height;
+        if (!sourceWidth || !sourceHeight) return null;
+        const scale = Math.min(1, maxSampleSize / Math.max(sourceWidth, sourceHeight));
+        const width = Math.max(1, Math.round(sourceWidth * scale));
+        const height = Math.max(1, Math.round(sourceHeight * scale));
+        sampleCanvas.width = width;
+        sampleCanvas.height = height;
+        const sampleContext = sampleCanvas.getContext('2d', { willReadFrequently: true });
+        sampleContext.drawImage(image, 0, 0, width, height);
+        const { data } = sampleContext.getImageData(0, 0, width, height);
+        const borderThickness = Math.max(2, Math.round(Math.min(width, height) * 0.08));
+        const brightnessFloor = 170; // ignore pixels that aren't already light/whitish
+
+        let bestBrightness = -1;
+        let bestR = 0;
+        let bestG = 0;
+        let bestB = 0;
+        for (let y = 0; y < height; y += 1) {
+          const onBorderRow = y < borderThickness || y >= height - borderThickness;
+          for (let x = 0; x < width; x += 1) {
+            if (!onBorderRow && x >= borderThickness && x < width - borderThickness) continue;
+            const index = (y * width + x) * 4;
+            const alpha = data[index + 3];
+            if (alpha < 200) continue;
+            const r = data[index];
+            const g = data[index + 1];
+            const b = data[index + 2];
+            const brightness = (r + g + b) / 3;
+            if (brightness < brightnessFloor) continue;
+            if (brightness > bestBrightness) {
+              bestBrightness = brightness;
+              bestR = r;
+              bestG = g;
+              bestB = b;
+            }
+          }
+        }
+        if (bestBrightness < 0) return null;
+        return `rgb(${bestR}, ${bestG}, ${bestB})`;
+      } catch (error) {
+        return null;
+      }
+    }
+
     async function flattenTransparentBlobToWhite(blob, sourceBlob = null) {
       const objectUrl = URL.createObjectURL(blob);
       const sourceObjectUrl = sourceBlob ? URL.createObjectURL(sourceBlob) : null;
@@ -2901,12 +2961,13 @@
         canvas.width = image.naturalWidth || image.width;
         canvas.height = image.naturalHeight || image.height;
         const context = canvas.getContext('2d');
-        context.fillStyle = '#ffffff';
+        const backgroundColor = (sourceImage && sampleLightestBackgroundColor(sourceImage)) || '#ffffff';
+        context.fillStyle = backgroundColor;
         context.fillRect(0, 0, canvas.width, canvas.height);
 
         context.drawImage(image, 0, 0);
         const edgeTrim = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) * 0.006));
-        context.fillStyle = '#ffffff';
+        context.fillStyle = backgroundColor;
         context.fillRect(0, 0, canvas.width, edgeTrim);
         context.fillRect(0, canvas.height - edgeTrim, canvas.width, edgeTrim);
         context.fillRect(0, 0, edgeTrim, canvas.height);
@@ -7442,6 +7503,7 @@
       if (state.editingId) duplicateItem(state.editingId);
     });
     elements.regenerateSkuButton.addEventListener('click', regenerateDepopSku);
+    elements.downloadMainPhotoButton.addEventListener('click', downloadMainPhoto);
     elements.downloadPhotosButton.addEventListener('click', downloadPhotosForDepop);
     elements.editModal.addEventListener('click', (event) => {
       if (event.target === elements.editModal) closeEditModal();
@@ -7683,6 +7745,48 @@
         document.head.appendChild(script);
       });
       return jsZipLoadPromise;
+    }
+
+    // "Download main photo" button handler. Grabs just this shoe's first/main photo and
+    // downloads it directly as a single image file - no zip needed for just one photo.
+    async function downloadMainPhoto() {
+      const item = getEditingItem();
+      if (!item) return;
+      const photos = Array.isArray(item.photo_urls) ? item.photo_urls.filter(Boolean) : [];
+      const mainPhotoUrl = photos[0];
+      if (!mainPhotoUrl) {
+        elements.downloadMainPhotoStatus.hidden = false;
+        elements.downloadMainPhotoStatus.className = 'form-status error';
+        elements.downloadMainPhotoStatus.textContent = 'This shoe has no saved main photo to download.';
+        return;
+      }
+      elements.downloadMainPhotoButton.disabled = true;
+      elements.downloadMainPhotoStatus.hidden = false;
+      elements.downloadMainPhotoStatus.className = 'form-status';
+      elements.downloadMainPhotoStatus.textContent = 'Downloading main photo...';
+      try {
+        const response = await fetch(mainPhotoUrl);
+        if (!response.ok) throw new Error(`Photo didn't download (status ${response.status})`);
+        const blob = await response.blob();
+        const namePart = [item.brand, item.size].filter(Boolean).join('-').replace(/[^a-z0-9-]+/gi, '') || 'shoe';
+        const extMatch = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.exec(mainPhotoUrl);
+        const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `${namePart}-main.${ext}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+        elements.downloadMainPhotoStatus.className = 'form-status success';
+        elements.downloadMainPhotoStatus.textContent = 'Main photo downloaded.';
+      } catch (error) {
+        elements.downloadMainPhotoStatus.className = 'form-status error';
+        elements.downloadMainPhotoStatus.textContent = `Couldn't download main photo: ${error.message || error}`;
+      } finally {
+        elements.downloadMainPhotoButton.disabled = false;
+      }
     }
 
     // "Download photos for Depop" button handler. Grabs every saved photo for this shoe and
