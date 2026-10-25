@@ -1734,7 +1734,7 @@
                   <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="ebay">ebay</label>
                   <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="Depop">Depop</label>
                   <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="WhatNot">WhatNot</label>
-                  <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="StockX">StockX</label>
+                  <label class="checkbox-option"><input type="checkbox" name="platforms-listed" value="GOAT">GOAT</label>
                 </div>
               </div>
             </div>
@@ -2013,7 +2013,7 @@
                   <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="ebay">ebay</label>
                   <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="Depop">Depop</label>
                   <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="WhatNot">WhatNot</label>
-                  <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="StockX">StockX</label>
+                  <label class="checkbox-option"><input type="checkbox" name="edit-platforms-listed" value="GOAT">GOAT</label>
                 </div>
               </div>
             </div>
@@ -3820,8 +3820,8 @@
       if (base === 'ebay' || baseCompact === 'ebay') {
         ['ebay', 'e bay', 'platform ebay', 'listed on ebay'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
-      if (base === 'stockx' || baseCompact === 'stockx' || base === 'goat' || baseCompact === 'goat') {
-        ['stockx', 'stock x', 'platform stockx', 'listed on stockx'].forEach((value) => variants.add(normalizeSearchToken(value)));
+      if (base === 'goat' || baseCompact === 'goat') {
+        ['goat', 'platform goat', 'listed on goat'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
       if (base === 'threadup' || base === 'thredup' || baseCompact === 'threadup' || baseCompact === 'thredup') {
         ['threadup', 'thredup', 'thread up', 'thred up', 'platform threadup', 'listed on threadup'].forEach((value) => variants.add(normalizeSearchToken(value)));
@@ -3856,9 +3856,40 @@
       return normalizedSizeTerms(base);
     }
 
+    // Groups sizes into tiers before comparing numerically, so a sort by size doesn't mix
+    // toddler/child sizes (ending in C, e.g. "11C"), youth sizes (ending in Y, e.g. "2Y",
+    // "3Y", or GS/PS/toddler-style labels), kids' plain-number sizes (no letter, but the
+    // shoe's own Category is set to Kids), and adult sizes (everything else) together.
+    // Order: toddler/child, then youth, then kids plain-number, then adult, then unset.
+    function classifySizeTier(item) {
+      const raw = String(item?.size ?? '').trim();
+      if (!raw) return { bucket: 4, numeric: Number.POSITIVE_INFINITY };
+      const lower = raw.toLowerCase();
+      const numericMatch = lower.match(/(\d+(?:\.\d+)?)/);
+      const numeric = numericMatch ? Number(numericMatch[1]) : Number.POSITIVE_INFINITY;
+
+      const isToddler = /c$/.test(lower) || /\btd\b/.test(lower) || lower.includes('toddler') || lower.includes('infant');
+      const isYouth = !isToddler && (/y$/.test(lower) || /\b(gs|ps)\b/.test(lower) || lower.includes('youth') || lower.includes('grade school') || lower.includes('preschool'));
+      const isKidsPlainNumber = !isToddler && !isYouth && item?.gender === 'kids';
+
+      let bucket;
+      if (isToddler) bucket = 0;
+      else if (isYouth) bucket = 1;
+      else if (isKidsPlainNumber) bucket = 2;
+      else bucket = 3;
+
+      return { bucket, numeric };
+    }
+
     function compareInventoryByKey(a, b, key) {
       if (key === 'price') return Number(a.price || 0) - Number(b.price || 0);
-      if (key === 'size') return String(a.size || '').localeCompare(String(b.size || ''), undefined, { numeric: true, sensitivity: 'base' });
+      if (key === 'size') {
+        const tierA = classifySizeTier(a);
+        const tierB = classifySizeTier(b);
+        if (tierA.bucket !== tierB.bucket) return tierA.bucket - tierB.bucket;
+        if (tierA.numeric !== tierB.numeric) return tierA.numeric - tierB.numeric;
+        return String(a.size || '').localeCompare(String(b.size || ''), undefined, { numeric: true, sensitivity: 'base' });
+      }
       return String(a[key] || '').localeCompare(String(b[key] || ''), undefined, { sensitivity: 'base' });
     }
 
@@ -3877,7 +3908,7 @@
             if (lower === 'whatnot') return ['whatnot', 'what not', 'platform whatnot', 'listed on whatnot'];
             if (lower === 'depop') return ['depop', 'platform depop', 'listed on depop'];
             if (lower === 'ebay') return ['ebay', 'e bay', 'platform ebay', 'listed on ebay'];
-            if (lower === 'stockx') return ['stockx', 'stock x', 'platform stockx', 'listed on stockx'];
+            if (lower === 'goat') return ['goat', 'platform goat', 'listed on goat'];
             if (lower === 'threadup') return ['threadup', 'thredup', 'thread up', 'thred up', 'platform threadup', 'listed on threadup'];
             return [lower, `platform ${lower}`, `listed on ${lower}`];
           });
@@ -4697,7 +4728,7 @@
       elements.editMaterials.value = item.materials || '';
       elements.editMadeIn.value = item.made_in || '';
       elements.editSerialNumber.value = item.serial_number || '';
-      setCheckedValues('edit-platforms-listed', (item.platforms_listed || []).map((platform) => (platform === 'GOAT' ? 'StockX' : platform)));
+      setCheckedValues('edit-platforms-listed', item.platforms_listed || []);
       elements.editStatus.className = 'form-status';
       elements.editStatus.textContent = '';
       updateEditHeader(item);
@@ -5003,13 +5034,11 @@
       reportWindow.focus();
     }
 
-    const PLATFORM_REPORT_ORDER = ['ThreadUp', 'ebay', 'Depop', 'WhatNot', 'StockX'];
+    const PLATFORM_REPORT_ORDER = ['ThreadUp', 'ebay', 'Depop', 'WhatNot', 'GOAT'];
 
     function getItemPlatforms(item) {
       if (!Array.isArray(item.platforms_listed)) return [];
-      // Older items were saved as "GOAT"; that platform was replaced by StockX, so treat them as StockX.
-      const saved = item.platforms_listed.map((platform) => (platform === 'GOAT' ? 'StockX' : platform));
-      return PLATFORM_REPORT_ORDER.filter((platform) => saved.includes(platform));
+      return PLATFORM_REPORT_ORDER.filter((platform) => item.platforms_listed.includes(platform));
     }
 
     function buildReviewCardMarkup(item) {
