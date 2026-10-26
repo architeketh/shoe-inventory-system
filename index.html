@@ -5460,7 +5460,17 @@
         description: buildExportDescription(item),
         genderKey: inventoryViewGenderKey(item)
       }))).replace(/</g, '\\u003c');
-      const rows = exportItems.map((item) => buildInventoryViewRowMarkup(item)).join('');
+      const rowsParts = [];
+      let previousRowBrand = null;
+      exportItems.forEach((item) => {
+        const brandLabel = String(item.brand || 'Unbranded').trim() || 'Unbranded';
+        if (brandLabel !== previousRowBrand) {
+          rowsParts.push(`<div class="inv-view-brand-divider">${escapeHtml(brandLabel)}</div>`);
+          previousRowBrand = brandLabel;
+        }
+        rowsParts.push(buildInventoryViewRowMarkup(item));
+      });
+      const rows = rowsParts.join('');
       return `
         <html>
           <head>
@@ -5494,6 +5504,24 @@
                 background: #fff;
                 break-inside: avoid;
                 page-break-inside: avoid;
+              }
+              .inv-view-brand-divider {
+                margin-top: 14px;
+                padding: 5px 10px;
+                font-size: 12px;
+                font-weight: 800;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: #fff;
+                background: #8f2f16;
+                border-radius: 6px;
+                break-inside: avoid;
+                page-break-inside: avoid;
+                break-after: avoid;
+                page-break-after: avoid;
+              }
+              .inv-view-brand-divider:first-child {
+                margin-top: 0;
               }
               .inv-view-size-box {
                 width: 56px;
@@ -5652,7 +5680,10 @@
                   const margin = 30;
                   const rowHeight = 78;
                   const rowGap = 8;
-                  const rowsPerPage = 8;
+                  const dividerHeight = 20;
+                  const dividerGap = 6;
+                  const contentTop = pageHeight - margin - 30;
+                  const contentBottom = margin;
                   const imageSize = 62;
                   const sizeBoxWidth = 40;
                   const sizeBoxHeight = imageSize;
@@ -5666,11 +5697,24 @@
                     kids: { accent: rgb(0.839, 0.604, 0.110), bg: rgb(0.984, 0.953, 0.890) },
                     other: { accent: rgb(0.56, 0.18, 0.09), bg: rgb(0.99, 0.96, 0.94) }
                   };
-                  const pagesNeeded = Math.max(1, Math.ceil(invViewRows.length / rowsPerPage));
                   const imageCache = new Map();
 
-                  for (let pageIndex = 0; pageIndex < pagesNeeded; pageIndex += 1) {
-                    const page = pdfDoc.addPage([pageWidth, pageHeight]);
+                  const layoutItems = [];
+                  let previousPdfBrand = null;
+                  invViewRows.forEach((row) => {
+                    const brandLabel = String(row.brand || 'Unbranded').trim() || 'Unbranded';
+                    if (brandLabel !== previousPdfBrand) {
+                      layoutItems.push({ type: 'divider', brand: brandLabel });
+                      previousPdfBrand = brandLabel;
+                    }
+                    layoutItems.push({ type: 'row', data: row });
+                  });
+
+                  let page = null;
+                  let yCursor = contentTop;
+
+                  function startNewPdfPage() {
+                    page = pdfDoc.addPage([pageWidth, pageHeight]);
                     page.drawText('Inventory View', {
                       x: margin,
                       y: pageHeight - 18,
@@ -5687,73 +5731,100 @@
                       legendX += 12 + fontRegular.widthOfTextAtSize(label, 8) + 14;
                     });
 
-                    for (let slot = 0; slot < rowsPerPage; slot += 1) {
-                      const row = invViewRows[pageIndex * rowsPerPage + slot];
-                      if (!row) continue;
-                      const yTop = pageHeight - margin - 30 - slot * (rowHeight + rowGap);
-                      const yBottom = yTop - rowHeight;
+                    yCursor = contentTop;
+                  }
 
+                  startNewPdfPage();
+
+                  for (const layoutItem of layoutItems) {
+                    if (layoutItem.type === 'divider') {
+                      if (yCursor - dividerHeight < contentBottom) startNewPdfPage();
+                      const barY = yCursor - dividerHeight;
                       page.drawRectangle({
                         x: margin,
-                        y: yBottom,
+                        y: barY,
                         width: pageWidth - margin * 2,
-                        height: rowHeight,
-                        color: bgColor,
-                        borderColor,
-                        borderWidth: 1
+                        height: dividerHeight,
+                        color: rgb(0.56, 0.18, 0.09)
                       });
-
-                      const sizeBoxX = margin + 8;
-                      const sizeBoxY = yTop - 8 - sizeBoxHeight;
-                      const boxColors = sizeBoxColors[row.genderKey] || sizeBoxColors.other;
-                      page.drawRectangle({
-                        x: sizeBoxX, y: sizeBoxY, width: sizeBoxWidth, height: sizeBoxHeight,
-                        borderColor: boxColors.accent, borderWidth: 1.5, color: boxColors.bg
+                      page.drawText(layoutItem.brand, {
+                        x: margin + 10,
+                        y: barY + dividerHeight / 2 - 4,
+                        size: 10,
+                        font: fontBold,
+                        color: rgb(1, 1, 1)
                       });
-                      page.drawText('SIZE', {
-                        x: sizeBoxX + sizeBoxWidth / 2 - fontBold.widthOfTextAtSize('SIZE', 6.5) / 2,
-                        y: sizeBoxY + sizeBoxHeight - 16,
-                        size: 6.5, font: fontBold, color: boxColors.accent
-                      });
-                      const sizeText = String(row.size || '-');
-                      page.drawText(sizeText, {
-                        x: sizeBoxX + sizeBoxWidth / 2 - fontBold.widthOfTextAtSize(sizeText, 15) / 2,
-                        y: sizeBoxY + sizeBoxHeight / 2 - 10,
-                        size: 15, font: fontBold, color: textColor
-                      });
-
-                      let embedded = row.photo ? imageCache.get(row.photo) : null;
-                      if (row.photo && !embedded) {
-                        embedded = await embedInvViewImage(pdfDoc, row.photo);
-                        if (embedded) imageCache.set(row.photo, embedded);
-                      }
-                      const imageX = sizeBoxX + sizeBoxWidth + 10;
-                      const imageY = yTop - 8 - imageSize;
-                      if (embedded) {
-                        drawInvViewImageContained(page, embedded, { x: imageX, y: imageY, width: imageSize, height: imageSize });
-                      } else {
-                        page.drawRectangle({
-                          x: imageX, y: imageY, width: imageSize, height: imageSize,
-                          borderColor, borderWidth: 1, color: rgb(0.97, 0.95, 0.92)
-                        });
-                        page.drawText('No photo', { x: imageX + 8, y: imageY + imageSize / 2 - 4, size: 8, font: fontRegular, color: mutedColor });
-                      }
-
-                      const textX = imageX + imageSize + 12;
-                      const textWidth = pageWidth - margin - 8 - textX;
-                      let textY = yTop - 14;
-                      page.drawText(row.title, { x: textX, y: textY, size: 11, font: fontBold, color: textColor });
-                      textY -= 14;
-                      const metaLine = 'Brand: ' + row.brand + '   Price: ' + row.price + '   Condition: ' + row.condition;
-                      textY = drawWrappedInvViewText(page, metaLine, {
-                        font: fontRegular, size: 8.5, color: mutedColor,
-                        x: textX, y: textY, maxWidth: textWidth, lineHeight: 10, maxLines: 1
-                      }) - 4;
-                      drawWrappedInvViewText(page, row.description, {
-                        font: fontRegular, size: 8, color: textColor,
-                        x: textX, y: textY, maxWidth: textWidth, lineHeight: 9.5, maxLines: 3
-                      });
+                      yCursor = barY - dividerGap;
+                      continue;
                     }
+
+                    const row = layoutItem.data;
+                    if (yCursor - rowHeight < contentBottom) startNewPdfPage();
+                    const yTop = yCursor;
+                    const yBottom = yTop - rowHeight;
+
+                    page.drawRectangle({
+                      x: margin,
+                      y: yBottom,
+                      width: pageWidth - margin * 2,
+                      height: rowHeight,
+                      color: bgColor,
+                      borderColor,
+                      borderWidth: 1
+                    });
+
+                    const sizeBoxX = margin + 8;
+                    const sizeBoxY = yTop - 8 - sizeBoxHeight;
+                    const boxColors = sizeBoxColors[row.genderKey] || sizeBoxColors.other;
+                    page.drawRectangle({
+                      x: sizeBoxX, y: sizeBoxY, width: sizeBoxWidth, height: sizeBoxHeight,
+                      borderColor: boxColors.accent, borderWidth: 1.5, color: boxColors.bg
+                    });
+                    page.drawText('SIZE', {
+                      x: sizeBoxX + sizeBoxWidth / 2 - fontBold.widthOfTextAtSize('SIZE', 6.5) / 2,
+                      y: sizeBoxY + sizeBoxHeight - 16,
+                      size: 6.5, font: fontBold, color: boxColors.accent
+                    });
+                    const sizeText = String(row.size || '-');
+                    page.drawText(sizeText, {
+                      x: sizeBoxX + sizeBoxWidth / 2 - fontBold.widthOfTextAtSize(sizeText, 15) / 2,
+                      y: sizeBoxY + sizeBoxHeight / 2 - 10,
+                      size: 15, font: fontBold, color: textColor
+                    });
+
+                    let embedded = row.photo ? imageCache.get(row.photo) : null;
+                    if (row.photo && !embedded) {
+                      embedded = await embedInvViewImage(pdfDoc, row.photo);
+                      if (embedded) imageCache.set(row.photo, embedded);
+                    }
+                    const imageX = sizeBoxX + sizeBoxWidth + 10;
+                    const imageY = yTop - 8 - imageSize;
+                    if (embedded) {
+                      drawInvViewImageContained(page, embedded, { x: imageX, y: imageY, width: imageSize, height: imageSize });
+                    } else {
+                      page.drawRectangle({
+                        x: imageX, y: imageY, width: imageSize, height: imageSize,
+                        borderColor, borderWidth: 1, color: rgb(0.97, 0.95, 0.92)
+                      });
+                      page.drawText('No photo', { x: imageX + 8, y: imageY + imageSize / 2 - 4, size: 8, font: fontRegular, color: mutedColor });
+                    }
+
+                    const textX = imageX + imageSize + 12;
+                    const textWidth = pageWidth - margin - 8 - textX;
+                    let textY = yTop - 14;
+                    page.drawText(row.title, { x: textX, y: textY, size: 11, font: fontBold, color: textColor });
+                    textY -= 14;
+                    const metaLine = 'Brand: ' + row.brand + '   Price: ' + row.price + '   Condition: ' + row.condition;
+                    textY = drawWrappedInvViewText(page, metaLine, {
+                      font: fontRegular, size: 8.5, color: mutedColor,
+                      x: textX, y: textY, maxWidth: textWidth, lineHeight: 10, maxLines: 1
+                    }) - 4;
+                    drawWrappedInvViewText(page, row.description, {
+                      font: fontRegular, size: 8, color: textColor,
+                      x: textX, y: textY, maxWidth: textWidth, lineHeight: 9.5, maxLines: 3
+                    });
+
+                    yCursor = yBottom - rowGap;
                   }
 
                   const bytes = await pdfDoc.save();
