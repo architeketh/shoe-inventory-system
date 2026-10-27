@@ -742,6 +742,24 @@
     .photo-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .is-sold .photo-thumb img { filter: grayscale(1); opacity: 0.6; }
 
+    .sold-stamp {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) rotate(-14deg);
+      background: rgba(191, 27, 27, 0.88);
+      color: #fff;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 2px 10px;
+      border-radius: 3px;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 2;
+      font-size: 0.7rem;
+    }
+
     .photo-none {
       display: grid;
       place-items: center;
@@ -4222,6 +4240,7 @@
           <div class="card-main">
             <div class="card-photo">
               ${photoBlock}
+              ${itemStatus === 'sold' ? '<span class="sold-stamp">Sold</span>' : ''}
               <label class="select-box" title="Select this shoe"><input type="checkbox" data-select-id="${item.id}" ${isSelected ? 'checked' : ''} aria-label="Select ${escapeHtml(brandText)}"></label>
             </div>
             <div class="card-info" data-edit-id="${item.id}" role="button" tabindex="0" aria-label="Edit ${escapeHtml(brandText)}">
@@ -5094,6 +5113,7 @@
     function buildReviewCardMarkup(item) {
       const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
       const titleText = getCardTitleText(item);
+      const isSold = normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold';
       const photoMarkup = photos.length
         ? photos.map((url) => `<img class="review-photo" src="${url}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />`).join('')
         : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;">No photos</div>';
@@ -5101,6 +5121,7 @@
         <article class="review-card">
           <div class="review-photo-grid">
             ${photoMarkup}
+            ${isSold ? '<span class="sold-stamp">Sold</span>' : ''}
           </div>
           <div style="font:12px Arial,sans-serif;color:#6c5d52;line-height:1.65;">
             <div><strong>Title:</strong> ${escapeHtml(titleText)}</div>
@@ -5159,6 +5180,7 @@
                 page-break-inside: avoid;
               }
               .review-photo-grid {
+                position: relative;
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 6px;
@@ -5170,6 +5192,23 @@
                 border-radius: 8px;
                 border: 1px solid #e4d8cb;
                 display: block;
+              }
+              .sold-stamp {
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%) rotate(-14deg);
+                background: rgba(191, 27, 27, 0.9);
+                color: #fff;
+                font-weight: 800;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                padding: 4px 14px;
+                border-radius: 4px;
+                pointer-events: none;
+                white-space: nowrap;
+                z-index: 2;
+                font-size: 14px;
               }
               @media print {
                 body {
@@ -5374,6 +5413,25 @@
                         }
                       }
 
+                      const itemStatusValue = String(item.status || '').trim().toLowerCase();
+                      const isItemSold = itemStatusValue === 'sold' || (!itemStatusValue && Boolean(item.sold));
+                      if (isItemSold) {
+                        const stampHeight = 15;
+                        const stampWidth = cardWidth - 20;
+                        const stampX = x + 10;
+                        const stampY = (yTop - 10 - imageHeight / 2) - stampHeight / 2;
+                        page.drawRectangle({
+                          x: stampX, y: stampY, width: stampWidth, height: stampHeight,
+                          color: rgb(0.75, 0.11, 0.11), opacity: 0.88
+                        });
+                        const stampLabel = 'SOLD';
+                        page.drawText(stampLabel, {
+                          x: stampX + stampWidth / 2 - fontBold.widthOfTextAtSize(stampLabel, 10) / 2,
+                          y: stampY + 4,
+                          size: 10, font: fontBold, color: rgb(1, 1, 1)
+                        });
+                      }
+
                       let textY = yTop - 10 - imageHeight - 16;
                       const textX = x + 10;
                       const textWidth = cardWidth - 20;
@@ -5476,6 +5534,7 @@
       const firstPhoto = photos.find(Boolean);
       const titleText = getCardTitleText(item);
       const genderKey = inventoryViewGenderKey(item);
+      const isSold = normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold';
       const photoMarkup = firstPhoto
         ? `<img class="inv-view-photo" src="${firstPhoto}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />`
         : '<div class="inv-view-photo inv-view-photo-empty">No photo</div>';
@@ -5485,7 +5544,10 @@
             <span class="inv-view-size-label">Size</span>
             <span class="inv-view-size-value">${escapeHtml(item.size || '-')}</span>
           </div>
-          ${photoMarkup}
+          <div class="inv-view-photo-wrap">
+            ${photoMarkup}
+            ${isSold ? '<span class="sold-stamp">Sold</span>' : ''}
+          </div>
           <div class="inv-view-info">
             <div class="inv-view-title">${escapeHtml(titleText)}</div>
             <div class="inv-view-meta">
@@ -5508,7 +5570,8 @@
         price: '$' + Number(item.price || 0).toFixed(2),
         condition: item.condition || 'Not set',
         description: buildExportDescription(item),
-        genderKey: inventoryViewGenderKey(item)
+        genderKey: inventoryViewGenderKey(item),
+        sold: normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold'
       }))).replace(/</g, '\\u003c');
       const rowsParts = [];
       let previousRowBrand = null;
@@ -5602,13 +5665,18 @@
                 font-weight: 800;
                 color: #21170f;
               }
+              .inv-view-photo-wrap {
+                position: relative;
+                width: 90px;
+                height: 90px;
+                flex: 0 0 auto;
+              }
               .inv-view-photo {
                 width: 90px;
                 height: 90px;
                 object-fit: cover;
                 border-radius: 8px;
                 border: 1px solid #e4d8cb;
-                flex: 0 0 auto;
                 display: block;
               }
               .inv-view-photo-empty {
@@ -5619,6 +5687,23 @@
                 color: #8a7766;
                 font-size: 11px;
                 border: 1px dashed #d8cbbd;
+              }
+              .sold-stamp {
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%) rotate(-14deg);
+                background: rgba(191, 27, 27, 0.9);
+                color: #fff;
+                font-weight: 800;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                padding: 2px 8px;
+                border-radius: 3px;
+                pointer-events: none;
+                white-space: nowrap;
+                z-index: 2;
+                font-size: 10px;
               }
               .inv-view-info {
                 display: flex;
@@ -5858,6 +5943,20 @@
                       });
                       page.drawText('No photo', { x: imageX + 8, y: imageY + imageSize / 2 - 4, size: 8, font: fontRegular, color: mutedColor });
                     }
+                    if (row.sold) {
+                      const stampHeight = 14;
+                      const stampY = imageY + imageSize / 2 - stampHeight / 2;
+                      page.drawRectangle({
+                        x: imageX, y: stampY, width: imageSize, height: stampHeight,
+                        color: rgb(0.75, 0.11, 0.11), opacity: 0.88
+                      });
+                      const stampLabel = 'SOLD';
+                      page.drawText(stampLabel, {
+                        x: imageX + imageSize / 2 - fontBold.widthOfTextAtSize(stampLabel, 9) / 2,
+                        y: stampY + 3.5,
+                        size: 9, font: fontBold, color: rgb(1, 1, 1)
+                      });
+                    }
 
                     const textX = imageX + imageSize + 12;
                     const textWidth = pageWidth - margin - 8 - textX;
@@ -6012,6 +6111,7 @@
                 page-break-inside: avoid;
               }
               .review-photo-grid {
+                position: relative;
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 6px;
@@ -6023,6 +6123,23 @@
                 border-radius: 8px;
                 border: 1px solid #e4d8cb;
                 display: block;
+              }
+              .sold-stamp {
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%) rotate(-14deg);
+                background: rgba(191, 27, 27, 0.9);
+                color: #fff;
+                font-weight: 800;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                padding: 4px 14px;
+                border-radius: 4px;
+                pointer-events: none;
+                white-space: nowrap;
+                z-index: 2;
+                font-size: 14px;
               }
               @media (max-width: 1100px) {
                 .review-grid {
@@ -6247,6 +6364,25 @@
                           color: rgb(0.97, 0.95, 0.92)
                         });
                       }
+                    }
+
+                    const cardItemStatus = String(item.status || '').trim().toLowerCase();
+                    const isCardItemSold = cardItemStatus === 'sold' || (!cardItemStatus && Boolean(item.sold));
+                    if (isCardItemSold) {
+                      const stampHeight = 15;
+                      const stampWidth = cardWidth - 20;
+                      const stampX = x + 10;
+                      const stampY = (yTop - 10 - imageHeight / 2) - stampHeight / 2;
+                      page.drawRectangle({
+                        x: stampX, y: stampY, width: stampWidth, height: stampHeight,
+                        color: rgb(0.75, 0.11, 0.11), opacity: 0.88
+                      });
+                      const stampLabel = 'SOLD';
+                      page.drawText(stampLabel, {
+                        x: stampX + stampWidth / 2 - fontBold.widthOfTextAtSize(stampLabel, 10) / 2,
+                        y: stampY + 4,
+                        size: 10, font: fontBold, color: rgb(1, 1, 1)
+                      });
                     }
 
                     const textX = x + 10;
@@ -6490,10 +6626,12 @@
         const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
         const profitValue = hasPurchased && hasSold ? Number(item.sold_price || 0) - Number(item.purchased_price || 0) : null;
         const titleText = getCardTitleText(item);
+        const isSold = normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold';
         return `
           <article class="profit-card">
             <div class="profit-photo-wrap">
               ${photo ? `<img class="profit-photo" src="${photo}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />` : '<div class="profit-photo-empty">No photo</div>'}
+              ${isSold ? '<span class="sold-stamp">Sold</span>' : ''}
             </div>
             <div class="profit-copy">
               <div><strong>Title:</strong> ${escapeHtml(titleText)}</div>
@@ -6549,6 +6687,7 @@
                 gap: 10px;
               }
               .profit-photo-wrap {
+                position: relative;
                 border-radius: 10px;
                 overflow: hidden;
                 border: 1px solid #e4d8cb;
@@ -6564,6 +6703,23 @@
                 object-fit: contain;
                 display: block;
                 background: #fff;
+              }
+              .sold-stamp {
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%) rotate(-14deg);
+                background: rgba(191, 27, 27, 0.9);
+                color: #fff;
+                font-weight: 800;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                padding: 4px 14px;
+                border-radius: 4px;
+                pointer-events: none;
+                white-space: nowrap;
+                z-index: 2;
+                font-size: 14px;
               }
               .profit-photo-empty {
                 color: #8a7766;
@@ -6702,6 +6858,25 @@
                         if (embedded) {
                           drawImageContained(page, embedded, { x: x + 10, y: yTop - 10 - imageHeight, width: cardWidth - 20, height: imageHeight });
                         }
+                      }
+
+                      const profitItemStatus = String(item.status || '').trim().toLowerCase();
+                      const isProfitItemSold = profitItemStatus === 'sold' || (!profitItemStatus && Boolean(item.sold));
+                      if (isProfitItemSold) {
+                        const stampHeight = 15;
+                        const stampWidth = cardWidth - 20;
+                        const stampX = x + 10;
+                        const stampY = (yTop - 10 - imageHeight / 2) - stampHeight / 2;
+                        page.drawRectangle({
+                          x: stampX, y: stampY, width: stampWidth, height: stampHeight,
+                          color: rgb(0.75, 0.11, 0.11), opacity: 0.88
+                        });
+                        const stampLabel = 'SOLD';
+                        page.drawText(stampLabel, {
+                          x: stampX + stampWidth / 2 - fontBold.widthOfTextAtSize(stampLabel, 10) / 2,
+                          y: stampY + 4,
+                          size: 10, font: fontBold, color: rgb(1, 1, 1)
+                        });
                       }
 
                       const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
