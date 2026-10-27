@@ -4299,6 +4299,52 @@
       elements.singleCardContent.innerHTML = '';
     }
 
+    // Reads a one-time "select these shoes" handoff left in sessionStorage by
+    // marketing.html (clicking a recommendation tile there stores the matching
+    // shoe ids here, then opens this page). Applies the selection once, clears
+    // any active search/filters so the selected shoes are actually visible,
+    // and removes the handoff so it doesn't reapply on a normal page refresh.
+    function applyIncomingMarketingSelection() {
+      let raw = null;
+      try {
+        raw = sessionStorage.getItem('shoeInventoryFilterSelection');
+      } catch (storageError) {
+        raw = null;
+      }
+      if (!raw) return;
+      try {
+        sessionStorage.removeItem('shoeInventoryFilterSelection');
+      } catch (storageError) {
+        // Ignore; worst case the handoff is read again on next load.
+      }
+
+      let payload = null;
+      try {
+        payload = JSON.parse(raw);
+      } catch (parseError) {
+        return;
+      }
+      const ids = Array.isArray(payload && payload.ids) ? payload.ids.map(String) : [];
+      if (!ids.length) return;
+
+      const matchedIds = ids.filter((id) => state.inventory.some((item) => String(item.id) === id));
+      if (!matchedIds.length) {
+        showBanner('error', 'Nothing to select', 'Those shoes from Marketing no longer match your current inventory.');
+        return;
+      }
+
+      state.searchTerm = '';
+      if (elements.searchInput) elements.searchInput.value = '';
+      state.activeFilters.clear();
+      state.chartFilter = null;
+      state.selectedIds = new Set(matchedIds);
+
+      renderInventory();
+
+      const label = (payload && payload.label) || 'Selected shoes';
+      showBanner('success', `${label}: ${matchedIds.length} selected`, 'Scroll down to review, then use Export to build a listing file for just these shoes.');
+    }
+
     async function loadInventory() {
       if (!SUPABASE_READY) {
         state.lastInventorySyncAt = null;
@@ -4338,6 +4384,10 @@
             window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
           }
         }
+
+        // Select a set of shoes when the Marketing page links here with a saved
+        // recommendation group (sessionStorage.shoeInventoryFilterSelection).
+        applyIncomingMarketingSelection();
       } catch (error) {
         updateInventoryStatusCard('Sync failed');
         showBanner('error', 'Inventory load failed', error.message || String(error));
