@@ -742,24 +742,6 @@
     .photo-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .is-sold .photo-thumb img { filter: grayscale(1); opacity: 0.6; }
 
-    .sold-stamp {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%) rotate(-14deg);
-      background: rgba(191, 27, 27, 0.88);
-      color: #fff;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      padding: 2px 10px;
-      border-radius: 3px;
-      pointer-events: none;
-      white-space: nowrap;
-      z-index: 2;
-      font-size: 0.7rem;
-    }
-
     .photo-none {
       display: grid;
       place-items: center;
@@ -3838,8 +3820,8 @@
       if (base === 'ebay' || baseCompact === 'ebay') {
         ['ebay', 'e bay', 'platform ebay', 'listed on ebay'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
-      if (base === 'goat' || baseCompact === 'goat') {
-        ['goat', 'platform goat', 'listed on goat'].forEach((value) => variants.add(normalizeSearchToken(value)));
+      if (base === 'stockx' || baseCompact === 'stockx' || base === 'goat' || baseCompact === 'goat') {
+        ['stockx', 'stock x', 'platform stockx', 'listed on stockx'].forEach((value) => variants.add(normalizeSearchToken(value)));
       }
       if (base === 'threadup' || base === 'thredup' || baseCompact === 'threadup' || baseCompact === 'thredup') {
         ['threadup', 'thredup', 'thread up', 'thred up', 'platform threadup', 'listed on threadup'].forEach((value) => variants.add(normalizeSearchToken(value)));
@@ -3874,40 +3856,9 @@
       return normalizedSizeTerms(base);
     }
 
-    // Groups sizes into tiers before comparing numerically, so a sort by size doesn't mix
-    // toddler/child sizes (ending in C, e.g. "11C"), youth sizes (ending in Y, e.g. "2Y",
-    // "3Y", or GS/PS/toddler-style labels), kids' plain-number sizes (no letter, but the
-    // shoe's own Category is set to Kids), and adult sizes (everything else) together.
-    // Order: toddler/child, then youth, then kids plain-number, then adult, then unset.
-    function classifySizeTier(item) {
-      const raw = String(item?.size ?? '').trim();
-      if (!raw) return { bucket: 4, numeric: Number.POSITIVE_INFINITY };
-      const lower = raw.toLowerCase();
-      const numericMatch = lower.match(/(\d+(?:\.\d+)?)/);
-      const numeric = numericMatch ? Number(numericMatch[1]) : Number.POSITIVE_INFINITY;
-
-      const isToddler = /c$/.test(lower) || /\btd\b/.test(lower) || lower.includes('toddler') || lower.includes('infant');
-      const isYouth = !isToddler && (/y$/.test(lower) || /\b(gs|ps)\b/.test(lower) || lower.includes('youth') || lower.includes('grade school') || lower.includes('preschool'));
-      const isKidsPlainNumber = !isToddler && !isYouth && item?.gender === 'kids';
-
-      let bucket;
-      if (isToddler) bucket = 0;
-      else if (isYouth) bucket = 1;
-      else if (isKidsPlainNumber) bucket = 2;
-      else bucket = 3;
-
-      return { bucket, numeric };
-    }
-
     function compareInventoryByKey(a, b, key) {
       if (key === 'price') return Number(a.price || 0) - Number(b.price || 0);
-      if (key === 'size') {
-        const tierA = classifySizeTier(a);
-        const tierB = classifySizeTier(b);
-        if (tierA.bucket !== tierB.bucket) return tierA.bucket - tierB.bucket;
-        if (tierA.numeric !== tierB.numeric) return tierA.numeric - tierB.numeric;
-        return String(a.size || '').localeCompare(String(b.size || ''), undefined, { numeric: true, sensitivity: 'base' });
-      }
+      if (key === 'size') return String(a.size || '').localeCompare(String(b.size || ''), undefined, { numeric: true, sensitivity: 'base' });
       return String(a[key] || '').localeCompare(String(b[key] || ''), undefined, { sensitivity: 'base' });
     }
 
@@ -3926,7 +3877,7 @@
             if (lower === 'whatnot') return ['whatnot', 'what not', 'platform whatnot', 'listed on whatnot'];
             if (lower === 'depop') return ['depop', 'platform depop', 'listed on depop'];
             if (lower === 'ebay') return ['ebay', 'e bay', 'platform ebay', 'listed on ebay'];
-            if (lower === 'goat') return ['goat', 'platform goat', 'listed on goat'];
+            if (lower === 'stockx') return ['stockx', 'stock x', 'platform stockx', 'listed on stockx'];
             if (lower === 'threadup') return ['threadup', 'thredup', 'thread up', 'thred up', 'platform threadup', 'listed on threadup'];
             return [lower, `platform ${lower}`, `listed on ${lower}`];
           });
@@ -4240,7 +4191,6 @@
           <div class="card-main">
             <div class="card-photo">
               ${photoBlock}
-              ${itemStatus === 'sold' ? '<span class="sold-stamp">Sold</span>' : ''}
               <label class="select-box" title="Select this shoe"><input type="checkbox" data-select-id="${item.id}" ${isSelected ? 'checked' : ''} aria-label="Select ${escapeHtml(brandText)}"></label>
             </div>
             <div class="card-info" data-edit-id="${item.id}" role="button" tabindex="0" aria-label="Edit ${escapeHtml(brandText)}">
@@ -4318,52 +4268,6 @@
       elements.singleCardContent.innerHTML = '';
     }
 
-    // Reads a one-time "select these shoes" handoff left in sessionStorage by
-    // marketing.html (clicking a recommendation tile there stores the matching
-    // shoe ids here, then opens this page). Applies the selection once, clears
-    // any active search/filters so the selected shoes are actually visible,
-    // and removes the handoff so it doesn't reapply on a normal page refresh.
-    function applyIncomingMarketingSelection() {
-      let raw = null;
-      try {
-        raw = sessionStorage.getItem('shoeInventoryFilterSelection');
-      } catch (storageError) {
-        raw = null;
-      }
-      if (!raw) return;
-      try {
-        sessionStorage.removeItem('shoeInventoryFilterSelection');
-      } catch (storageError) {
-        // Ignore; worst case the handoff is read again on next load.
-      }
-
-      let payload = null;
-      try {
-        payload = JSON.parse(raw);
-      } catch (parseError) {
-        return;
-      }
-      const ids = Array.isArray(payload && payload.ids) ? payload.ids.map(String) : [];
-      if (!ids.length) return;
-
-      const matchedIds = ids.filter((id) => state.inventory.some((item) => String(item.id) === id));
-      if (!matchedIds.length) {
-        showBanner('error', 'Nothing to select', 'Those shoes from Marketing no longer match your current inventory.');
-        return;
-      }
-
-      state.searchTerm = '';
-      if (elements.searchInput) elements.searchInput.value = '';
-      state.activeFilters.clear();
-      state.chartFilter = null;
-      state.selectedIds = new Set(matchedIds);
-
-      renderInventory();
-
-      const label = (payload && payload.label) || 'Selected shoes';
-      showBanner('success', `${label}: ${matchedIds.length} selected`, 'Scroll down to review, then use Export to build a listing file for just these shoes.');
-    }
-
     async function loadInventory() {
       if (!SUPABASE_READY) {
         state.lastInventorySyncAt = null;
@@ -4403,10 +4307,6 @@
             window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
           }
         }
-
-        // Select a set of shoes when the Marketing page links here with a saved
-        // recommendation group (sessionStorage.shoeInventoryFilterSelection).
-        applyIncomingMarketingSelection();
       } catch (error) {
         updateInventoryStatusCard('Sync failed');
         showBanner('error', 'Inventory load failed', error.message || String(error));
@@ -4797,7 +4697,7 @@
       elements.editMaterials.value = item.materials || '';
       elements.editMadeIn.value = item.made_in || '';
       elements.editSerialNumber.value = item.serial_number || '';
-      setCheckedValues('edit-platforms-listed', item.platforms_listed || []);
+      setCheckedValues('edit-platforms-listed', (item.platforms_listed || []).map((platform) => (platform === 'GOAT' ? 'StockX' : platform)));
       elements.editStatus.className = 'form-status';
       elements.editStatus.textContent = '';
       updateEditHeader(item);
@@ -5106,14 +5006,20 @@
     const PLATFORM_REPORT_ORDER = ['ThreadUp', 'ebay', 'Depop', 'WhatNot', 'StockX'];
 
     function getItemPlatforms(item) {
-      if (!Array.isArray(item.platforms_listed)) return [];
-      return PLATFORM_REPORT_ORDER.filter((platform) => item.platforms_listed.includes(platform));
+      let raw = item.platforms_listed;
+      if (typeof raw === 'string') {
+        try { const parsed = JSON.parse(raw); raw = Array.isArray(parsed) ? parsed : raw.split(/[,;|]/); } catch (error) { raw = raw.split(/[,;|]/); }
+      }
+      if (!Array.isArray(raw)) return [];
+      // Match names forgivingly (ignore case/extra spaces) so "depop " or "DEPOP" still counts as Depop.
+      // Older items were saved as "GOAT"; that platform was replaced by StockX, so treat them as StockX.
+      const saved = raw.map((platform) => String(platform || '').trim().toLowerCase().replace(/^goat$/, 'stockx'));
+      return PLATFORM_REPORT_ORDER.filter((platform) => saved.includes(platform.toLowerCase()));
     }
 
     function buildReviewCardMarkup(item) {
       const photos = Array.isArray(item.photo_urls) ? item.photo_urls.slice(0, 4) : [];
       const titleText = getCardTitleText(item);
-      const isSold = normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold';
       const photoMarkup = photos.length
         ? photos.map((url) => `<img class="review-photo" src="${url}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />`).join('')
         : '<div style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;border:1px dashed #d8cbbd;border-radius:8px;color:#8a7766;font-size:12px;">No photos</div>';
@@ -5121,7 +5027,6 @@
         <article class="review-card">
           <div class="review-photo-grid">
             ${photoMarkup}
-            ${isSold ? '<span class="sold-stamp">Sold</span>' : ''}
           </div>
           <div style="font:12px Arial,sans-serif;color:#6c5d52;line-height:1.65;">
             <div><strong>Title:</strong> ${escapeHtml(titleText)}</div>
@@ -5180,7 +5085,6 @@
                 page-break-inside: avoid;
               }
               .review-photo-grid {
-                position: relative;
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 6px;
@@ -5192,23 +5096,6 @@
                 border-radius: 8px;
                 border: 1px solid #e4d8cb;
                 display: block;
-              }
-              .sold-stamp {
-                position: absolute;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%) rotate(-14deg);
-                background: rgba(191, 27, 27, 0.9);
-                color: #fff;
-                font-weight: 800;
-                letter-spacing: 0.12em;
-                text-transform: uppercase;
-                padding: 4px 14px;
-                border-radius: 4px;
-                pointer-events: none;
-                white-space: nowrap;
-                z-index: 2;
-                font-size: 14px;
               }
               @media print {
                 body {
@@ -5413,25 +5300,6 @@
                         }
                       }
 
-                      const itemStatusValue = String(item.status || '').trim().toLowerCase();
-                      const isItemSold = itemStatusValue === 'sold' || (!itemStatusValue && Boolean(item.sold));
-                      if (isItemSold) {
-                        const stampHeight = 15;
-                        const stampWidth = cardWidth - 20;
-                        const stampX = x + 10;
-                        const stampY = (yTop - 10 - imageHeight / 2) - stampHeight / 2;
-                        page.drawRectangle({
-                          x: stampX, y: stampY, width: stampWidth, height: stampHeight,
-                          color: rgb(0.75, 0.11, 0.11), opacity: 0.88
-                        });
-                        const stampLabel = 'SOLD';
-                        page.drawText(stampLabel, {
-                          x: stampX + stampWidth / 2 - fontBold.widthOfTextAtSize(stampLabel, 10) / 2,
-                          y: stampY + 4,
-                          size: 10, font: fontBold, color: rgb(1, 1, 1)
-                        });
-                      }
-
                       let textY = yTop - 10 - imageHeight - 16;
                       const textX = x + 10;
                       const textWidth = cardWidth - 20;
@@ -5534,7 +5402,6 @@
       const firstPhoto = photos.find(Boolean);
       const titleText = getCardTitleText(item);
       const genderKey = inventoryViewGenderKey(item);
-      const isSold = normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold';
       const photoMarkup = firstPhoto
         ? `<img class="inv-view-photo" src="${firstPhoto}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />`
         : '<div class="inv-view-photo inv-view-photo-empty">No photo</div>';
@@ -5544,10 +5411,7 @@
             <span class="inv-view-size-label">Size</span>
             <span class="inv-view-size-value">${escapeHtml(item.size || '-')}</span>
           </div>
-          <div class="inv-view-photo-wrap">
-            ${photoMarkup}
-            ${isSold ? '<span class="sold-stamp">Sold</span>' : ''}
-          </div>
+          ${photoMarkup}
           <div class="inv-view-info">
             <div class="inv-view-title">${escapeHtml(titleText)}</div>
             <div class="inv-view-meta">
@@ -5570,20 +5434,9 @@
         price: '$' + Number(item.price || 0).toFixed(2),
         condition: item.condition || 'Not set',
         description: buildExportDescription(item),
-        genderKey: inventoryViewGenderKey(item),
-        sold: normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold'
+        genderKey: inventoryViewGenderKey(item)
       }))).replace(/</g, '\\u003c');
-      const rowsParts = [];
-      let previousRowBrand = null;
-      exportItems.forEach((item) => {
-        const brandLabel = String(item.brand || 'Unbranded').trim() || 'Unbranded';
-        if (brandLabel !== previousRowBrand) {
-          rowsParts.push(`<div class="inv-view-brand-divider">${escapeHtml(brandLabel)}</div>`);
-          previousRowBrand = brandLabel;
-        }
-        rowsParts.push(buildInventoryViewRowMarkup(item));
-      });
-      const rows = rowsParts.join('');
+      const rows = exportItems.map((item) => buildInventoryViewRowMarkup(item)).join('');
       return `
         <html>
           <head>
@@ -5618,24 +5471,6 @@
                 break-inside: avoid;
                 page-break-inside: avoid;
               }
-              .inv-view-brand-divider {
-                margin-top: 14px;
-                padding: 5px 10px;
-                font-size: 12px;
-                font-weight: 800;
-                letter-spacing: 0.08em;
-                text-transform: uppercase;
-                color: #fff;
-                background: #8f2f16;
-                border-radius: 6px;
-                break-inside: avoid;
-                page-break-inside: avoid;
-                break-after: avoid;
-                page-break-after: avoid;
-              }
-              .inv-view-brand-divider:first-child {
-                margin-top: 0;
-              }
               .inv-view-size-box {
                 width: 56px;
                 height: 90px;
@@ -5665,18 +5500,13 @@
                 font-weight: 800;
                 color: #21170f;
               }
-              .inv-view-photo-wrap {
-                position: relative;
-                width: 90px;
-                height: 90px;
-                flex: 0 0 auto;
-              }
               .inv-view-photo {
                 width: 90px;
                 height: 90px;
                 object-fit: cover;
                 border-radius: 8px;
                 border: 1px solid #e4d8cb;
+                flex: 0 0 auto;
                 display: block;
               }
               .inv-view-photo-empty {
@@ -5687,23 +5517,6 @@
                 color: #8a7766;
                 font-size: 11px;
                 border: 1px dashed #d8cbbd;
-              }
-              .sold-stamp {
-                position: absolute;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%) rotate(-14deg);
-                background: rgba(191, 27, 27, 0.9);
-                color: #fff;
-                font-weight: 800;
-                letter-spacing: 0.1em;
-                text-transform: uppercase;
-                padding: 2px 8px;
-                border-radius: 3px;
-                pointer-events: none;
-                white-space: nowrap;
-                z-index: 2;
-                font-size: 10px;
               }
               .inv-view-info {
                 display: flex;
@@ -5815,10 +5628,7 @@
                   const margin = 30;
                   const rowHeight = 78;
                   const rowGap = 8;
-                  const dividerHeight = 20;
-                  const dividerGap = 6;
-                  const contentTop = pageHeight - margin - 30;
-                  const contentBottom = margin;
+                  const rowsPerPage = 8;
                   const imageSize = 62;
                   const sizeBoxWidth = 40;
                   const sizeBoxHeight = imageSize;
@@ -5832,24 +5642,11 @@
                     kids: { accent: rgb(0.839, 0.604, 0.110), bg: rgb(0.984, 0.953, 0.890) },
                     other: { accent: rgb(0.56, 0.18, 0.09), bg: rgb(0.99, 0.96, 0.94) }
                   };
+                  const pagesNeeded = Math.max(1, Math.ceil(invViewRows.length / rowsPerPage));
                   const imageCache = new Map();
 
-                  const layoutItems = [];
-                  let previousPdfBrand = null;
-                  invViewRows.forEach((row) => {
-                    const brandLabel = String(row.brand || 'Unbranded').trim() || 'Unbranded';
-                    if (brandLabel !== previousPdfBrand) {
-                      layoutItems.push({ type: 'divider', brand: brandLabel });
-                      previousPdfBrand = brandLabel;
-                    }
-                    layoutItems.push({ type: 'row', data: row });
-                  });
-
-                  let page = null;
-                  let yCursor = contentTop;
-
-                  function startNewPdfPage() {
-                    page = pdfDoc.addPage([pageWidth, pageHeight]);
+                  for (let pageIndex = 0; pageIndex < pagesNeeded; pageIndex += 1) {
+                    const page = pdfDoc.addPage([pageWidth, pageHeight]);
                     page.drawText('Inventory View', {
                       x: margin,
                       y: pageHeight - 18,
@@ -5866,114 +5663,73 @@
                       legendX += 12 + fontRegular.widthOfTextAtSize(label, 8) + 14;
                     });
 
-                    yCursor = contentTop;
-                  }
+                    for (let slot = 0; slot < rowsPerPage; slot += 1) {
+                      const row = invViewRows[pageIndex * rowsPerPage + slot];
+                      if (!row) continue;
+                      const yTop = pageHeight - margin - 30 - slot * (rowHeight + rowGap);
+                      const yBottom = yTop - rowHeight;
 
-                  startNewPdfPage();
-
-                  for (const layoutItem of layoutItems) {
-                    if (layoutItem.type === 'divider') {
-                      if (yCursor - dividerHeight < contentBottom) startNewPdfPage();
-                      const barY = yCursor - dividerHeight;
                       page.drawRectangle({
                         x: margin,
-                        y: barY,
+                        y: yBottom,
                         width: pageWidth - margin * 2,
-                        height: dividerHeight,
-                        color: rgb(0.56, 0.18, 0.09)
+                        height: rowHeight,
+                        color: bgColor,
+                        borderColor,
+                        borderWidth: 1
                       });
-                      page.drawText(layoutItem.brand, {
-                        x: margin + 10,
-                        y: barY + dividerHeight / 2 - 4,
-                        size: 10,
-                        font: fontBold,
-                        color: rgb(1, 1, 1)
-                      });
-                      yCursor = barY - dividerGap;
-                      continue;
-                    }
 
-                    const row = layoutItem.data;
-                    if (yCursor - rowHeight < contentBottom) startNewPdfPage();
-                    const yTop = yCursor;
-                    const yBottom = yTop - rowHeight;
-
-                    page.drawRectangle({
-                      x: margin,
-                      y: yBottom,
-                      width: pageWidth - margin * 2,
-                      height: rowHeight,
-                      color: bgColor,
-                      borderColor,
-                      borderWidth: 1
-                    });
-
-                    const sizeBoxX = margin + 8;
-                    const sizeBoxY = yTop - 8 - sizeBoxHeight;
-                    const boxColors = sizeBoxColors[row.genderKey] || sizeBoxColors.other;
-                    page.drawRectangle({
-                      x: sizeBoxX, y: sizeBoxY, width: sizeBoxWidth, height: sizeBoxHeight,
-                      borderColor: boxColors.accent, borderWidth: 1.5, color: boxColors.bg
-                    });
-                    page.drawText('SIZE', {
-                      x: sizeBoxX + sizeBoxWidth / 2 - fontBold.widthOfTextAtSize('SIZE', 6.5) / 2,
-                      y: sizeBoxY + sizeBoxHeight - 16,
-                      size: 6.5, font: fontBold, color: boxColors.accent
-                    });
-                    const sizeText = String(row.size || '-');
-                    page.drawText(sizeText, {
-                      x: sizeBoxX + sizeBoxWidth / 2 - fontBold.widthOfTextAtSize(sizeText, 15) / 2,
-                      y: sizeBoxY + sizeBoxHeight / 2 - 10,
-                      size: 15, font: fontBold, color: textColor
-                    });
-
-                    let embedded = row.photo ? imageCache.get(row.photo) : null;
-                    if (row.photo && !embedded) {
-                      embedded = await embedInvViewImage(pdfDoc, row.photo);
-                      if (embedded) imageCache.set(row.photo, embedded);
-                    }
-                    const imageX = sizeBoxX + sizeBoxWidth + 10;
-                    const imageY = yTop - 8 - imageSize;
-                    if (embedded) {
-                      drawInvViewImageContained(page, embedded, { x: imageX, y: imageY, width: imageSize, height: imageSize });
-                    } else {
+                      const sizeBoxX = margin + 8;
+                      const sizeBoxY = yTop - 8 - sizeBoxHeight;
+                      const boxColors = sizeBoxColors[row.genderKey] || sizeBoxColors.other;
                       page.drawRectangle({
-                        x: imageX, y: imageY, width: imageSize, height: imageSize,
-                        borderColor, borderWidth: 1, color: rgb(0.97, 0.95, 0.92)
+                        x: sizeBoxX, y: sizeBoxY, width: sizeBoxWidth, height: sizeBoxHeight,
+                        borderColor: boxColors.accent, borderWidth: 1.5, color: boxColors.bg
                       });
-                      page.drawText('No photo', { x: imageX + 8, y: imageY + imageSize / 2 - 4, size: 8, font: fontRegular, color: mutedColor });
-                    }
-                    if (row.sold) {
-                      const stampHeight = 14;
-                      const stampY = imageY + imageSize / 2 - stampHeight / 2;
-                      page.drawRectangle({
-                        x: imageX, y: stampY, width: imageSize, height: stampHeight,
-                        color: rgb(0.75, 0.11, 0.11), opacity: 0.88
+                      page.drawText('SIZE', {
+                        x: sizeBoxX + sizeBoxWidth / 2 - fontBold.widthOfTextAtSize('SIZE', 6.5) / 2,
+                        y: sizeBoxY + sizeBoxHeight - 16,
+                        size: 6.5, font: fontBold, color: boxColors.accent
                       });
-                      const stampLabel = 'SOLD';
-                      page.drawText(stampLabel, {
-                        x: imageX + imageSize / 2 - fontBold.widthOfTextAtSize(stampLabel, 9) / 2,
-                        y: stampY + 3.5,
-                        size: 9, font: fontBold, color: rgb(1, 1, 1)
+                      const sizeText = String(row.size || '-');
+                      page.drawText(sizeText, {
+                        x: sizeBoxX + sizeBoxWidth / 2 - fontBold.widthOfTextAtSize(sizeText, 15) / 2,
+                        y: sizeBoxY + sizeBoxHeight / 2 - 10,
+                        size: 15, font: fontBold, color: textColor
                       });
-                    }
 
-                    const textX = imageX + imageSize + 12;
-                    const textWidth = pageWidth - margin - 8 - textX;
-                    let textY = yTop - 14;
-                    page.drawText(row.title, { x: textX, y: textY, size: 11, font: fontBold, color: textColor });
-                    textY -= 14;
-                    const metaLine = 'Brand: ' + row.brand + '   Price: ' + row.price + '   Condition: ' + row.condition;
-                    textY = drawWrappedInvViewText(page, metaLine, {
-                      font: fontRegular, size: 8.5, color: mutedColor,
-                      x: textX, y: textY, maxWidth: textWidth, lineHeight: 10, maxLines: 1
-                    }) - 4;
-                    drawWrappedInvViewText(page, row.description, {
-                      font: fontRegular, size: 8, color: textColor,
-                      x: textX, y: textY, maxWidth: textWidth, lineHeight: 9.5, maxLines: 3
-                    });
+                      let embedded = row.photo ? imageCache.get(row.photo) : null;
+                      if (row.photo && !embedded) {
+                        embedded = await embedInvViewImage(pdfDoc, row.photo);
+                        if (embedded) imageCache.set(row.photo, embedded);
+                      }
+                      const imageX = sizeBoxX + sizeBoxWidth + 10;
+                      const imageY = yTop - 8 - imageSize;
+                      if (embedded) {
+                        drawInvViewImageContained(page, embedded, { x: imageX, y: imageY, width: imageSize, height: imageSize });
+                      } else {
+                        page.drawRectangle({
+                          x: imageX, y: imageY, width: imageSize, height: imageSize,
+                          borderColor, borderWidth: 1, color: rgb(0.97, 0.95, 0.92)
+                        });
+                        page.drawText('No photo', { x: imageX + 8, y: imageY + imageSize / 2 - 4, size: 8, font: fontRegular, color: mutedColor });
+                      }
 
-                    yCursor = yBottom - rowGap;
+                      const textX = imageX + imageSize + 12;
+                      const textWidth = pageWidth - margin - 8 - textX;
+                      let textY = yTop - 14;
+                      page.drawText(row.title, { x: textX, y: textY, size: 11, font: fontBold, color: textColor });
+                      textY -= 14;
+                      const metaLine = 'Brand: ' + row.brand + '   Price: ' + row.price + '   Condition: ' + row.condition;
+                      textY = drawWrappedInvViewText(page, metaLine, {
+                        font: fontRegular, size: 8.5, color: mutedColor,
+                        x: textX, y: textY, maxWidth: textWidth, lineHeight: 10, maxLines: 1
+                      }) - 4;
+                      drawWrappedInvViewText(page, row.description, {
+                        font: fontRegular, size: 8, color: textColor,
+                        x: textX, y: textY, maxWidth: textWidth, lineHeight: 9.5, maxLines: 3
+                      });
+                    }
                   }
 
                   const bytes = await pdfDoc.save();
@@ -6111,7 +5867,6 @@
                 page-break-inside: avoid;
               }
               .review-photo-grid {
-                position: relative;
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 6px;
@@ -6123,23 +5878,6 @@
                 border-radius: 8px;
                 border: 1px solid #e4d8cb;
                 display: block;
-              }
-              .sold-stamp {
-                position: absolute;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%) rotate(-14deg);
-                background: rgba(191, 27, 27, 0.9);
-                color: #fff;
-                font-weight: 800;
-                letter-spacing: 0.12em;
-                text-transform: uppercase;
-                padding: 4px 14px;
-                border-radius: 4px;
-                pointer-events: none;
-                white-space: nowrap;
-                z-index: 2;
-                font-size: 14px;
               }
               @media (max-width: 1100px) {
                 .review-grid {
@@ -6364,25 +6102,6 @@
                           color: rgb(0.97, 0.95, 0.92)
                         });
                       }
-                    }
-
-                    const cardItemStatus = String(item.status || '').trim().toLowerCase();
-                    const isCardItemSold = cardItemStatus === 'sold' || (!cardItemStatus && Boolean(item.sold));
-                    if (isCardItemSold) {
-                      const stampHeight = 15;
-                      const stampWidth = cardWidth - 20;
-                      const stampX = x + 10;
-                      const stampY = (yTop - 10 - imageHeight / 2) - stampHeight / 2;
-                      page.drawRectangle({
-                        x: stampX, y: stampY, width: stampWidth, height: stampHeight,
-                        color: rgb(0.75, 0.11, 0.11), opacity: 0.88
-                      });
-                      const stampLabel = 'SOLD';
-                      page.drawText(stampLabel, {
-                        x: stampX + stampWidth / 2 - fontBold.widthOfTextAtSize(stampLabel, 10) / 2,
-                        y: stampY + 4,
-                        size: 10, font: fontBold, color: rgb(1, 1, 1)
-                      });
                     }
 
                     const textX = x + 10;
@@ -6626,12 +6345,10 @@
         const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
         const profitValue = hasPurchased && hasSold ? Number(item.sold_price || 0) - Number(item.purchased_price || 0) : null;
         const titleText = getCardTitleText(item);
-        const isSold = normalizeListingStatus(item.status, Boolean(item.sold)) === 'sold';
         return `
           <article class="profit-card">
             <div class="profit-photo-wrap">
               ${photo ? `<img class="profit-photo" src="${photo}" loading="eager" decoding="sync" referrerpolicy="no-referrer" />` : '<div class="profit-photo-empty">No photo</div>'}
-              ${isSold ? '<span class="sold-stamp">Sold</span>' : ''}
             </div>
             <div class="profit-copy">
               <div><strong>Title:</strong> ${escapeHtml(titleText)}</div>
@@ -6687,7 +6404,6 @@
                 gap: 10px;
               }
               .profit-photo-wrap {
-                position: relative;
                 border-radius: 10px;
                 overflow: hidden;
                 border: 1px solid #e4d8cb;
@@ -6703,23 +6419,6 @@
                 object-fit: contain;
                 display: block;
                 background: #fff;
-              }
-              .sold-stamp {
-                position: absolute;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%) rotate(-14deg);
-                background: rgba(191, 27, 27, 0.9);
-                color: #fff;
-                font-weight: 800;
-                letter-spacing: 0.12em;
-                text-transform: uppercase;
-                padding: 4px 14px;
-                border-radius: 4px;
-                pointer-events: none;
-                white-space: nowrap;
-                z-index: 2;
-                font-size: 14px;
               }
               .profit-photo-empty {
                 color: #8a7766;
@@ -6858,25 +6557,6 @@
                         if (embedded) {
                           drawImageContained(page, embedded, { x: x + 10, y: yTop - 10 - imageHeight, width: cardWidth - 20, height: imageHeight });
                         }
-                      }
-
-                      const profitItemStatus = String(item.status || '').trim().toLowerCase();
-                      const isProfitItemSold = profitItemStatus === 'sold' || (!profitItemStatus && Boolean(item.sold));
-                      if (isProfitItemSold) {
-                        const stampHeight = 15;
-                        const stampWidth = cardWidth - 20;
-                        const stampX = x + 10;
-                        const stampY = (yTop - 10 - imageHeight / 2) - stampHeight / 2;
-                        page.drawRectangle({
-                          x: stampX, y: stampY, width: stampWidth, height: stampHeight,
-                          color: rgb(0.75, 0.11, 0.11), opacity: 0.88
-                        });
-                        const stampLabel = 'SOLD';
-                        page.drawText(stampLabel, {
-                          x: stampX + stampWidth / 2 - fontBold.widthOfTextAtSize(stampLabel, 10) / 2,
-                          y: stampY + 4,
-                          size: 10, font: fontBold, color: rgb(1, 1, 1)
-                        });
                       }
 
                       const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
