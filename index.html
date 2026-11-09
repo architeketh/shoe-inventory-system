@@ -6064,8 +6064,9 @@
       return `
         <div class="cell">
           <div class="photo">${photo ? `<img src="${escapeHtml(photo)}" alt="" />` : '<span class="nophoto">No photo</span>'}</div>
+          <div class="brand">${escapeHtml([String(item.brand || '').trim(), genderLabel].filter(Boolean).join(' - '))}</div>
           <div class="info">
-            <div class="size"><small>${escapeHtml(genderLabel)}</small>${escapeHtml(garageSaleSizeLabel(item))}</div>
+            <div class="size">${escapeHtml(garageSaleSizeLabel(item))}</div>
             <div class="price">${escapeHtml(garageSalePriceLabel(item))}</div>
           </div>
         </div>`;
@@ -6073,15 +6074,8 @@
 
     // Layout choices on the printed page. The page's drop-down switches between them without reloading.
     function buildGarageSaleHtml(exportItems) {
-      const genderOrder = { kids: 0, womens: 1, mens: 2 };
-      const sizeNumber = (item) => {
-        const match = String(item.size || '').match(/\d+(?:\.\d+)?/);
-        return match ? Number(match[0]) : Number.POSITIVE_INFINITY;
-      };
-      // Grouped kids, then women's, then men's, smallest size first, so shoppers can find their size.
-      const items = exportItems
-        .filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) !== 'sold')
-        .sort((a, b) => (genderOrder[a.gender] ?? 3) - (genderOrder[b.gender] ?? 3) || sizeNumber(a) - sizeNumber(b));
+      // Keeps the same order as the inventory list (whatever brand / size sort is chosen there).
+      const items = exportItems.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) !== 'sold');
       const cellsJson = JSON.stringify(items.map(buildGarageSaleCellMarkup)).replace(/</g, '\\u003c');
       return `<!doctype html>
         <html>
@@ -6106,10 +6100,10 @@
               .nophoto { font-size: 10px; color: #888; }
               .info { display: flex; justify-content: space-between; align-items: flex-end; padding: 0 5px 3px; gap: 4px; }
               .size { font-size: 16px; font-weight: 800; line-height: 1; }
-              .size small { display: block; font-size: 7px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 2px; }
+              .brand { padding: 0 5px; font-size: 8px; font-weight: 700; color: #444; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
               .price { font-size: 18px; font-weight: 800; line-height: 1; }
               .big .size { font-size: 20px; }
-              .big .size small { font-size: 8px; }
+              .big .brand { font-size: 9px; }
               .big .price { font-size: 22px; }
               @media print {
                 body { background: #fff; }
