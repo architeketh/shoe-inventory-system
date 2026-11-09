@@ -1477,6 +1477,7 @@
           <div class="menu-panel">
             <button class="menu-item" type="button" id="review-html-button"><strong>Review tab</strong><span>Listing cards to scan or save as a PDF</span></button>
             <button class="menu-item" type="button" id="inventory-view-button"><strong>Inventory view</strong><span>One photo + description per shoe, to scan or save as a PDF</span></button>
+            <button class="menu-item" type="button" id="garage-sale-button"><strong>Garage sale sheet</strong><span>Printable 5 x 9 grid: photo, size and price per shoe</span></button>
             <button class="menu-item" type="button" id="platform-report-button"><strong>Platform report</strong><span>Listing cards grouped by platform</span></button>
             <button class="menu-item" type="button" id="xls-button"><strong>CSV</strong><span>Spreadsheet of the shoes</span></button>
             <button class="menu-item" type="button" id="whatnot-button"><strong>Whatnot</strong><span>Whatnot upload file</span></button>
@@ -2251,6 +2252,7 @@
       searchClearButton: document.getElementById('search-clear-button'),
       reviewHtmlButton: document.getElementById('review-html-button'),
       inventoryViewButton: document.getElementById('inventory-view-button'),
+      garageSaleButton: document.getElementById('garage-sale-button'),
       platformReportButton: document.getElementById('platform-report-button'),
       xlsButton: document.getElementById('xls-button'),
       whatnotButton: document.getElementById('whatnot-button'),
@@ -6038,6 +6040,129 @@
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
+    // ---- Garage sale sheet ------------------------------------------------------------
+    // Printable letter-size pages (8.5 x 11 in) with a 5 across x 9 down grid: 45 shoes per page.
+    // Each cell shows the main photo, the size, and the price. Sold shoes are left out.
+    // Cells are 1.6 in wide x about 1.17 in tall (a 5 x 9 grid can't be perfect squares on letter paper).
+    function garageSaleSizeLabel(item) {
+      const raw = String(item.size || '').trim();
+      if (!raw) return '?';
+      // Kids sizes get a Y (youth) so "4.5" isn't mistaken for an adult size.
+      if (item.gender === 'kids' && /^[\d.,\s-]+$/.test(raw)) return `${raw}Y`;
+      return raw;
+    }
+
+    function garageSalePriceLabel(item) {
+      const value = Number(item.price || 0);
+      if (!Number.isFinite(value) || value <= 0) return '';
+      return Number.isInteger(value) ? `$${value}` : `$${value.toFixed(2)}`;
+    }
+
+    function buildGarageSaleCellMarkup(item) {
+      const photo = (Array.isArray(item.photo_urls) ? item.photo_urls : []).find(Boolean) || '';
+      const genderLabel = item.gender === 'mens' ? "Men's" : item.gender === 'womens' ? "Women's" : item.gender === 'kids' ? 'Kids' : '';
+      return `
+        <div class="cell">
+          <div class="photo">${photo ? `<img src="${escapeHtml(photo)}" alt="" />` : '<span class="nophoto">No photo</span>'}</div>
+          <div class="info">
+            <div class="size"><small>${escapeHtml(genderLabel)}</small>${escapeHtml(garageSaleSizeLabel(item))}</div>
+            <div class="price">${escapeHtml(garageSalePriceLabel(item))}</div>
+          </div>
+        </div>`;
+    }
+
+    // Layout choices on the printed page. The page's drop-down switches between them without reloading.
+    function buildGarageSaleHtml(exportItems) {
+      const genderOrder = { kids: 0, womens: 1, mens: 2 };
+      const sizeNumber = (item) => {
+        const match = String(item.size || '').match(/\d+(?:\.\d+)?/);
+        return match ? Number(match[0]) : Number.POSITIVE_INFINITY;
+      };
+      // Grouped kids, then women's, then men's, smallest size first, so shoppers can find their size.
+      const items = exportItems
+        .filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) !== 'sold')
+        .sort((a, b) => (genderOrder[a.gender] ?? 3) - (genderOrder[b.gender] ?? 3) || sizeNumber(a) - sizeNumber(b));
+      const cellsJson = JSON.stringify(items.map(buildGarageSaleCellMarkup)).replace(/</g, '\\u003c');
+      return `<!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>Garage Sale Sheet</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <style>
+              @page { size: 8.5in 11in; margin: 0.25in; }
+              * { box-sizing: border-box; }
+              body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111; background: #e9e7e3; }
+              .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 16px; background: #fff; border-bottom: 1px solid #ccc; position: sticky; top: 0; z-index: 2; }
+              .toolbar button { font-size: 16px; font-weight: 700; padding: 10px 18px; border: 0; border-radius: 8px; background: #111; color: #fff; cursor: pointer; }
+              .toolbar label { font-size: 15px; font-weight: 700; }
+              .toolbar select { font-size: 16px; padding: 8px 10px; border-radius: 8px; border: 1px solid #999; margin-left: 6px; }
+              .toolbar span { color: #555; font-size: 14px; }
+              .page { width: 8in; height: 10.5in; margin: 16px auto; background: #fff; display: grid; box-shadow: 0 1px 6px rgba(0,0,0,.25); page-break-after: always; break-after: page; }
+              .page:last-child { page-break-after: auto; break-after: auto; }
+              .cell { border: 1px dashed #9a9a9a; margin: -0.5px; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+              .photo { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 2px; }
+              .photo img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+              .nophoto { font-size: 10px; color: #888; }
+              .info { display: flex; justify-content: space-between; align-items: flex-end; padding: 0 5px 3px; gap: 4px; }
+              .size { font-size: 16px; font-weight: 800; line-height: 1; }
+              .size small { display: block; font-size: 7px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 2px; }
+              .price { font-size: 18px; font-weight: 800; line-height: 1; }
+              .big .size { font-size: 20px; }
+              .big .size small { font-size: 8px; }
+              .big .price { font-size: 22px; }
+              @media print {
+                body { background: #fff; }
+                .toolbar { display: none; }
+                .page { margin: 0; box-shadow: none; width: 8in; height: 10.5in; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="toolbar">
+              <button type="button" onclick="window.print()">Print</button>
+              <label>Layout
+                <select id="layout">
+                  <option value="4x8" selected>4 across x 8 rows (32 per page)</option>
+                  <option value="5x9">5 across x 9 rows (45 per page)</option>
+                </select>
+              </label>
+              <span id="summary"></span>
+            </div>
+            <div id="pages"></div>
+            <script>
+              const cells = ${cellsJson};
+              function render() {
+                const [cols, rows] = document.getElementById('layout').value.split('x').map(Number);
+                const perPage = cols * rows;
+                let html = '';
+                for (let i = 0; i < cells.length; i += perPage) {
+                  html += '<section class="page' + (cols === 4 ? ' big' : '') + '" style="grid-template-columns:repeat(' + cols + ',1fr);grid-template-rows:repeat(' + rows + ',1fr)">' + cells.slice(i, i + perPage).join('') + '</section>';
+                }
+                document.getElementById('pages').innerHTML = html || '<p style="padding:24px">No unsold shoes to print.</p>';
+                document.getElementById('summary').textContent = cells.length + ' shoe(s) on ' + Math.ceil(cells.length / perPage) + ' page(s). In the print window choose Letter paper and Scale 100%.';
+              }
+              document.getElementById('layout').addEventListener('change', render);
+              render();
+            <\/script>
+          </body>
+        </html>`;
+    }
+
+    function exportGarageSaleSheet() {
+      const exportItems = getExportItems();
+      const html = buildGarageSaleHtml(exportItems);
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const sheetTab = window.open(url, '_blank');
+      if (!sheetTab) {
+        alert('Allow pop-ups to open the garage sale sheet.');
+        URL.revokeObjectURL(url);
+        return;
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+
     function buildPlatformReportHtml(exportItems) {
       const groups = PLATFORM_REPORT_ORDER.map((platform) => {
         const items = exportItems.filter((item) => getItemPlatforms(item).includes(platform));
@@ -7810,6 +7935,7 @@
 
     elements.reviewHtmlButton.addEventListener('click', exportReviewListingHtml);
     elements.inventoryViewButton.addEventListener('click', exportInventoryView);
+    elements.garageSaleButton.addEventListener('click', exportGarageSaleSheet);
     elements.platformReportButton.addEventListener('click', exportPlatformReport);
     elements.xlsButton.addEventListener('click', exportXlsReport);
     elements.whatnotButton.addEventListener('click', exportWhatnotCsv);
