@@ -1410,9 +1410,32 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; }
     }
+    /* Sign in / read-only mode */
+    .auth-button { margin-left: auto; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+    .auth-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.55); }
+    .auth-overlay[hidden] { display: none; }
+    .auth-box { width: min(380px, 100%); background: #fff; color: #111; border-radius: 16px; padding: 22px; display: grid; gap: 12px; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+    .auth-box h2 { margin: 0; font-size: 1.3rem; }
+    .auth-box label { display: grid; gap: 6px; font-weight: 700; font-size: .9rem; }
+    .auth-box label[hidden] { display: none; }
+    .auth-box input { font: inherit; font-size: 16px; padding: 11px 12px; border: 1px solid #b9b9b9; border-radius: 10px; }
+    .auth-message { margin: 0; color: #444; font-size: .92rem; }
+    .auth-message:empty, .auth-error:empty { display: none; }
+    .auth-error { margin: 0; color: #b3261e; font-weight: 700; font-size: .9rem; }
+    .auth-actions { display: flex; gap: 10px; }
+    .auth-actions .button { flex: 1; }
+    .auth-link { background: none; border: 0; padding: 4px 0; color: #2b5cb8; font: inherit; font-size: .9rem; text-align: left; cursor: pointer; }
+    .auth-link[hidden] { display: none; }
+    /* Signed-out visitors can look, search, filter and export, but the buttons that change things are hidden. */
+    body.signed-out #open-add-button,
+    body.signed-out .card-actions [data-edit-id],
+    body.signed-out .card-actions [data-price-ai-id],
+    body.signed-out .card-actions [data-duplicate-id],
+    body.signed-out .card-actions [data-delete-id],
+    body.signed-out [data-match-mark-sold] { display: none !important; }
   </style>
 </head>
-<body>
+<body class="signed-out">
 
   <header class="abc-main-nav">
     <div class="abc-main-nav-in">
@@ -1421,8 +1444,25 @@
         <a class="active" href="./index.html">Inventory</a>
         <a href="./marketing.html">Marketing</a>
       </nav>
+      <button type="button" class="auth-button" id="auth-button">Sign in</button>
     </div>
   </header>
+
+  <!-- Sign-in box. Only the two app owners have accounts; everyone else can look but not change anything. -->
+  <div class="auth-overlay" id="auth-overlay" hidden>
+    <form class="auth-box" id="auth-form" autocomplete="on">
+      <h2 id="auth-title">Sign in</h2>
+      <p id="auth-message" class="auth-message"></p>
+      <label id="auth-email-label">Email<input type="email" id="auth-email" autocomplete="username" required></label>
+      <label id="auth-password-label"><span id="auth-password-text">Password</span><input type="password" id="auth-password" autocomplete="current-password" required></label>
+      <p id="auth-error" class="auth-error" role="alert"></p>
+      <div class="auth-actions">
+        <button type="submit" class="button primary" id="auth-submit">Sign in</button>
+        <button type="button" class="button secondary" id="auth-cancel">Cancel</button>
+      </div>
+      <button type="button" class="auth-link" id="auth-forgot">Forgot password?</button>
+    </form>
+  </div>
 
   <!-- Pop-up message (saved, error, etc.). It hides itself after a few seconds. -->
   <div class="status-banner warning" id="connection-banner" role="status" aria-live="polite">
@@ -2351,6 +2391,96 @@
     const SUPABASE_READY = !APP_CONFIG.supabaseUrl.includes('YOUR_PROJECT') && !APP_CONFIG.supabaseAnonKey.includes('YOUR_SUPABASE');
     const supabaseClient = SUPABASE_READY ? window.supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseAnonKey) : null;
 
+    // ---- Sign in ----------------------------------------------------------------------
+    // Two people have accounts (created in Supabase). Everyone else sees a read-only app.
+    // The database itself enforces this too, so hiding buttons is for convenience, not security.
+    const authState = { signedIn: false, mode: 'signin' };
+
+    function setSignedInUi(signedIn) {
+      authState.signedIn = Boolean(signedIn);
+      document.body.classList.toggle('signed-out', !authState.signedIn);
+      const button = document.getElementById('auth-button');
+      if (button) button.textContent = authState.signedIn ? 'Sign out' : 'Sign in';
+    }
+
+    function openAuthDialog(message, mode = 'signin') {
+      authState.mode = mode;
+      const recovery = mode === 'recovery';
+      document.getElementById('auth-title').textContent = recovery ? 'Choose a new password' : 'Sign in';
+      document.getElementById('auth-message').textContent = message || '';
+      document.getElementById('auth-error').textContent = '';
+      document.getElementById('auth-email-label').hidden = recovery;
+      document.getElementById('auth-email').required = !recovery;
+      document.getElementById('auth-password-text').textContent = recovery ? 'New password (at least 8 characters)' : 'Password';
+      document.getElementById('auth-password').autocomplete = recovery ? 'new-password' : 'current-password';
+      document.getElementById('auth-password').value = '';
+      document.getElementById('auth-submit').textContent = recovery ? 'Save password' : 'Sign in';
+      document.getElementById('auth-forgot').hidden = recovery;
+      document.getElementById('auth-overlay').hidden = false;
+      setTimeout(() => document.getElementById(recovery ? 'auth-password' : 'auth-email').focus(), 50);
+    }
+
+    function closeAuthDialog() {
+      document.getElementById('auth-overlay').hidden = true;
+    }
+
+    // Use at the start of anything that changes data. Signed-out visitors get the sign-in box instead.
+    function requireSignIn(message) {
+      if (authState.signedIn) return true;
+      openAuthDialog(message || 'Sign in to make changes.');
+      return false;
+    }
+
+    if (supabaseClient) {
+      supabaseClient.auth.getSession().then(({ data }) => setSignedInUi(Boolean(data && data.session)));
+      supabaseClient.auth.onAuthStateChange((event, session) => {
+        setSignedInUi(Boolean(session));
+        if (event === 'PASSWORD_RECOVERY') openAuthDialog('Choose a new password for your account.', 'recovery');
+      });
+
+      document.getElementById('auth-button').addEventListener('click', async () => {
+        if (authState.signedIn) {
+          await supabaseClient.auth.signOut();
+        } else {
+          openAuthDialog('');
+        }
+      });
+      document.getElementById('auth-cancel').addEventListener('click', closeAuthDialog);
+      document.getElementById('auth-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const errorBox = document.getElementById('auth-error');
+        const submit = document.getElementById('auth-submit');
+        errorBox.textContent = '';
+        submit.disabled = true;
+        try {
+          if (authState.mode === 'recovery') {
+            const newPassword = document.getElementById('auth-password').value;
+            if (newPassword.length < 8) { errorBox.textContent = 'Use at least 8 characters.'; return; }
+            const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+            if (error) { errorBox.textContent = error.message; return; }
+            closeAuthDialog();
+            return;
+          }
+          const { error } = await supabaseClient.auth.signInWithPassword({
+            email: document.getElementById('auth-email').value.trim(),
+            password: document.getElementById('auth-password').value
+          });
+          if (error) { errorBox.textContent = 'That email or password did not work.'; return; }
+          closeAuthDialog();
+        } finally {
+          submit.disabled = false;
+        }
+      });
+      document.getElementById('auth-forgot').addEventListener('click', async () => {
+        const email = document.getElementById('auth-email').value.trim();
+        const errorBox = document.getElementById('auth-error');
+        if (!email) { errorBox.textContent = 'Type your email above first.'; return; }
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+        errorBox.textContent = '';
+        document.getElementById('auth-message').textContent = error ? 'Could not send the email. Try again in a minute.' : 'If that email has an account, a reset link is on its way.';
+      });
+    }
+
     function currency(value) {
       return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(Number(value || 0));
     }
@@ -2583,6 +2713,7 @@
     }
 
     async function markMatchedItemSold(matchKey) {
+      if (!requireSignIn()) return;
       const match = findSoldMatchByKey(matchKey);
       if (!match) return;
       if (!SUPABASE_READY) {
@@ -3005,6 +3136,7 @@
     }
 
     async function processCurrentPhotoWhiteBg() {
+      if (!requireSignIn()) return;
       if (!SUPABASE_READY) {
         alert('Supabase must be configured before processing images.');
         return;
@@ -3118,6 +3250,7 @@
     }
 
     async function deleteCurrentViewerPhoto() {
+      if (!requireSignIn()) return;
       if (!SUPABASE_READY || !state.galleryItemId || !state.galleryUrls.length) return;
       const item = state.inventory.find((entry) => entry.id === state.galleryItemId);
       if (!item) return;
@@ -3161,6 +3294,7 @@
     }
 
     async function setCurrentPhotoAsMain() {
+      if (!requireSignIn()) return;
       if (!SUPABASE_READY || !state.galleryItemId || !state.galleryUrls.length) return;
       const item = state.inventory.find((entry) => entry.id === state.galleryItemId);
       if (!item) return;
@@ -3246,6 +3380,7 @@
     }
 
     async function applyCropToCurrentPhoto() {
+      if (!requireSignIn()) return;
       if (!SUPABASE_READY) {
         alert('Supabase must be configured before processing images.');
         return;
@@ -4770,6 +4905,7 @@
     }
 
     function startEdit(id) {
+      if (!requireSignIn('Sign in to edit shoes.')) return;
       const item = state.inventory.find((entry) => entry.id === id);
       if (!item) return;
       state.editingId = id;
@@ -4889,6 +5025,7 @@
     }
 
     async function deleteItem(id) {
+      if (!requireSignIn()) return;
       const item = state.inventory.find((entry) => entry.id === id);
       if (!item) return;
       if (!window.confirm(`Delete ${item.brand} ${item.description}?`)) return;
@@ -4902,6 +5039,7 @@
     }
 
     async function duplicateItem(id) {
+      if (!requireSignIn()) return;
       const item = state.inventory.find((entry) => entry.id === id);
       if (!item) return;
       const payload = {
@@ -5031,6 +5169,7 @@
     }
 
     async function runPriceAi(id) {
+      if (!requireSignIn()) return;
       const item = state.inventory.find((entry) => entry.id === id);
       if (!item) return;
       openPriceAiModal(item);
@@ -7620,7 +7759,7 @@
       // checkbox on each shoe for that, which you set yourself).
       const exportedAt = new Date().toISOString();
       const exportedIds = exportItems.map((item) => item.id).filter(Boolean);
-      if (exportedIds.length) {
+      if (exportedIds.length && authState.signedIn) {
         supabaseClient.from(APP_CONFIG.inventoryTable).update({ depop_exported_at: exportedAt }).in('id', exportedIds)
           .then(({ error }) => {
             if (error) { console.error('Could not record the Depop export timestamp:', error); return; }
@@ -8003,6 +8142,7 @@
 
     // ---- Add sheet ------------------------------------------------------
     function openAddSheet() {
+      if (!requireSignIn('Sign in to add shoes.')) return;
       elements.addPanel.classList.remove('hidden');
       elements.addPanel.setAttribute('aria-hidden', 'false');
       const body = elements.addPanel.querySelector('.sheet-body');
@@ -8159,6 +8299,7 @@
     // suffix (instead of reusing the id-based one) and saves it as this shoe's sku_override,
     // so the very next export uses a SKU Depop has never seen before for this item.
     async function regenerateDepopSku() {
+      if (!requireSignIn()) return;
       const item = getEditingItem();
       if (!item || !SUPABASE_READY) return;
       elements.regenerateSkuButton.disabled = true;
