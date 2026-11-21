@@ -1419,6 +1419,8 @@
     .auth-box label { display: grid; gap: 6px; font-weight: 700; font-size: .9rem; }
     .auth-box label[hidden] { display: none; }
     .auth-box input { font: inherit; font-size: 16px; padding: 11px 12px; border: 1px solid #b9b9b9; border-radius: 10px; }
+    .auth-box .auth-show { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: .9rem; }
+    .auth-box .auth-show input { width: 18px; height: 18px; padding: 0; }
     .auth-message { margin: 0; color: #444; font-size: .92rem; }
     .auth-message:empty, .auth-error:empty { display: none; }
     .auth-error { margin: 0; color: #b3261e; font-weight: 700; font-size: .9rem; }
@@ -1427,6 +1429,13 @@
     .auth-link { background: none; border: 0; padding: 4px 0; color: #2b5cb8; font: inherit; font-size: .9rem; text-align: left; cursor: pointer; }
     .auth-link[hidden] { display: none; }
     /* Signed-out visitors can look, search, filter and export, but the buttons that change things are hidden. */
+    @media (max-width: 560px) {
+      .abc-main-nav-in { flex-wrap: wrap; row-gap: 8px; }
+      .abc-main-nav-in .wordmark { order: 1; }
+      .abc-main-nav-in .auth-button { order: 2; margin-left: auto; flex: 0 0 auto; }
+      .abc-main-nav-in .abc-main-nav-links { order: 3; width: 100%; }
+      .abc-main-nav-in .abc-main-nav-links a { flex: 1; text-align: center; }
+    }
     body.signed-out #open-add-button,
     body.signed-out .card-actions [data-edit-id],
     body.signed-out .card-actions [data-price-ai-id],
@@ -1455,6 +1464,7 @@
       <p id="auth-message" class="auth-message"></p>
       <label id="auth-email-label">Email<input type="email" id="auth-email" autocomplete="username" required></label>
       <label id="auth-password-label"><span id="auth-password-text">Password</span><input type="password" id="auth-password" autocomplete="current-password" required></label>
+      <label class="auth-show"><input type="checkbox" id="auth-show-password"> Show password</label>
       <p id="auth-error" class="auth-error" role="alert"></p>
       <div class="auth-actions">
         <button type="submit" class="button primary" id="auth-submit">Sign in</button>
@@ -2414,6 +2424,8 @@
       document.getElementById('auth-password-text').textContent = recovery ? 'New password (at least 8 characters)' : 'Password';
       document.getElementById('auth-password').autocomplete = recovery ? 'new-password' : 'current-password';
       document.getElementById('auth-password').value = '';
+      document.getElementById('auth-password').type = 'password';
+      document.getElementById('auth-show-password').checked = false;
       document.getElementById('auth-submit').textContent = recovery ? 'Save password' : 'Sign in';
       document.getElementById('auth-forgot').hidden = recovery;
       document.getElementById('auth-overlay').hidden = false;
@@ -2446,6 +2458,9 @@
         }
       });
       document.getElementById('auth-cancel').addEventListener('click', closeAuthDialog);
+      document.getElementById('auth-show-password').addEventListener('change', (event) => {
+        document.getElementById('auth-password').type = event.target.checked ? 'text' : 'password';
+      });
       document.getElementById('auth-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         const errorBox = document.getElementById('auth-error');
