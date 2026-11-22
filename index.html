@@ -1474,6 +1474,16 @@
     </form>
   </div>
 
+  <!-- Progress box for "Download photos (zip)" -->
+  <div class="auth-overlay" id="zip-overlay" hidden>
+    <div class="auth-box" role="dialog" aria-live="polite">
+      <h2 id="zip-title">Preparing photos</h2>
+      <p id="zip-text" class="auth-message"></p>
+      <progress id="zip-bar" max="100" value="0" style="width:100%"></progress>
+      <div class="auth-actions"><button type="button" class="button secondary" id="zip-cancel">Cancel</button></div>
+    </div>
+  </div>
+
   <!-- Pop-up message (saved, error, etc.). It hides itself after a few seconds. -->
   <div class="status-banner warning" id="connection-banner" role="status" aria-live="polite">
     <div class="toast-text">
@@ -1527,6 +1537,7 @@
           <div class="menu-panel">
             <button class="menu-item" type="button" id="review-html-button"><strong>Review tab</strong><span>Listing cards to scan or save as a PDF</span></button>
             <button class="menu-item" type="button" id="inventory-view-button"><strong>Inventory view</strong><span>One photo + description per shoe, to scan or save as a PDF</span></button>
+            <button class="menu-item" type="button" id="photo-zip-button"><strong>Download photos (zip)</strong><span>Unsold shoes: a folder per brand, then per shoe</span></button>
             <button class="menu-item" type="button" id="garage-sale-button"><strong>Garage sale sheet</strong><span>Printable 5 x 9 grid: photo, size and price per shoe</span></button>
             <button class="menu-item" type="button" id="platform-report-button"><strong>Platform report</strong><span>Listing cards grouped by platform</span></button>
             <button class="menu-item" type="button" id="xls-button"><strong>CSV</strong><span>Spreadsheet of the shoes</span></button>
@@ -2303,6 +2314,7 @@
       reviewHtmlButton: document.getElementById('review-html-button'),
       inventoryViewButton: document.getElementById('inventory-view-button'),
       garageSaleButton: document.getElementById('garage-sale-button'),
+      photoZipButton: document.getElementById('photo-zip-button'),
       platformReportButton: document.getElementById('platform-report-button'),
       xlsButton: document.getElementById('xls-button'),
       whatnotButton: document.getElementById('whatnot-button'),
@@ -6311,6 +6323,140 @@
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
+    // ---- Download photos (zip) --------------------------------------------------------
+    // Downloads the photos of the unsold shoes you selected (or everything showing, if nothing is
+    // selected) as zip file(s): one folder per brand, then one folder per shoe, main photo first.
+    // Works for signed-out visitors too, since photos are viewable by link.
+    const PHOTO_ZIP_MAX_PHOTOS_PER_FILE = 150;
+
+    function safeZipName(value, fallback) {
+      const cleaned = String(value || '')
+        .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/^\.+/, '')
+        .slice(0, 60)
+        .trim();
+      return cleaned || fallback;
+    }
+
+    function buildPhotoZipPlan(items) {
+      const brandNames = new Map(); // lowercase brand -> first spelling seen, so "nike" and "Nike" share a folder
+      const usedFolders = new Set();
+      const shoes = [];
+      items.forEach((item) => {
+        const photos = (Array.isArray(item.photo_urls) ? item.photo_urls : []).filter(Boolean);
+        if (!photos.length) return;
+        const rawBrand = String(item.brand || '').trim();
+        const brandKey = rawBrand.toLowerCase();
+        if (!brandNames.has(brandKey)) brandNames.set(brandKey, safeZipName(rawBrand, 'Unknown brand'));
+        const brandFolder = brandNames.get(brandKey);
+        const title = safeZipName(item.description, safeZipName([item.brand, item.category_2].filter(Boolean).join(' '), 'Shoe'));
+        const sizeText = item.size ? ` - Size ${safeZipName(item.size, '')}` : '';
+        let shoeFolder = `${brandFolder}/${title}${sizeText}`;
+        let counter = 2;
+        while (usedFolders.has(shoeFolder.toLowerCase())) {
+          shoeFolder = `${brandFolder}/${title}${sizeText} (${counter++})`;
+        }
+        usedFolders.add(shoeFolder.toLowerCase());
+        shoes.push({ folder: shoeFolder, photos });
+      });
+      // Keep brand folders together and in A-Z order inside the zip.
+      shoes.sort((a, b) => a.folder.localeCompare(b.folder, undefined, { sensitivity: 'base', numeric: true }));
+      // Split into several zip files if there are a lot of photos, so a phone doesn't run out of memory.
+      const parts = [];
+      let current = [];
+      let count = 0;
+      shoes.forEach((shoe) => {
+        if (current.length && count + shoe.photos.length > PHOTO_ZIP_MAX_PHOTOS_PER_FILE) {
+          parts.push(current);
+          current = [];
+          count = 0;
+        }
+        current.push(shoe);
+        count += shoe.photos.length;
+      });
+      if (current.length) parts.push(current);
+      return parts;
+    }
+
+    async function downloadAllPhotosZip() {
+      const all = getExportItems();
+      const unsold = all.filter((item) => normalizeListingStatus(item.status, Boolean(item.sold)) !== 'sold');
+      const skippedSold = all.length - unsold.length;
+      const parts = buildPhotoZipPlan(unsold);
+      const shoeCount = parts.reduce((sum, part) => sum + part.length, 0);
+      const photoTotal = parts.reduce((sum, part) => sum + part.reduce((n, shoe) => n + shoe.photos.length, 0), 0);
+      if (!photoTotal) {
+        showBanner('error', 'No photos to download', 'None of the unsold shoes showing have saved photos.');
+        return;
+      }
+
+      const overlay = document.getElementById('zip-overlay');
+      const title = document.getElementById('zip-title');
+      const text = document.getElementById('zip-text');
+      const bar = document.getElementById('zip-bar');
+      const cancelButton = document.getElementById('zip-cancel');
+      let cancelled = false;
+      const controller = new AbortController();
+      cancelButton.onclick = () => { cancelled = true; controller.abort(); };
+      overlay.hidden = false;
+      title.textContent = 'Preparing photos';
+      text.textContent = 'Loading the zip tool...';
+      bar.value = 0;
+
+      let done = 0;
+      let failed = 0;
+      const stamp = new Date().toISOString().slice(0, 10);
+      try {
+        await loadJsZip();
+        for (let partIndex = 0; partIndex < parts.length; partIndex += 1) {
+          const zip = new JSZip();
+          for (const shoe of parts[partIndex]) {
+            if (cancelled) throw new Error('cancelled');
+            await Promise.all(shoe.photos.map(async (url, photoIndex) => {
+              try {
+                const response = await fetch(url, { signal: controller.signal });
+                if (!response.ok) throw new Error(`status ${response.status}`);
+                const blob = await response.blob();
+                const extMatch = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.exec(url);
+                const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
+                const label = photoIndex === 0 ? `photo-1-main.${ext}` : `photo-${photoIndex + 1}.${ext}`;
+                zip.file(`${shoe.folder}/${label}`, blob);
+              } catch (error) {
+                if (!cancelled) failed += 1;
+              }
+              done += 1;
+              bar.value = Math.round((done / photoTotal) * 100);
+              text.textContent = `Photo ${Math.min(done, photoTotal)} of ${photoTotal}${parts.length > 1 ? ` (zip file ${partIndex + 1} of ${parts.length})` : ''}`;
+            }));
+          }
+          if (cancelled) throw new Error('cancelled');
+          title.textContent = 'Zipping';
+          text.textContent = parts.length > 1 ? `Building zip file ${partIndex + 1} of ${parts.length}...` : 'Building the zip file...';
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          const zipUrl = URL.createObjectURL(zipBlob);
+          const link = document.createElement('a');
+          link.href = zipUrl;
+          link.download = parts.length > 1 ? `shoe-photos-${stamp}-part-${partIndex + 1}-of-${parts.length}.zip` : `shoe-photos-${stamp}.zip`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(zipUrl), 60000);
+          title.textContent = 'Preparing photos';
+        }
+        const notes = [];
+        if (skippedSold) notes.push(`${skippedSold} sold shoe${skippedSold === 1 ? '' : 's'} skipped`);
+        if (failed) notes.push(`${failed} photo${failed === 1 ? '' : 's'} could not be downloaded`);
+        showBanner(failed ? 'warning' : 'success', 'Photos downloaded', `${photoTotal - failed} photos from ${shoeCount} shoes${parts.length > 1 ? ` in ${parts.length} zip files (allow multiple downloads if asked)` : ''}.${notes.length ? ' ' + notes.join(', ') + '.' : ''}`);
+      } catch (error) {
+        if (cancelled) showBanner('warning', 'Download cancelled', 'No more photos were downloaded.');
+        else showBanner('error', 'Photo download failed', error.message || String(error));
+      } finally {
+        overlay.hidden = true;
+      }
+    }
+
     function buildPlatformReportHtml(exportItems) {
       const groups = PLATFORM_REPORT_ORDER.map((platform) => {
         const items = exportItems.filter((item) => getItemPlatforms(item).includes(platform));
@@ -8084,6 +8230,7 @@
     elements.reviewHtmlButton.addEventListener('click', exportReviewListingHtml);
     elements.inventoryViewButton.addEventListener('click', exportInventoryView);
     elements.garageSaleButton.addEventListener('click', exportGarageSaleSheet);
+    elements.photoZipButton.addEventListener('click', downloadAllPhotosZip);
     elements.platformReportButton.addEventListener('click', exportPlatformReport);
     elements.xlsButton.addEventListener('click', exportXlsReport);
     elements.whatnotButton.addEventListener('click', exportWhatnotCsv);
