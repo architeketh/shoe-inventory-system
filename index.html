@@ -1596,6 +1596,7 @@
           <button class="sort-btn" type="button" data-sort-key="description">Title</button>
           <button class="sort-btn" type="button" data-sort-key="size">Size</button>
           <button class="sort-btn" type="button" data-sort-key="price">Price</button>
+          <button class="sort-btn" type="button" data-sort-key="created_at">Date added</button>
         </div>
         <div class="inventory-head inventory-head-secondary" role="group" aria-label="Then sort by">
           <span class="sort-label">Then by</span>
@@ -1603,6 +1604,7 @@
           <button class="sort-btn" type="button" data-sort-key2="description">Title</button>
           <button class="sort-btn" type="button" data-sort-key2="size">Size</button>
           <button class="sort-btn" type="button" data-sort-key2="price">Price</button>
+          <button class="sort-btn" type="button" data-sort-key2="created_at">Date added</button>
           <button class="sort-btn" type="button" data-sort-key2="">None</button>
         </div>
       </div>
@@ -4066,6 +4068,7 @@
     }
 
     function compareInventoryByKey(a, b, key) {
+      if (key === 'created_at') return (new Date(a.created_at || 0).getTime() || 0) - (new Date(b.created_at || 0).getTime() || 0);
       if (key === 'price') return Number(a.price || 0) - Number(b.price || 0);
       if (key === 'size') {
         const tierA = classifySizeTier(a);
@@ -4624,7 +4627,7 @@
             state.columnSort.direction = state.columnSort.direction === 'asc' ? 'desc' : 'asc';
           } else {
             state.columnSort.key = key;
-            state.columnSort.direction = 'asc';
+            state.columnSort.direction = key === 'created_at' ? 'desc' : 'asc';
           }
           renderInventory();
           return;
@@ -4638,7 +4641,7 @@
             state.columnSort2.direction = state.columnSort2.direction === 'asc' ? 'desc' : 'asc';
           } else {
             state.columnSort2.key = key2;
-            state.columnSort2.direction = 'asc';
+            state.columnSort2.direction = key2 === 'created_at' ? 'desc' : 'asc';
           }
           renderInventory();
         }
