@@ -1521,9 +1521,7 @@
         <button class="chip" type="button" data-filter="sold_only" aria-pressed="false">Sold</button>
         <button class="chip" type="button" data-filter="depop_only" aria-pressed="false">On Depop</button>
         <button class="chip" type="button" data-filter="not_depop_only" aria-pressed="false">Not on Depop</button>
-        <button class="chip" type="button" data-filter="last_25" aria-pressed="false">Last 25 added</button>
-        <button class="chip" type="button" data-filter="last_50" aria-pressed="false">Last 50 added</button>
-        <button class="chip" type="button" data-filter="last_75" aria-pressed="false">Last 75 added</button>
+        <button class="chip" type="button" data-filter="last_added" aria-pressed="false">Added last 30 days</button>
         <button class="chip" type="button" data-filter="not_exported_only" aria-pressed="false">Not exported to Depop</button>
       </div>
       <div class="chips" id="active-filters" hidden></div>
@@ -4178,19 +4176,12 @@
           case 'not_depop_only':
             items = items.filter((item) => !getItemPlatforms(item).some((platform) => String(platform || '').toLowerCase() === 'depop'));
             break;
-          case 'last_25':
-          case 'last_50':
-          case 'last_75': {
-            // The N most recently added shoes in the whole inventory (newest first by date added),
-            // then any other filters / search apply on top of that group.
-            const count = Number(filterKey.slice(5));
-            const newestIds = new Set(
-              [...state.inventory]
-                .sort((a, b) => (new Date(b.created_at).getTime() || 0) - (new Date(a.created_at).getTime() || 0))
-                .slice(0, count)
-                .map((item) => item.id)
-            );
-            items = items.filter((item) => newestIds.has(item.id));
+          case 'last_added': {
+            // Shoes added in the last 30 days, newest first (a chosen Sort by button still takes over the order).
+            const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+            items = items
+              .filter((item) => (new Date(item.created_at).getTime() || 0) >= cutoff)
+              .sort((x, y) => (new Date(y.created_at).getTime() || 0) - (new Date(x.created_at).getTime() || 0));
             break;
           }
           case 'not_exported_only':
@@ -4428,6 +4419,7 @@
           <div class="card-foot">
             <div class="card-status">
               <span class="review-state${item.reviewed ? ' reviewed' : ''}">${item.reviewed ? 'Reviewed' : 'Not reviewed'}</span>
+              <span>${item.created_at ? `Added ${escapeHtml(formatShortDate(item.created_at))}` : ''}</span>
               <span>${pricedNote}</span>
               <span>${depopExportNote}</span>
               ${lockNote}
@@ -8381,7 +8373,6 @@
       } else if (state.activeFilters.has(key)) {
         state.activeFilters.delete(key);
       } else {
-        if (key.startsWith('last_')) ['last_25', 'last_50', 'last_75'].forEach((other) => state.activeFilters.delete(other));
         state.activeFilters.add(key);
       }
       renderInventory();
