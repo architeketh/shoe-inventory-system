@@ -1521,7 +1521,9 @@
         <button class="chip" type="button" data-filter="sold_only" aria-pressed="false">Sold</button>
         <button class="chip" type="button" data-filter="depop_only" aria-pressed="false">On Depop</button>
         <button class="chip" type="button" data-filter="not_depop_only" aria-pressed="false">Not on Depop</button>
-        <button class="chip" type="button" data-filter="new_this_week" aria-pressed="false">Added this week</button>
+        <button class="chip" type="button" data-filter="last_25" aria-pressed="false">Last 25 added</button>
+        <button class="chip" type="button" data-filter="last_50" aria-pressed="false">Last 50 added</button>
+        <button class="chip" type="button" data-filter="last_75" aria-pressed="false">Last 75 added</button>
         <button class="chip" type="button" data-filter="not_exported_only" aria-pressed="false">Not exported to Depop</button>
       </div>
       <div class="chips" id="active-filters" hidden></div>
@@ -4173,20 +4175,23 @@
           case 'not_depop_only':
             items = items.filter((item) => !getItemPlatforms(item).some((platform) => String(platform || '').toLowerCase() === 'depop'));
             break;
-          case 'new_this_week':
-            items = items.filter((item) => {
-              const created = new Date(item.created_at).getTime();
-              return Number.isFinite(created) && Date.now() - created <= 7 * 24 * 60 * 60 * 1000;
-            });
+          case 'last_25':
+          case 'last_50':
+          case 'last_75': {
+            // The N most recently added shoes in the whole inventory (newest first by date added),
+            // then any other filters / search apply on top of that group.
+            const count = Number(filterKey.slice(5));
+            const newestIds = new Set(
+              [...state.inventory]
+                .sort((a, b) => (new Date(b.created_at).getTime() || 0) - (new Date(a.created_at).getTime() || 0))
+                .slice(0, count)
+                .map((item) => item.id)
+            );
+            items = items.filter((item) => newestIds.has(item.id));
             break;
+          }
           case 'not_exported_only':
             items = items.filter((item) => !item.depop_exported_at);
-            break;
-          case 'new_this_week':
-            items = items.filter((item) => {
-              const created = new Date(item.created_at).getTime();
-              return Number.isFinite(created) && Date.now() - created <= 7 * 24 * 60 * 60 * 1000;
-            });
             break;
           default:
             break;
@@ -8373,6 +8378,7 @@
       } else if (state.activeFilters.has(key)) {
         state.activeFilters.delete(key);
       } else {
+        if (key.startsWith('last_')) ['last_25', 'last_50', 'last_75'].forEach((other) => state.activeFilters.delete(other));
         state.activeFilters.add(key);
       }
       renderInventory();
