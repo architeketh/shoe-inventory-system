@@ -4391,7 +4391,7 @@
       const sizeClass = sizeText.length > 7 ? 'xlong' : sizeText.length > 4 ? 'long' : '';
       const priceAiClass = item.price_ai_used ? 'mini-button price-ai-used' : 'mini-button';
       const pricedNote = item.price_ai_last_run_at ? `Priced ${escapeHtml(formatShortDate(item.price_ai_last_run_at))}` : 'Not priced';
-      const depopExportNote = item.depop_exported_at ? `Exported to Depop ${escapeHtml(formatShortDate(item.depop_exported_at))}` : 'Not exported to Depop';
+      const depopExportNote = getItemPlatforms(item).some((p) => String(p || '').toLowerCase() === 'depop') ? 'Listed on Depop' : '';
       const lockNote = item.pricing_locked ? '<span class="locked">Price locked</span>' : '';
 
       const photoBlock = photos.length
@@ -4421,7 +4421,7 @@
               <span class="review-state${item.reviewed ? ' reviewed' : ''}">${item.reviewed ? 'Reviewed' : 'Not reviewed'}</span>
               <span>${item.created_at ? `Added ${escapeHtml(formatShortDate(item.created_at))}` : ''}</span>
               <span>${pricedNote}</span>
-              <span>${depopExportNote}</span>
+              ${depopExportNote ? `<span>${depopExportNote}</span>` : ''}
               ${lockNote}
             </div>
             <div class="card-actions">
