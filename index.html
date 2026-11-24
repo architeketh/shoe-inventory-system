@@ -7259,45 +7259,61 @@
                   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
                   const pageWidth = 612;
                   const pageHeight = 792;
-                  const margin = 28;
-                  const gutter = 18;
-                  const cardWidth = (pageWidth - margin * 2 - gutter) / 2;
-                  const cardHeight = 226;
-                  const imageHeight = 70;
+                  const margin = 24;
+                  const gutter = 10;
+                  const columns = 3;
+                  const cardWidth = (pageWidth - margin * 2 - gutter * (columns - 1)) / columns;
+                  const pad = 8;
+                  const photoSize = cardWidth - pad * 2;
+                  const lineHeight = 10.5;
+                  const textSize = 7.5;
+                  const cardHeight = pad + photoSize + 8 + lineHeight * 13 + pad - 2;
                   const pagesNeeded = Math.max(1, Math.ceil(profitItems.length / 6));
                   const imageCache = new Map();
+                  const dark = rgb(0.13, 0.13, 0.13);
+                  const hasNum = (v) => v !== null && v !== undefined && v !== '';
+                  const money = (v) => '$' + Number(v).toFixed(2);
+                  const fit = (text, font, size, maxWidth) => {
+                    let t = pdfSafe(text);
+                    if (font.widthOfTextAtSize(t, size) <= maxWidth) return t;
+                    while (t.length > 1 && font.widthOfTextAtSize(t + '...', size) > maxWidth) t = t.slice(0, -1);
+                    return t + '...';
+                  };
+                  const totalPurchased = profitItems.reduce((n, i) => n + (hasNum(i.purchased_price) ? Number(i.purchased_price) : 0), 0);
+                  const totalListed = profitItems.reduce((n, i) => n + Number(i.price || 0), 0);
+                  const totalSold = profitItems.reduce((n, i) => n + Number(i.sold_price || 0), 0);
+                  const totalNet = profitItems.reduce((n, i) => n + (hasNum(i.purchased_price) && hasNum(i.sold_price) ? Number(i.sold_price) - Number(i.purchased_price) : 0), 0);
 
                   for (let pageIndex = 0; pageIndex < pagesNeeded; pageIndex += 1) {
                     const page = pdfDoc.addPage([pageWidth, pageHeight]);
                     const rawDrawText = page.drawText.bind(page);
                     page.drawText = (text, options) => rawDrawText(pdfSafe(text), options);
-                    page.drawText('Net Income Report', {
-                      x: margin,
-                      y: pageHeight - 18,
-                      size: 18,
-                      font: fontBold,
-                      color: rgb(0.12, 0.08, 0.05)
-                    });
+                    page.drawText('Net Income Report', { x: margin, y: pageHeight - 34, size: 16, font: fontBold, color: dark });
+                    page.drawText(
+                      'Purchased ' + money(totalPurchased) + '   Listed ' + money(totalListed) + '   Sold ' + money(totalSold) + '   Net income ' + money(totalNet) + '   (page ' + (pageIndex + 1) + ' of ' + pagesNeeded + ')',
+                      { x: margin, y: pageHeight - 48, size: 7.5, font: fontRegular, color: rgb(0.35, 0.35, 0.35) }
+                    );
 
                     for (let slot = 0; slot < 6; slot += 1) {
                       const item = profitItems[pageIndex * 6 + slot];
                       if (!item) continue;
-                      const column = slot % 2;
-                      const row = Math.floor(slot / 2);
+                      const column = slot % columns;
+                      const row = Math.floor(slot / columns);
                       const x = margin + column * (cardWidth + gutter);
-                      const yTop = pageHeight - margin - 28 - row * (cardHeight + 10);
+                      const yTop = pageHeight - 60 - row * (cardHeight + gutter);
                       const yBottom = yTop - cardHeight;
 
                       page.drawRectangle({
-                        x,
-                        y: yBottom,
-                        width: cardWidth,
-                        height: cardHeight,
-                        color: rgb(1, 1, 1),
-                        borderColor: rgb(0.86, 0.82, 0.76),
-                        borderWidth: 1
+                        x, y: yBottom, width: cardWidth, height: cardHeight,
+                        color: rgb(1, 1, 1), borderColor: rgb(0.86, 0.82, 0.76), borderWidth: 1
                       });
 
+                      const photoX = x + pad;
+                      const photoY = yTop - pad - photoSize;
+                      page.drawRectangle({
+                        x: photoX, y: photoY, width: photoSize, height: photoSize,
+                        color: rgb(0.97, 0.96, 0.95), borderColor: rgb(0.89, 0.85, 0.80), borderWidth: 0.5
+                      });
                       const photo = Array.isArray(item.photo_urls) && item.photo_urls.length ? item.photo_urls[0] : '';
                       if (photo) {
                         let embedded = imageCache.get(photo);
@@ -7305,63 +7321,50 @@
                           embedded = await embedProfitImage(pdfDoc, photo);
                           if (embedded) imageCache.set(photo, embedded);
                         }
-                        if (embedded) {
-                          drawImageContained(page, embedded, { x: x + 10, y: yTop - 10 - imageHeight, width: cardWidth - 20, height: imageHeight });
-                        }
+                        if (embedded) drawImageContained(page, embedded, { x: photoX, y: photoY, width: photoSize, height: photoSize });
                       }
 
                       const profitItemStatus = String(item.status || '').trim().toLowerCase();
                       const isProfitItemSold = profitItemStatus === 'sold' || (!profitItemStatus && Boolean(item.sold));
                       if (isProfitItemSold) {
-                        const stampHeight = 15;
-                        const stampWidth = cardWidth - 20;
-                        const stampX = x + 10;
-                        const stampY = (yTop - 10 - imageHeight / 2) - stampHeight / 2;
-                        page.drawRectangle({
-                          x: stampX, y: stampY, width: stampWidth, height: stampHeight,
-                          color: rgb(0.75, 0.11, 0.11), opacity: 0.88
-                        });
-                        const stampLabel = 'SOLD';
-                        page.drawText(stampLabel, {
-                          x: stampX + stampWidth / 2 - fontBold.widthOfTextAtSize(stampLabel, 10) / 2,
-                          y: stampY + 4,
-                          size: 10, font: fontBold, color: rgb(1, 1, 1)
+                        const stampHeight = 20;
+                        const stampY = photoY + photoSize / 2 - stampHeight / 2;
+                        page.drawRectangle({ x: photoX, y: stampY, width: photoSize, height: stampHeight, color: rgb(0.75, 0.11, 0.11), opacity: 0.88 });
+                        page.drawText('SOLD', {
+                          x: photoX + photoSize / 2 - fontBold.widthOfTextAtSize('SOLD', 12) / 2,
+                          y: stampY + 6, size: 12, font: fontBold, color: rgb(1, 1, 1)
                         });
                       }
 
-                      const hasPurchased = item.purchased_price !== null && item.purchased_price !== undefined && item.purchased_price !== '';
-                      const hasSold = item.sold_price !== null && item.sold_price !== undefined && item.sold_price !== '';
-                      const profitValue = hasPurchased && hasSold ? Number(item.sold_price || 0) - Number(item.purchased_price || 0) : null;
+                      const hasPurchased = hasNum(item.purchased_price);
+                      const hasSold = hasNum(item.sold_price);
+                      const profitValue = hasPurchased && hasSold ? Number(item.sold_price) - Number(item.purchased_price) : null;
+                      const titleText = [item.brand, item.brand_style_name || item.description].filter(Boolean).join(' ').trim() || '-';
                       const rows = [
-                        ['Status', getStatusLabel(item)],
+                        ['Title', titleText],
                         ['Category', item.category_2 || '-'],
                         ['Brand', item.brand || '-'],
-                        ['Description', item.description || '-'],
+                        ["Brand's Style Name", item.brand_style_name || '-'],
                         ['Size', item.size || '-'],
-                        ['Purchased', hasPurchased ? ('$' + Number(item.purchased_price).toFixed(2)) : '-'],
-                        ['Listed', item.price ? ('$' + Number(item.price).toFixed(2)) : '-'],
-                        ['Sold', hasSold ? ('$' + Number(item.sold_price).toFixed(2)) : '-'],
-                        ['Net Income', profitValue !== null ? ('$' + profitValue.toFixed(2)) : '-']
+                        ['Condition', item.condition || 'Not set'],
+                        ['Colors', item.colors || '-'],
+                        ['Retail Price', item.estimated_retail_price ? money(item.estimated_retail_price) : '-'],
+                        ['Purchased Price', hasPurchased ? money(item.purchased_price) : '-'],
+                        ['Listed Price', item.price ? money(item.price) : '-'],
+                        ['Pricing Condition', item.pricing_condition || '-'],
+                        ['Sold Price', hasSold ? money(item.sold_price) : '-'],
+                        ['Net Income', profitValue !== null ? money(profitValue) : '-']
                       ];
 
-                      let textY = yTop - 10 - imageHeight - 16;
+                      let textY = photoY - 8 - textSize;
                       rows.forEach(([label, value]) => {
-                        page.drawText(label + ':', {
-                          x: x + 10,
-                          y: textY,
-                          size: 8,
-                          font: fontBold,
-                          color: rgb(0.26, 0.22, 0.18)
+                        const labelText = label + ':';
+                        const labelWidth = fontBold.widthOfTextAtSize(pdfSafe(labelText), textSize);
+                        page.drawText(labelText, { x: x + pad, y: textY, size: textSize, font: fontBold, color: dark });
+                        page.drawText(fit(value, fontRegular, textSize, cardWidth - pad * 2 - labelWidth - 3), {
+                          x: x + pad + labelWidth + 3, y: textY, size: textSize, font: fontRegular, color: rgb(0.26, 0.26, 0.26)
                         });
-                        page.drawText(String(value), {
-                          x: x + 74,
-                          y: textY,
-                          size: 8,
-                          font: fontRegular,
-                          color: rgb(0.26, 0.22, 0.18),
-                          maxWidth: cardWidth - 84
-                        });
-                        textY -= 14;
+                        textY -= lineHeight;
                       });
                     }
                   }
