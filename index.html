@@ -5733,7 +5733,7 @@
             <div class="inv-view-title">${escapeHtml(titleText)}</div>
             <div class="inv-view-meta">
               <span><strong>Brand:</strong> ${escapeHtml(item.brand || '-')}</span>
-              <span><strong>Price:</strong> ${escapeHtml(currency(item.price || 0))}</span>
+              <span class="inv-price"><strong>Price:</strong> ${escapeHtml(currency(item.price || 0))}</span>
               <span><strong>Condition:</strong> ${escapeHtml(item.condition || 'Not set')}</span>
             </div>
             <div class="inv-view-description">${escapeHtml(buildExportDescription(item))}</div>
@@ -5897,6 +5897,9 @@
               }
               .inv-view-title { font-weight: 700; font-size: 14px; color: #21170f; }
               .inv-view-meta { display: flex; flex-wrap: wrap; gap: 12px; color: #6c5d52; }
+              body.hide-pricing .inv-price { display: none; }
+              .hide-pricing-toggle { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: #8f2f16; cursor: pointer; }
+              .hide-pricing-toggle input { width: 18px; height: 18px; }
               .inv-view-description { color: #4a3f35; }
               @media print {
                 body { padding: 12px; background: #fff; }
@@ -6144,7 +6147,8 @@
                     let textY = yTop - 14;
                     page.drawText(row.title, { x: textX, y: textY, size: 11, font: fontBold, color: textColor });
                     textY -= 14;
-                    const metaLine = 'Brand: ' + row.brand + '   Price: ' + row.price + '   Condition: ' + row.condition;
+                    const hidePricing = document.body.classList.contains('hide-pricing');
+                    const metaLine = 'Brand: ' + row.brand + (hidePricing ? '' : '   Price: ' + row.price) + '   Condition: ' + row.condition;
                     textY = drawWrappedInvViewText(page, metaLine, {
                       font: fontRegular, size: 8.5, color: mutedColor,
                       x: textX, y: textY, maxWidth: textWidth, lineHeight: 10, maxLines: 1
@@ -6182,6 +6186,7 @@
             <div class="print-toolbar">
               <button id="create-pdf-button" onclick="createPdf()" style="border:0;border-radius:999px;padding:12px 18px;background:#8f2f16;color:#fff;font-weight:700;cursor:pointer;">Create PDF</button>
               <button onclick="window.close()" style="border:1px solid #d8cbbd;border-radius:999px;padding:12px 18px;background:#fff;color:#8f2f16;font-weight:700;cursor:pointer;">Close</button>
+              <label class="hide-pricing-toggle"><input type="checkbox" id="hide-pricing-checkbox" onchange="document.body.classList.toggle('hide-pricing', this.checked)" /> Hide pricing</label>
             </div>
             <h1 style="margin:0 0 8px;">Inventory View</h1>
             <div style="margin-bottom:10px;color:#555;">Generated ${escapeHtml(formatDate(new Date().toISOString()))} | ${exportItems.length} pair(s)</div>
