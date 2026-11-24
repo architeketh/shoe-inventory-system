@@ -4084,6 +4084,7 @@
         const sizeLikeSearch = isSizeLikeSearch(state.searchTerm);
         const terms = sizeLikeSearch ? normalizedSizeSearchTerms(state.searchTerm) : normalizedSearchTerms(state.searchTerm);
         items = items.filter((item) => {
+         try {
           const sizeTerms = normalizedSizeTerms(item.size);
           if (sizeLikeSearch) {
             return terms.some((term) => sizeTerms.some((value) => value === term));
@@ -4142,6 +4143,12 @@
             if (!normalizedTerm && !compactTerm) return true;
             return (normalizedTerm && haystack.includes(normalizedTerm)) || (compactTerm && haystack.includes(compactTerm));
           });
+         } catch (searchError) {
+          // One odd item must never break the whole search: fall back to a plain text match.
+          console.error('Search error on item', item && item.id, searchError);
+          const plain = [item.brand, item.description, item.notes, item.size].map((v) => String(v || '').toLowerCase()).join(' ');
+          return plain.includes(String(state.searchTerm).toLowerCase());
+         }
         });
       }
       if (state.chartFilter) {
@@ -7172,6 +7179,22 @@
             <script>
               const profitItems = ${profitDataJson};
 
+              // These helpers live in the main page, so the report window needs its own copies.
+              function getStatusLabel(item) {
+                const status = String((item && item.status) || '').trim().toLowerCase();
+                if (status === 'sold' || (!status && item && item.sold)) return 'Sold';
+                if (status === 'draft') return 'Draft';
+                return 'Active';
+              }
+              // The PDF font can only print basic Latin characters; swap anything else so it can't crash the export.
+              function pdfSafe(value) {
+                return String(value == null ? '' : value)
+                  .replace(/[\u2018\u2019]/g, "'")
+                  .replace(/[\u201C\u201D]/g, '"')
+                  .replace(/[\u2013\u2014]/g, '-')
+                  .replace(/[^\x20-\x7E\xA0-\xFF]/g, '?');
+              }
+
               async function embedProfitImage(pdfDoc, url) {
                 try {
                   const response = await fetch(url, { mode: 'cors' });
@@ -7246,6 +7269,8 @@
 
                   for (let pageIndex = 0; pageIndex < pagesNeeded; pageIndex += 1) {
                     const page = pdfDoc.addPage([pageWidth, pageHeight]);
+                    const rawDrawText = page.drawText.bind(page);
+                    page.drawText = (text, options) => rawDrawText(pdfSafe(text), options);
                     page.drawText('Net Income Report', {
                       x: margin,
                       y: pageHeight - 18,
@@ -7351,6 +7376,9 @@
                   link.click();
                   link.remove();
                   setTimeout(() => URL.revokeObjectURL(url), 60000);
+                } catch (error) {
+                  console.error(error);
+                  window.alert('Could not build the PDF: ' + (error && error.message ? error.message : error));
                 } finally {
                   button.textContent = originalLabel;
                   button.disabled = false;
